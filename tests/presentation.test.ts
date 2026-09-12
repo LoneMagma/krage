@@ -1,0 +1,536 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { PerspectiveCamera, Vector3, Mesh } from 'three';
+import { Match, direction, eye, emptyInput, v } from '../lib/game/core.js';
+import { syncView } from '../lib/game/view.js';
+import { CrouchControl } from '../lib/game/controls.js';
+import {
+  avatar,
+  animateAvatar,
+  poseAvatar,
+  makeWeapon,
+  disposeObject,
+} from '../lib/game/graphics.js';
+
+await test('rendered center ray agrees with hitscan above, below and around the player', () => {
+  const m = new Match(0, 1, 0),
+    camera = new PerspectiveCamera(90, 1.7, 0.06, 150);
+  for (const yaw of [-2.4, -0.3, 0, 1.8])
+    for (const pitch of [-1.2, -0.3, 0.2, 1.1]) {
+      m.player.yaw = yaw;
+      m.player.pitch = pitch;
+      m.player.pos = v(2, 3, 5);
+      m.player.viewHeight = 0.94;
+  m.player.stanceBlend = 1;
+      syncView(camera, m.player);
+      const forward = camera.getWorldDirection(new Vector3());
+      assert.ok(
+        forward.distanceTo(new Vector3().copy(direction(yaw, pitch))) < 1e-10,
+      );
+      assert.ok(
+        camera.position.distanceTo(new Vector3().copy(eye(m.player))) < 1e-10,
+      );
+    }
+});
+await test('hold crouches, release stands, double-tap requests exactly one slide', () => {
+  const c = new CrouchControl();
+  c.press(1000);
+  assert.equal(c.active, true);
+  c.press(1010);
+  assert.equal(c.active, true);
+  c.release();
+  assert.equal(c.active, false);
+  c.press(1190);
+  assert.equal(c.active, false);
+  assert.equal(c.consumeSlide(), true);
+  assert.equal(c.consumeSlide(), false);
+  c.release();
+  c.press(1600);
+  assert.equal(c.active, true);
+  c.release();
+  c.press(2100);
+  assert.equal(c.active, true);
+  c.reset();
+  assert.equal(c.active, false);
+  assert.equal(c.held, false);
+});
+await test('double-tap slide works after first tap has slowed the player into crouch', () => {
+  const m = new Match(0, 0, 0),
+    input = emptyInput(),
+    c = new CrouchControl();
+  m.player.pos = v(-26, 0, 8);
+  m.player.yaw = 0;
+  input.forward = 1;
+  for (let i = 0; i < 60; i++) m.step(1 / 120, input);
+  c.press(1000);
+  input.crouch = c.active;
+  for (let i = 0; i < 24; i++) m.step(1 / 120, input);
+  assert.ok(Math.hypot(m.player.vel.x, m.player.vel.z) <= 3.01);
+  c.release();
+  c.press(1200);
+  input.crouch = c.active;
+  input.slide = c.consumeSlide();
+  m.step(1 / 120, input);
+  assert.ok(m.player.slide > 0);
+  assert.ok(Math.hypot(m.player.vel.x, m.player.vel.z) > 7 && Math.hypot(m.player.vel.x, m.player.vel.z) < 8.8);
+});
+await test('standing double-tap cannot launch a stationary player', () => {
+  const m = new Match(0, 0, 0),
+    input = emptyInput();
+  input.slide = true;
+  m.step(1 / 120, input);
+  assert.equal(m.player.slide, 0);
+});
+await test('character geometry survives a live-pose to ragdoll-pose handoff unchanged', () => {
+  const m = new Match(0, 0, 0),
+    model = avatar('#c68b58');
+  m.player.crouched = true;
+  m.player.viewHeight = 0.94;
+  m.player.stanceBlend = 1;
+  m.player.vel.x = 3;
+  m.player.stride = 1;
+  animateAvatar(model, m.player, 1);
+  const geometries = model.parts.map((p) => (p.children[0] as Mesh).geometry);
+  const joints = model.joints.map((p) => p.clone().add(new Vector3(1, 0, 2)));
+  poseAvatar(model, joints);
+  assert.equal(model.parts.length, 10);
+  model.parts.forEach((part, i) => {
+    assert.equal((part.children[0] as Mesh).geometry, geometries[i]);
+    assert.ok(Number.isFinite(part.quaternion.w));
+  });
+  assert.ok(
+    model.joints[0].y < 1.1,
+    'crouched head is lowered, not a scaled standing doll',
+  );
+  disposeObject(model.group);
+});
+await test('weapons retain movable reload groups while batching small details', () => {
+  for (const id of [0, 1, 2]) {
+    const gun = makeWeapon(id);
+    let meshes = 0;
+    gun.traverse((o) => {
+      if (o instanceof Mesh) meshes++;
+    });
+    assert.ok(meshes <= 8, `weapon ${id} uses ${meshes} meshes`);
+    assert.ok(gun.getObjectByName('support-hand'));
+    assert.ok(
+      gun.getObjectByName(id === 2 ? 'barrel-hinge' : 'reload-magazine'),
+    );
+    disposeObject(gun);
+  }
+});
+
+await test('reload phase opens, feeds and closes before returning to ready', async () => {
+  const { weaponPose, motionState } = await import('../lib/game/animation.js');
+  const { GUNS } = await import('../lib/game/core.js');
+  const a = new Match(0, 0, 0).player;
+  a.weapon = 2;
+  a.reload = GUNS[2].reload * 0.9;
+  assert.equal(weaponPose(a).phase, 'open');
+  a.reload = GUNS[2].reload * 0.5;
+  assert.equal(weaponPose(a).phase, 'feed');
+  assert.equal(weaponPose(a).hinge, 1);
+  a.reload = GUNS[2].reload * 0.04;
+  assert.equal(weaponPose(a).phase, 'close');
+  assert.equal(weaponPose(a).hinge, 0);
+  a.reload = 0;
+  assert.equal(weaponPose(a).phase, 'ready');
+  assert.equal(weaponPose(a).magazine, 0);
+  a.slide = 0.3;
+  assert.equal(motionState(a), 'slide');
+  a.alive = false;
+  assert.equal(motionState(a), 'dead');
+});
+
+await test('frame report includes slow frames, rejects invalid samples and stays bounded', async () => {
+  const { FrameStats } = await import('../lib/game/performance.js');
+  const stats = new FrameStats();
+  for (let i = 0; i < 95; i++) stats.record(0.016);
+  for (let i = 0; i < 5; i++) stats.record(0.05);
+  stats.record(NaN);
+  stats.record(-1);
+  stats.record(0);
+  assert.equal(stats.report().samples, 100);
+  assert.equal(stats.report().medianMs, 16);
+  assert.equal(stats.report().p95Ms, 16);
+  assert.equal(stats.report().p99Ms, 50);
+  assert.equal(stats.report().over33Ms, 5);
+  for (let i = 0; i < 4000; i++) stats.record(1 / 60);
+  assert.equal(stats.report().samples, 3600);
+  stats.reset();
+  assert.equal(stats.report().samples, 0);
+});
+
+await test('ragdoll clone reuses GPU geometry and disposal preserves the living character', async () => {
+  const { cloneAvatar } = await import('../lib/game/graphics.js');
+  const live = avatar('#d17a4f', 1, 2),
+    doll = cloneAvatar(live);
+  let disposed = false;
+  const geometry = (live.parts[0].children[0] as Mesh).geometry;
+  geometry.addEventListener('dispose', () => {
+    disposed = true;
+  });
+  assert.equal((doll.parts[0].children[0] as Mesh).geometry, geometry);
+  assert.notEqual(doll.parts[0], live.parts[0]);
+  assert.equal(doll.finish, 2);
+  disposeObject(doll.group);
+  assert.equal(disposed, false);
+  disposeObject(live.group);
+  assert.equal(disposed, true);
+});
+
+await test('equip animation swaps at the lowest point and blocks premature damage', async () => {
+  const { equipPose } = await import('../lib/game/animation.js');
+  const { EQUIP_SECONDS } = await import('../lib/game/core.js');
+  const m = new Match(0, 0, 0),
+    a = m.player;
+  m.switch(a, 3);
+  assert.equal(equipPose(a).weapon, 1);
+  a.equip = EQUIP_SECONDS / 2;
+  assert.equal(equipPose(a).weapon, 3);
+  assert.equal(equipPose(a).lower, 1);
+  a.cooldown = 0;
+  const shots = a.shots;
+  m.shoot(a);
+  assert.equal(a.shots, shots);
+  a.equip = 0;
+  assert.equal(equipPose(a).lower, 0);
+  m.shoot(a);
+  assert.equal(a.shots, shots + 1);
+});
+
+await test('ragdoll contacts resolve ceilings, exact block centers and floor without rebound', async () => {
+  const { contactPoint } = await import('../lib/game/ragdoll.js');
+  const block = { x: 0, y: 2, z: 0, w: 4, h: 1, d: 4, color: '#fff' };
+  const p = v(0, 1.49, 0),
+    old = v(0, 1.3, 0);
+  contactPoint(p, old, 0.1, [block]);
+  assert.ok(p.y <= 1.400001);
+  assert.equal(old.y, p.y);
+  const center = v(0, 2, 0),
+    previous = v(0, 1.2, 0);
+  contactPoint(center, previous, 0.1, [block]);
+  assert.ok(center.y < 1.5);
+  const floor = v(1, -0.2, 1),
+    prior = v(0.9, 0.1, 1);
+  contactPoint(floor, prior, 0.15, []);
+  assert.equal(floor.y, 0.15);
+  assert.equal(prior.y, floor.y);
+  assert.ok(floor.x - prior.x < 0.1);
+});
+
+await test('falling articulated body stays finite and rests above ground with bounded limb stretch', async () => {
+  const { stepRagdoll } = await import('../lib/game/ragdoll.js');
+  const { RIG_POINTS, RIG_LINKS } = await import('../lib/game/graphics.js');
+  const points = RIG_POINTS.map((p) => v(p[0], p[1] + 2, p[2]));
+  const old = points.map((p) => v(p.x - 0.015, p.y, p.z - 0.01));
+  const links = RIG_LINKS.map(([a, b]) => [
+    a,
+    b,
+    Math.hypot(
+      points[a].x - points[b].x,
+      points[a].y - points[b].y,
+      points[a].z - points[b].z,
+    ),
+  ]);
+  let energy = 0;
+  for (let n = 0; n < 600; n++) energy = stepRagdoll(points, old, links, []);
+  for (const point of points)
+    assert.ok(Number.isFinite(point.x) && point.y >= 0.094);
+  for (const [a, b, length] of links)
+    assert.ok(
+      Math.abs(
+        Math.hypot(
+          points[a].x - points[b].x,
+          points[a].y - points[b].y,
+          points[a].z - points[b].z,
+        ) - length,
+      ) < 0.025,
+    );
+  assert.ok(energy < 0.00001);
+});
+
+await test('result outcome follows team frags and tied leaders, not scoreboard position', async () => {
+  const { matchReport } = await import('../lib/game/report.js');
+  const rows = [
+    { id: 1, team: 1, kills: 10, deaths: 2 },
+    { id: 0, team: 0, kills: 6, deaths: 3 },
+    { id: 2, team: 0, kills: 10, deaths: 4 },
+  ];
+  assert.equal(matchReport(0, rows, [0, 0]).outcome, 'draw');
+  assert.equal(matchReport(2, rows, [16, 10]).outcome, 'victory');
+  assert.equal(matchReport(2, rows, [16, 20]).outcome, 'defeat');
+  assert.equal(matchReport(3, rows, [20, 20]).outcome, 'draw');
+  assert.equal(matchReport(0, rows.slice(0, 2), [0, 0]).outcome, 'defeat');
+  assert.equal(matchReport(0, rows, [0, 0]).rank, 3);
+});
+
+await test('practice rewards, purchases and claims are idempotent and UTC schedules refresh', async () => {
+  const {
+    newProfile,
+    recordMatch,
+    challenges,
+    claimChallenge,
+    purchase,
+    equipCosmetic,
+    refreshProfile,
+    DAY,
+  } = await import('../lib/game/progression.js');
+  const now = Date.UTC(2026, 8, 7, 12),
+    base = newProfile(now);
+  const receipt = {
+    id: 'match-1',
+    seconds: 60,
+    eligible: true,
+    kills: 20,
+    headshots: 8,
+    meleeKills: 4,
+    matches: 1,
+    wins: 1,
+  };
+  let p = recordMatch(base, receipt, now);
+  assert.equal(p.balance, 260);
+  assert.deepEqual(recordMatch(p, receipt, now), p);
+  assert.deepEqual(
+    recordMatch(p, { ...receipt, id: 'bench', eligible: false }, now),
+    p,
+  );
+  p = purchase(p, 'finish-frost');
+  assert.equal(p.balance, 140);
+  assert.deepEqual(purchase(p, 'finish-frost'), p);
+  assert.equal(equipCosmetic(p, 'finish-frost').finish, 'finish-frost');
+  assert.equal(equipCosmetic(p, 'op-spectre').operator, 'op-scout');
+  p = recordMatch(p, { ...receipt, id: 'match-2' }, now);
+  const challenge = challenges(p).find(
+    (c) => c.period === 'daily' && p.daily[c.metric] >= c.target,
+  )!;
+  const earned = claimChallenge(p, challenge.id, now);
+  assert.equal(earned.balance, p.balance + challenge.reward);
+  assert.deepEqual(claimChallenge(earned, challenge.id, now), earned);
+  const next = refreshProfile(earned, now + DAY);
+  assert.equal(next.daily.kills, 0);
+  assert.equal(next.weekly.kills, 40);
+  assert.ok(!challenges(next).some((c) => c.id === challenge.id));
+  const monday = refreshProfile(earned, now + 7 * DAY);
+  assert.equal(monday.weekly.kills, 0);
+  assert.deepEqual(claimChallenge(next, challenge.id, now + DAY), next);
+});
+
+await test('operator variants preserve joint positions and articulated part topology', () => {
+  const models = [0, 1, 2].map((variant) => avatar('#ff5c78', variant));
+  for (const model of models) {
+    assert.deepEqual(
+      model.joints.map((p) => p.toArray()),
+      models[0].joints.map((p) => p.toArray()),
+    );
+    assert.equal(model.parts.length, models[0].parts.length);
+    disposeObject(model.group);
+  }
+});
+await test('damaged practice storage falls back without breaking the locker', async () => {
+  const { loadProfile, newProfile, purchase } =
+    await import('../lib/game/progression.js');
+  const damaged = { ...newProfile(), ledger: [null] };
+  const restored = loadProfile(JSON.stringify(damaged));
+  assert.equal(purchase(restored, 'finish-frost').balance, 80);
+  assert.equal(loadProfile('{broken').balance, 200);
+});
+
+await test('weapon skins equip independently and survive saved-profile loading', async () => {
+  const { newProfile, purchase, equipCosmetic, weaponFinish, loadProfile } = await import('../lib/game/progression.js');
+  let p = newProfile();
+  for (const id of ['skin-echo', 'skin-kilo', 'skin-mica']) p = equipCosmetic(purchase(p, id), id);
+  assert.deepEqual([0, 1, 2].map(i => weaponFinish(p, i)), [1, 2, 3]);
+  p = loadProfile(JSON.stringify(p));
+  assert.deepEqual([0, 1, 2].map(i => weaponFinish(p, i)), [1, 2, 3]);
+});
+
+await test('key rebinding remaps press and release, disables old keys and normalizes Shift', async () => {
+  const { boundKey } = await import('../lib/game/controls.js');
+  const bindings = { KeyW: 'KeyZ', ShiftLeft: 'ControlLeft', Mouse0: 'KeyF' };
+  assert.equal(boundKey('KeyZ', bindings), 'KeyW');
+  assert.equal(boundKey('KeyW', bindings), 'Unbound');
+  assert.equal(boundKey('ControlRight', bindings), 'ShiftLeft');
+  assert.equal(boundKey('KeyF', bindings), 'Mouse0');
+  assert.equal(boundKey('Escape', bindings), 'Escape');
+});
+
+await test('weapons, reload stages and result cues have distinct sound signatures', async () => {
+  const { AudioSystem } = await import('../lib/game/audio.js');
+  const audio = new AudioSystem();
+  let events: unknown[][] = [];
+  audio.tone = (...args) => { events.push(['tone', ...args]); };
+  audio.burst = (...args) => { events.push(['burst', ...args]); };
+  const capture = (run: () => void) => { events = []; run(); return JSON.stringify(events); };
+  assert.equal(new Set([0,1,2].map(w => capture(() => audio.shot(w, v(), v(), 0, true)))).size, 3);
+  assert.equal(new Set([0,1,2].map(w => capture(() => audio.reload(w)))).size, 3);
+  assert.equal(new Set(['feed','close'].flatMap(p => [0,1,2].map(w => capture(() => audio.reloadPhase(p,w))))).size, 6);
+  assert.notEqual(capture(() => audio.result(true)), capture(() => audio.result(false)));
+  assert.notEqual(capture(() => audio.hit(true)), capture(() => audio.hit(false)));
+  assert.ok(capture(() => audio.click()).length > 2);
+  assert.notEqual(capture(()=>audio.shot(3,v(),v(),0,true,'slash')),capture(()=>audio.shot(3,v(),v(),0,true,'stab')));
+  assert.notEqual(capture(()=>audio.bladeContact(true)),capture(()=>audio.bladeContact(false)));
+  assert.notEqual(capture(()=>audio.edgeKill()),capture(()=>audio.kill()));
+});
+
+await test('network model refresh agrees with creation for vacant and occupied slots', async () => {
+  const { modelVariant, avatar } = await import('../lib/game/graphics.js');
+  for (const mode of [0,2] as const) {
+    const m = new Match(mode, 0, 7);
+    m.actors[1].operator = 1;
+    for (const a of m.actors) {
+      const variant = modelVariant(a, mode, 1);
+      const model = avatar('#ff754d', variant);
+      for (let frame = 0; frame < 10; frame++) assert.equal(model.group.userData.operator, modelVariant(a, mode, 1));
+    }
+  }
+});
+
+await test('weapon feedback matches authoritative timers and ammo through firing, reload and switching', async () => {
+  const { WeaponFeedback } = await import('../lib/game/weapon-feedback.js');
+  for (const weapon of [0,1,2]) {
+    const m = new Match(0,0,0);m.selectPrimary(weapon);m.spawn(m.player,true);
+    const feedback=new WeaponFeedback(m.player);feedback.reconcile(m.player,0,[], -1,0);
+    for (let seq=1;seq<=420;seq++) {
+      const input=emptyInput();input.fire=seq<170 || seq>240;input.weapon=seq===180?3:seq===200?weapon:-1;input.reload=seq===230;
+      const frame={...input,seq,life:0,yaw:0,pitch:0};
+      feedback.advance(frame);m.step(1/120,input);m.step(1/120,input);
+      for(const key of ['cooldown','reload','equip','recoilPitch','recoilYaw','fired'] as const) assert.ok(Math.abs(feedback.state[key]-m.player[key])<1e-8, `${weapon}:${seq}:${key}`);
+      assert.deepEqual(feedback.state.ammo,m.player.ammo);
+      assert.equal(feedback.state.weapon,m.player.weapon);
+    }
+  }
+});
+await test('predicted feedback deduplicates confirmations and resets safely on death', async () => {
+  const { WeaponFeedback }=await import('../lib/game/weapon-feedback.js');
+  const m=new Match(0,0,0);
+  m.player.cooldown=0;m.player.equip=0;
+  const f=new WeaponFeedback(m.player);
+  f.reconcile(m.player,2,[],-1,0);
+  const frame={...emptyInput(),fire:true,seq:7,life:2,yaw:0,pitch:0};
+  assert.equal(f.advance(frame).filter(e=>e.type==='shot').length,1);
+  assert.equal(f.confirmed({type:'shot',actor:0,weapon:1,inputSeq:7,life:2}),true);
+  assert.equal(f.confirmed({type:'shot',actor:0,weapon:1,inputSeq:8,life:2}),false);
+  const authoritative={...m.player,alive:false};f.reconcile(authoritative,3,[],-1,0);
+  assert.equal(f.advance({...frame,seq:8,life:3}).length,0);
+  assert.equal(f.played.size,0);
+});
+await test('remote buffer interpolates server time and never bridges respawns', async () => {
+  const { RemoteBuffer }=await import('../lib/game/remote-buffer.js');
+  const m=new Match(1), a=m.actors[1], buffer=new RemoteBuffer();
+  buffer.accept(1,{...a,pos:v(0,0,0),life:1},1);
+  buffer.accept(1,{...a,pos:v(1,0,0),life:1},1.1);
+  buffer.time=1.05;buffer.apply(1,a);assert.ok(Math.abs(a.pos.x-0.5)<1e-8);
+  buffer.accept(1,{...a,pos:v(15,0,0),life:2},1.15);buffer.apply(1,a);assert.equal(a.pos.x,15);
+  for(let i=0;i<50;i++)buffer.accept(1,{...a,life:2},1.2+i*0.05);
+  assert.ok(buffer.poses.get(1)!.length<=12);
+});
+
+await test('recorded gunfire plays one source per shot, pans remotely and releases voices', async () => {
+  const {AudioSystem}=await import('../lib/game/audio.js');
+  const audio=new AudioSystem();
+  const sources: {start:()=>void;onended:()=>void;playbackRate:{value:number}}[]=[];
+  const filters: {frequency:{value:number}}[]=[], pans: {pan:{value:number}}[]=[];
+  let starts=0;
+  const node=()=>({connect:()=>{},disconnect:()=>{}});
+  audio.ctx={
+    createBufferSource:()=>{const n={...node(),playbackRate:{value:1},start:()=>{starts++;},onended:()=>{}};sources.push(n);return n;},
+    createGain:()=>({...node(),gain:{value:0}}),
+    createBiquadFilter:()=>{const n={...node(),frequency:{value:0}};filters.push(n);return n;},
+    createStereoPanner:()=>{const n={...node(),pan:{value:0}};pans.push(n);return n;},
+  } as unknown as AudioContext;
+  audio.master=node() as unknown as GainNode;
+  audio.samples.set(0,[{} as AudioBuffer,{} as AudioBuffer]);
+  audio.samples.set(1,[{} as AudioBuffer]);audio.samples.set(2,[{} as AudioBuffer]);
+  audio.burst=()=>{throw new Error('Synthesized shot must not overlap a recording');};
+  audio.tone=()=>{throw new Error('Synthesized shot must not overlap a recording');};
+  for(const weapon of [0,0,1,2]) audio.shot(weapon,v(),v(),0,true);
+  assert.equal(starts,4);assert.equal(audio.voices,4);
+  audio.shot(1,v(10,0,0),v(),0,false);
+  assert.ok(pans.at(-1)!.pan.value>0);
+  assert.ok(filters.at(-1)!.frequency.value<filters[0].frequency.value);
+  sources.forEach(s=>s.onended());assert.equal(audio.voices,0);
+  assert.equal(audio.recordedShot(3,.2,0,0,true),false);
+});
+
+await test('two-bone IK preserves limb length for crouched, airborne and unreachable targets', async () => {
+  const {solveLimb}=await import('../lib/game/motion.js');
+  const root=v(0,.86,0);
+  for(const target of [v(0,.08,0),v(.2,.25,-.2),v(0,4,0),root,v(9,.86,0)]) {
+    const pose=solveLimb(root,target,.4,.38,v(0,0,-1));
+    assert.ok(Math.abs(new Vector3().copy(root).distanceTo(new Vector3().copy(pose.joint))-.4)<1e-7);
+    assert.ok(Math.abs(new Vector3().copy(pose.joint).distanceTo(new Vector3().copy(pose.end))-.38)<1e-7);
+  }
+});
+await test('strafe/slide camera motion preserves center aim and can be disabled', async () => {
+  const {cameraMotion}=await import('../lib/game/motion.js');
+  const m=new Match(0,0,0), a=m.player, camera=new PerspectiveCamera(90,1.7,.06,150);
+  a.vel=v(6,0,4);a.slideBlend=1;a.landingCompression=1;
+  for(const yaw of [-2,0,2])for(const pitch of [-1,0,1]){
+    a.yaw=yaw;a.pitch=pitch;syncView(camera,a);
+    const motion=cameraMotion(a,0,1,3);camera.rotation.z=motion.roll;
+    camera.fov=90+motion.fov;camera.updateProjectionMatrix();
+    assert.ok(camera.getWorldDirection(new Vector3()).distanceTo(new Vector3().copy(direction(yaw,pitch)))<1e-9);
+    assert.ok(Math.abs(motion.roll)<.075 && motion.fov<=3.5);
+  }
+  assert.deepEqual(cameraMotion(a,0,0,3),{roll:0,fov:0});
+});
+await test('animated model clones can enter ragdoll poses without stale locomotion state', async () => {
+  const {cloneAvatar}=await import('../lib/game/graphics.js');
+  const m=new Match(0,0,0),model=avatar('#ff754d');
+  m.player.vel.x=5;
+  for(let i=0;i<10;i++)animateAvatar(model,m.player,i/60,1/60);
+  const copy=cloneAvatar(model);
+  animateAvatar(copy,m.player,1,1/60);
+  assert.ok(copy.joints.every(p=>Number.isFinite(p.x+p.y+p.z)));
+  disposeObject(copy.group);disposeObject(model.group);
+});
+
+await test('locomotion stays finite across render rates and plants feet in world space', () => {
+  for(const fps of [20,60,144]) {
+    const m=new Match(0,0,0),a=m.player,model=avatar('#ff754d');
+    a.pos=v();a.yaw=0;a.vel=v(0,0,-4);a.grounded=true;
+    let checked=0;const previous=[new Vector3(),new Vector3()];const planted=[false,false];
+    for(let frame=0;frame<fps;frame++){
+      a.pos.z-=4/fps;a.stride+=4/fps;
+      animateAvatar(model,a,frame/fps,1/fps);
+      const memory=model.group.userData.locomotion;
+      for(const [index,foot] of [[0,11],[1,14]]) {
+        const world=model.joints[foot].clone().add(a.pos);
+        if(memory.planted[index] && planted[index]){assert.ok(world.distanceTo(previous[index])<1e-6);checked++;}
+        previous[index].copy(world);planted[index]=memory.planted[index];
+      }
+      assert.ok(model.joints.every(p=>Number.isFinite(p.x+p.y+p.z)));
+    }
+    assert.ok(checked>0);disposeObject(model.group);
+  }
+});
+
+await test('camera has no stationary landing oscillation, directional slide tilt, or ADS FOV pulse',async()=>{
+  const {cameraMotion}=await import('../lib/game/motion.js');const a=new Match(0,0,0).player;
+  a.vel=v();a.landingCompression=1;a.slideBlend=1;
+  assert.ok(cameraMotion(a,0,1,0).roll===0);assert.ok(cameraMotion(a,0,1,1).roll===0);
+  a.yaw=0;a.vel=v(8,0,0);const right=cameraMotion(a,0,1,0);a.vel.x=-8;const left=cameraMotion(a,0,1,0);
+  assert.equal(right.roll,-left.roll);assert.ok(Math.abs(right.roll)<=0.012);assert.ok(right.fov<=1);
+  assert.equal(cameraMotion(a,1,1,0).fov,0);
+});
+await test('both EDGE predictions match authoritative cadence and attack selection',async()=>{
+ const {WeaponFeedback}=await import('../lib/game/weapon-feedback.js');
+ for(const secondary of [false,true]){
+  const m=new Match(0,0,0);m.player.weapon=3;m.player.equip=0;m.player.cooldown=0;
+  const f=new WeaponFeedback(m.player);f.reconcile(m.player,0,[],-1,0);
+  const input={...emptyInput(),fire:!secondary,ads:secondary};
+  for(let seq=1;seq<=60;seq++){
+   f.advance({...input,seq,life:0,yaw:0,pitch:0});m.step(1/120,input);m.step(1/120,input);
+   assert.equal(f.state.edgeAttack,m.player.edgeAttack);assert.equal(f.state.edgeSide,m.player.edgeSide);
+   assert.ok(Math.abs(f.state.fired-m.player.fired)<1e-9);assert.equal(f.state.shots,m.player.shots);
+  }
+ }
+});
+
+await test('capture requests reject stale failures and repeated respawn keys',async()=>{
+ const {CaptureGuard,respawnShortcut}=await import('../lib/game/controls.js');
+ const guard=new CaptureGuard();const first=guard.begin();guard.cancel();const second=guard.begin();
+ assert.equal(guard.settle(first),false);assert.equal(guard.pending,true);assert.equal(guard.settle(second),true);assert.equal(guard.settle(second),false);
+ assert.equal(respawnShortcut('Space',false),true);assert.equal(respawnShortcut('Enter',false),true);assert.equal(respawnShortcut('Space',true),false);
+});

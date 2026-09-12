@@ -1,0 +1,34 @@
+[
+  {
+    "name": "echo-a",
+    "source": "smg-burst-fire.mp3",
+    "start": 0.337,
+    "duration": 0.06401360544217687,
+    "peakDb": -2,
+    "bytes": 5690
+  },
+  {
+    "name": "echo-b",
+    "source": "smg-burst-fire.mp3",
+    "start": 0.409,
+    "duration": 0.06401360544217687,
+    "peakDb": -2,
+    "bytes": 5690
+  },
+  {
+    "name": "kilo",
+    "source": "assault-rifle-singleshot.mp3",
+    "start": 0.091,
+    "duration": 0.34,
+    "peakDb": -2,
+    "bytes": 30032
+  },
+  {
+    "name": "mica",
+    "source": "shotgun-fire.mp3",
+    "start": 0.039,
+    "duration": 0.7,
+    "peakDb": -2,
+    "bytes": 61784
+  }
+]

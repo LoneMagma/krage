@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.test.json",
+  "compilerOptions": { "outDir": ".server-build", "rootDir": "lib/game" },
+  "include": [
+    "lib/game/core.ts",
+    "lib/game/progression.ts",
+    "lib/game/network-state.ts"
+  ],
+  "exclude": ["node_modules"]
+}

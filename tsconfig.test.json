@@ -1,0 +1,24 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": ".test-build",
+    "incremental": false,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "types": [
+      "node"
+    ],
+    "target": "ES2022"
+  },
+  "include": [
+    "lib/game/core.ts",
+    "lib/game/controls.ts",
+    "lib/game/view.ts",
+    "lib/game/graphics.ts",
+    "tests/*.test.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
