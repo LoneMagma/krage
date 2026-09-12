@@ -9,6 +9,8 @@
     "dev": "vinext dev",
     "build": "vinext build",
     "start": "wrangler dev --config dist/server/wrangler.json",
+    "build:render": "vinext build",
+    "start:render": "node scripts/serve-render.mjs",
     "lint": "oxlint app lib/game components/game tests server",
     "format": "oxfmt",
     "test": "tsc -p tsconfig.test.json && node .test-build/tests/core.test.js && node .test-build/tests/presentation.test.js",
