@@ -634,9 +634,9 @@ export function buildMap(map: ArenaMap) {
 }
 export function makeWeapon(index: number, firstPerson = true, finish = 0) {
   const g = new T.Group();
-  const dark = finish === 4 ? '#18272c' : finish === 1 ? '#3f5e7b' : finish === 2 ? '#172331' : finish === 3 ? '#261e39' : '#233032',
-    metal = finish === 4 ? '#748489' : finish === 1 ? '#bacbdc' : finish === 2 ? '#8e614d' : finish === 3 ? '#726494' : '#687b90',
-    wood = finish === 4 ? '#2b3e43' : finish === 1 ? '#dce7ec' : finish === 2 ? '#e78851' : finish === 3 ? '#ac8cf5' : '#a6643f';
+  const dark = finish === 5 ? ['#d7e4e0','#151b24','#252043'][index]??'#242938' : finish === 4 ? '#18272c' : finish === 1 ? '#3f5e7b' : finish === 2 ? '#172331' : finish === 3 ? '#261e39' : '#233032',
+    metal = finish === 5 ? ['#41666c','#d5ad62','#9a89c6'][index]??'#8898a0' : finish === 4 ? '#748489' : finish === 1 ? '#bacbdc' : finish === 2 ? '#8e614d' : finish === 3 ? '#726494' : '#687b90',
+    wood = finish === 5 ? ['#25414a','#292d32','#45366b'][index]??'#343c49' : finish === 4 ? '#2b3e43' : finish === 1 ? '#dce7ec' : finish === 2 ? '#e78851' : finish === 3 ? '#ac8cf5' : '#a6643f';
   if (index === 3) {
     armor(g, 0.01, 0, 0.05, 0.075, 0.09, 0.27, dark);
     armor(g, 0.01, 0.01, -0.1, 0.19, 0.045, 0.05, metal);
@@ -853,6 +853,16 @@ export function makeWeapon(index: number, firstPerson = true, finish = 0) {
       armor(g,side*.077,.043,-.09,.009,.013,.2,accent);
       for(let n=0;n<3;n++)armor(g,side*.079,.016-n*.02,-.01+n*.018,.008,.007,.035,accent);
     }
+  }
+  if(finish===5&&index<3){
+    const accent=['#85f4dd','#f5ce78','#ed9eff'][index];
+    for(const side of [-1,1]){
+      armor(g,side*.077,.054,-.045,.008,.012,.33,accent);
+      for(let n=0;n<5;n++){const inlay=armor(g,side*.078,.025-n*.008,-.13+n*.054,.009,.012,.031,accent);inlay.rotation.x=.5;}
+      const crest=armor(g,side*.080,.005,.06,.012,.044,.044,accent);crest.rotation.x=Math.PI/4;
+      armor(g,side*.062,.022,.33,.006,.012,.15,accent);
+    }
+    for(const z of [-.43,-.40]){const ring=cylinder(g,0,.02,z,.034,.014,accent,8);ring.rotation.x=Math.PI/2;}
   }
   if (firstPerson) {
     const hands = new T.Group();

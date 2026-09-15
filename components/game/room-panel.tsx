@@ -19,7 +19,7 @@ export function RoomPanel({mode,map,primary,operator=0,name,onName,ready,info,on
   const select=(label:string,value:number,change:(n:number)=>void,values:(string|number)[],disabled=false)=><label>{label}<GameChoice aria-label={label} value={value} disabled={disabled||busy} onChange={(value)=>change(+value)}>{values.map((v,i)=><option key={v} value={typeof v==='number'?v:i}>{label==='TIME'?`${Number(v)/60} MIN`:v}</option>)}</GameChoice></label>;
   const loadout=<div className="room-options">
     {select('WEAPON',own?.primary??chosenPrimary,n=>{setPrimary(n);if(lobby)onChange({primary:n});},['ECHO','KILO','MICA'])}
-    {select('CHARACTER',own?.operator??character,n=>{setCharacter(n);if(lobby)onChange({operator:n});},['ROOK','VERA','WRAITH'],(lobby?.mode??chosenMode)>=2)}
+    {select('CHARACTER',own?.operator??character,n=>{setCharacter(n);if(lobby)onChange({operator:n});},['ROOK','VERA','BLAKE'],(lobby?.mode??chosenMode)>=2)}
   </div>;
   return <div className={'room-panel '+(lobby?'party-room':'room-builder')}>
     {lobby ? <>

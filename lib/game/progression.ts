@@ -7,16 +7,19 @@ export type MatchReceipt = Counts & {
   eligible: boolean;
 };
 export const CATALOG = [
-  { id: 'skin-echo-carbon', kind: 'finish', name: 'ECHO / Circuit', note: '', cost: 180, variant: 4, color: '#85d9cf', weapon: 0 },
-  { id: 'skin-kilo-carbon', kind: 'finish', name: 'KILO / Blackout', note: '', cost: 220, variant: 4, color: '#d8b68a', weapon: 1 },
-  { id: 'skin-mica-carbon', kind: 'finish', name: 'MICA / Nightfall', note: '', cost: 240, variant: 4, color: '#b4a0dc', weapon: 2 },
-  { id: 'skin-echo', kind: 'finish', name: 'ECHO / Glacier', note: '', cost: 0, variant: 1, color: '#b8d7f0', weapon: 0 },
-  { id: 'skin-kilo', kind: 'finish', name: 'KILO / Copperhead', note: '', cost: 0, variant: 2, color: '#f78a50', weapon: 1 },
-  { id: 'skin-mica', kind: 'finish', name: 'MICA / Amethyst', note: '', cost: 0, variant: 3, color: '#ac8cf5', weapon: 2 },
+  { id: 'skin-echo-corona', kind: 'finish', name: 'ECHO / Corona', note: 'PRESTIGE', cost: 3600, variant: 5, color: '#85f4dd', weapon: 0 },
+  { id: 'skin-kilo-regent', kind: 'finish', name: 'KILO / Regent', note: 'PRESTIGE', cost: 4200, variant: 5, color: '#e1b55e', weapon: 1 },
+  { id: 'skin-mica-nebula', kind: 'finish', name: 'MICA / Nebula', note: 'PRESTIGE', cost: 4800, variant: 5, color: '#e389ff', weapon: 2 },
+  { id: 'skin-echo-carbon', kind: 'finish', name: 'ECHO / Circuit', note: '', cost: 900, variant: 4, color: '#85d9cf', weapon: 0 },
+  { id: 'skin-kilo-carbon', kind: 'finish', name: 'KILO / Blackout', note: '', cost: 1050, variant: 4, color: '#d8b68a', weapon: 1 },
+  { id: 'skin-mica-carbon', kind: 'finish', name: 'MICA / Nightfall', note: '', cost: 1200, variant: 4, color: '#b4a0dc', weapon: 2 },
+  { id: 'skin-echo', kind: 'finish', name: 'ECHO / Glacier', note: '', cost: 300, variant: 1, color: '#b8d7f0', weapon: 0 },
+  { id: 'skin-kilo', kind: 'finish', name: 'KILO / Copperhead', note: '', cost: 350, variant: 2, color: '#f78a50', weapon: 1 },
+  { id: 'skin-mica', kind: 'finish', name: 'MICA / Amethyst', note: '', cost: 400, variant: 3, color: '#ac8cf5', weapon: 2 },
   {
     id: 'op-scout',
     kind: 'operator',
-    name: 'Scout',
+    name: 'Rook',
     note: 'Light field kit',
     cost: 0,
     variant: 0,
@@ -25,7 +28,7 @@ export const CATALOG = [
   {
     id: 'op-warden',
     kind: 'operator',
-    name: 'Warden',
+    name: 'Vera',
     note: 'Reinforced helmet',
     cost: 0,
     variant: 1,
@@ -34,7 +37,7 @@ export const CATALOG = [
   {
     id: 'op-spectre',
     kind: 'operator',
-    name: 'Spectre',
+    name: 'Blake',
     note: 'Dark reconnaissance kit',
     cost: 0,
     variant: 2,
@@ -185,6 +188,9 @@ function credit(p: Profile, id: string, amount: number, reason: string) {
     ledger: [{ id, amount, reason }, ...p.ledger].slice(0, 200),
   };
 }
+export function matchReward(receipt:Pick<MatchReceipt,'kills'|'headshots'|'wins'>){
+ return 20+Math.min(40,Math.max(0,Math.floor(receipt.kills||0))*2)+Math.min(10,Math.max(0,Math.floor(receipt.headshots||0)))+(receipt.wins>0?10:0);
+}
 export function recordMatch(
   profile: Profile,
   receipt: MatchReceipt,
@@ -222,7 +228,7 @@ export function recordMatch(
   return credit(
     p,
     `match:${receipt.id}`,
-    20 + Math.min(40, count.kills * 2),
+    matchReward(count),
     'Completed match',
   );
 }
@@ -239,12 +245,10 @@ export function claimChallenge(
     p[challenge.period][challenge.metric] < challenge.target
   )
     return p;
-  return credit(
-    { ...p, claimed: [...p.claimed, id] },
-    `challenge:${id}`,
-    challenge.reward,
-    challenge.title,
-  );
+  let earned=credit({ ...p, claimed: [...p.claimed,id] },`challenge:${id}`,challenge.reward,challenge.title);
+  const set=challenges(p).filter(c=>c.period===challenge.period);
+  if(set.every(c=>earned.claimed.includes(c.id)))earned=credit(earned,`set:${challenge.period}:${challenge.period==='daily'?p.day:p.week}`,challenge.period==='daily'?50:150,`${challenge.period} set complete`);
+  return earned;
 }
 export function purchase(profile: Profile, id: string): Profile {
   const item = CATALOG.find((i) => i.id === id);

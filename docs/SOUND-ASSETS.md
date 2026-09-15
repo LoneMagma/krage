@@ -1,9 +1,7 @@
-# v0.7 sound pack
+# v0.7 revised audio
 
-16 supplied WAV recordings are preserved in `sound assets`. Run `python scripts/prepare-sound-pack.py` to reproduce the 30 mono 44.1kHz runtime clips and manifest in `public/audio/v07` (about 1.27 MiB).
+Runtime gunfire uses the four original files in `public/audio/weapons` (two ECHO variations, KILO and MICA). The generated v07 gunshots are no longer loaded.
 
-Connected: distinct ECHO/KILO/MICA fire and three-stage reload recordings; EDGE slash, stab and contact; hit, headshot and kill; footsteps, landing and slide; victory, defeat, click and reward. Full reload references are retained alongside the event-aligned phase clips. Fire, reload and result events use a recording or their procedural fallback, never both. Master volume and the 48-voice cap apply. Lobby music remains separately controlled at its existing default level.
+`python scripts/prepare-revised-audio.py` reproduces the latest reloads from preserved recordings in `sound assets/v07-revised`, the first 1.0 second of the supplied EDGE air recording, and a deterministic soft 0.32-second slide swoosh. The double-barrel attachment is used for MICA reload; its fire remains the old recording. Footstep gain was reduced from .45 to .39. Other EDGE sounds remain unchanged.
 
-Preparation removes silence and DC offset, filters rumble/harsh highs, limits gain and fades clip boundaries. Integrity checks cover format, nonzero samples, safe peaks and faded edges. No required sound slot remains missing; hit/click/landing and footsteps use edited excerpts from the supplied recordings.
-
-The current defeat sound is retained at the user's request, filtered and played more quietly. Its original baked-in clipping cannot be recovered by lowering gain. Final subjective mix evaluation still benefits from listening during real matches.
+Run `scripts/prepare-sound-pack.py` before the revised script only when rebuilding the entire original effects pack. Runtime voices remain bounded and use the master volume. Format, nonzero audio and safe peaks are checked; subjective mix quality needs listening during play. The defeat source retains its original baked-in distortion as previously requested.

@@ -289,14 +289,14 @@ await test('practice rewards, purchases and claims are idempotent and UTC schedu
     wins: 1,
   };
   let p = recordMatch(base, receipt, now);
-  assert.equal(p.balance, 260);
+  assert.equal(p.balance, 278);
   assert.deepEqual(recordMatch(p, receipt, now), p);
   assert.deepEqual(
     recordMatch(p, { ...receipt, id: 'bench', eligible: false }, now),
     p,
   );
   p = purchase(p, 'finish-frost');
-  assert.equal(p.balance, 140);
+  assert.equal(p.balance, 158);
   assert.deepEqual(purchase(p, 'finish-frost'), p);
   assert.equal(equipCosmetic(p, 'finish-frost').finish, 'finish-frost');
   assert.equal(equipCosmetic(p, 'op-spectre').operator, 'op-spectre');
@@ -339,7 +339,7 @@ await test('damaged practice storage falls back without breaking the locker', as
 
 await test('weapon skins equip independently and survive saved-profile loading', async () => {
   const { newProfile, purchase, equipCosmetic, weaponFinish, loadProfile } = await import('../lib/game/progression.js');
-  let p = newProfile();
+  let p = {...newProfile(),balance:2000};
   for (const id of ['skin-echo', 'skin-kilo', 'skin-mica']) p = equipCosmetic(purchase(p, id), id);
   assert.deepEqual([0, 1, 2].map(i => weaponFinish(p, i)), [1, 2, 3]);
   p = loadProfile(JSON.stringify(p));
@@ -544,9 +544,9 @@ await test('capture requests reject stale failures and repeated respawn keys',as
 
 await test('premium finishes require ownership and Factory restores only the selected weapon', async () => {
  const {newProfile,purchase,equipWeaponFinish,weaponFinish,loadProfile}=await import('../lib/game/progression.js');
- let p=newProfile();
+ let p={...newProfile(),balance:1500};
  assert.deepEqual(equipWeaponFinish(p,0,'skin-echo-carbon'),p);
- p=purchase(p,'skin-echo-carbon');assert.equal(p.balance,20);
+ p=purchase(p,'skin-echo-carbon');assert.equal(p.balance,600);
  assert.deepEqual(purchase(p,'skin-echo-carbon'),p);
  assert.deepEqual(equipWeaponFinish(p,1,'skin-echo-carbon'),p);
  p=equipWeaponFinish(p,0,'skin-echo-carbon');
@@ -579,4 +579,17 @@ await test('all three Blender character meshes are finite, distinct and within t
   assert.ok(triangles>3000&&triangles<12000);counts.push(triangles);disposeObject(model.group);
  }
  assert.equal(new Set(counts).size,3);
+});
+await test('KR challenge sets award bonuses once, refresh on UTC boundaries and retain savings',async()=>{
+ const {newProfile,challenges,claimChallenge,refreshProfile,DAY,CATALOG,purchase,recordMatch}=await import('../lib/game/progression.js');
+ const now=Date.UTC(2026,8,14,12);let p=newProfile(now);
+ assert.deepEqual(purchase(p,'skin-echo'),p,'starter credits alone cannot unlock a field skin');
+ p=recordMatch(p,{id:'earned',eligible:true,seconds:60,kills:10,headshots:3,meleeKills:2,matches:1,wins:1},now);assert.equal(p.balance,253);
+ for(const key of ['kills','headshots','meleeKills','matches','wins'] as const)p.daily[key]=p.weekly[key]=100;
+ const initial=p.balance,list=challenges(p);
+ for(const c of list)p=claimChallenge(p,c.id,now);
+ assert.equal(p.balance,initial+list.reduce((n,c)=>n+c.reward,0)+200);
+ for(const c of list)assert.deepEqual(claimChallenge(p,c.id,now),p);
+ const next=refreshProfile(p,now+7*DAY);assert.equal(next.balance,p.balance);assert.equal(next.daily.kills,0);assert.equal(next.weekly.kills,0);
+ for(const weapon of [0,1,2]){const skins=CATALOG.filter(i=>'weapon'in i&&i.weapon===weapon).sort((a,b)=>a.cost-b.cost);assert.equal(skins.length,3);assert.ok(skins[0].cost<skins[1].cost&&skins[1].cost<skins[2].cost);assert.equal(skins[2].variant,5);}
 });

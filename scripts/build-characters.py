@@ -8,12 +8,16 @@ def mat(c):
  if c not in materials:
   m=bpy.data.materials.new(c);m.diffuse_color=tuple(int(c[i:i+2],16)/255 for i in (1,3,5))+(1,);materials[c]=m
  return materials[c]
-def ell(name,loc,scale,c,seg=12,rings=8):
- bpy.ops.mesh.primitive_uv_sphere_add(segments=seg,ring_count=rings,location=loc);o=bpy.context.object;o.name=name;o.scale=scale;o.data.materials.append(mat(c));bpy.ops.object.transform_apply(location=False,rotation=False,scale=True)
- for f in o.data.polygons:f.use_smooth=True
+def ell(name,loc,scale,c,seg=8,rings=4):
+ bpy.ops.mesh.primitive_uv_sphere_add(segments=min(seg,10),ring_count=min(rings,6),location=loc);o=bpy.context.object;o.name=name;o.scale=scale;o.data.materials.append(mat(c));bpy.ops.object.transform_apply(location=False,rotation=False,scale=True)
+ for f in o.data.polygons:f.use_smooth=False
+ return o
+def block(name,loc,size,c,bevel=.008):
+ bpy.ops.mesh.primitive_cube_add(size=1,location=loc);o=bpy.context.object;o.name=name;o.scale=size;bpy.ops.object.transform_apply(location=False,rotation=False,scale=True);o.data.materials.append(mat(c))
+ mod=o.modifiers.new('Single facet edge','BEVEL');mod.width=bevel;mod.segments=1;bpy.ops.object.modifier_apply(modifier=mod.name)
  return o
 def loft(name,levels,c):
- n=12;verts=[]
+ n=8;verts=[]
  for y,rx,rz in levels:
   for i in range(n):
    a=2*math.pi*i/n;verts.append((rx*math.cos(a),y,rz*math.sin(a)))
@@ -21,7 +25,7 @@ def loft(name,levels,c):
  for j in range(len(levels)-1):
   for i in range(n):faces.append((j*n+i,(j+1)*n+i,(j+1)*n+(i+1)%n,j*n+(i+1)%n))
  mesh=bpy.data.meshes.new(name);mesh.from_pydata(verts,[],faces);mesh.update();o=bpy.data.objects.new(name,mesh);bpy.context.collection.objects.link(o);mesh.materials.append(mat(c))
- for f in mesh.polygons:f.use_smooth=True
+ for f in mesh.polygons:f.use_smooth=False
  return o
 def strap(loc,scale,c):return ell('webbing',loc,scale,c,8,4)
 lengths=[.23,.57,math.dist((-.18,1.1,-.25),(-.31,1.39,0)),math.dist((.15,1.02,-.53),(-.18,1.1,-.25)),math.dist((.4,1.13,.03),(.31,1.39,0)),math.dist((.23,1.02,-.23),(.4,1.13,.03)),.4,.38,.4,.38]
@@ -43,7 +47,8 @@ for variant in range(3):
    ell('nose',(0,.005,-.139),(.024,.037,.034),skin)
    ell('mouth',(0,-.060,-.119),(.040,.006,.008),'#885849')
    if variant==0:
-    ell('hair',(0,.116,.018),(.148,.090,.131),hair)
+    ell('field cap',(0,.126,.018),(.159,.09,.14),kit)
+    block('cap visor',(0,.12,-.137),(.255,.022,.105),kit,.008)
     ell('earpiece',(-.153,.010,.013),(.024,.045,.037),kit)
     strap((-.095,-.049,-.116),(.065,.007,.009),kit)
    elif female:
@@ -59,14 +64,18 @@ for variant in range(3):
   elif part==1:
    w=.205 if female else .238
    loft('jacket',[(-.285,w*.80,.119),(-.23,w*.84,.124),(-.09,w*.82,.123),(.08,w,.147),(.20,w*1.1,.144),(.255,w*.78,.10),(.285,.095,.087)],cloth)
-   ell('carrier',(0,.065,-.122),(w*.83,.177,.051),kit)
-   ell('back panel',(0,.058,.125),(w*.83,.175,.045),kit)
+   block('carrier',(0,.065,-.137),(w*1.65,.33,.067),kit,.016)
+   block('back panel',(0,.058,.134),(w*1.60,.32,.057),kit,.013)
    for side in [-1,1]:
     strap((side*w*.62,.13,-.153),(.024,.12,.012),accent)
     ell('pouch',(side*.075,-.119,-.151),(.059,.075,.030),kit)
     strap((side*.075,-.12,-.18),(.044,.007,.008),accent)
    loft('belt',[(-.28,w*.86,.132),(-.235,w*.87,.132)],'#292e30')
-   if variant==2:ell('radio',(.185,.105,.03),(.037,.08,.045),kit)
+   if variant==2:block('radio',(.205,.10,.02),(.059,.145,.07),kit)
+   if variant==0:block('utility bag',(.16,-.18,.115),(.10,.12,.09),kit)
+   if female:
+    block('hip holster',(.182,-.24,.02),(.075,.15,.08),kit)
+    block('rank patch',(-.13,.12,-.18),(.045,.07,.008),accent)
   else:
    leg=part>=6;lower=part in [3,5,7,9];r=(.091 if leg else .079)*(.87 if female else 1)
    loft('trouser' if leg else 'sleeve',[(-L*.49,r*.72,r*.79),(-L*.30,r*.86,r*.88),(0,r,r*.96),(L*.29,r*1.06,r),(L*.48,r*.85,r*.87)],cloth)
@@ -81,7 +90,7 @@ for variant in range(3):
    elif leg:
     ell('thigh seam',(.035,-.01,.073),(.039,L*.25,.015),kit)
    else:
-    ell('shoulder seam',(0,L*.24,0),(r*1.11,.069,r*1.08),kit)
+    block('shoulder guard',(0,L*.24,0),(r*2.1,.105,r*2),kit,.014)
   objects=list(set(bpy.data.objects)-before)
   positions=[];normals=[];colors=[]
   for o in objects:
@@ -89,7 +98,7 @@ for variant in range(3):
    for tri in o.data.loop_triangles:
     for vi in tri.vertices:
      v=o.data.vertices[vi];p=o.matrix_world@v.co
-     positions.extend(round(x,5) for x in p);normals.extend(round(x,5) for x in v.normal);colors.extend(round(((x+.055)/1.055)**2.4 if x>.04045 else x/12.92,5) for x in c[:3])
+     positions.extend(round(x,5) for x in p);normals.extend(round(x,5) for x in tri.normal);colors.extend(round(((x+.055)/1.055)**2.4 if x>.04045 else x/12.92,5) for x in c[:3])
    o.name=f'character{variant}_part{part}_{o.name}'
    o.hide_set(True)
   parts.append({'position':positions,'normal':normals,'color':colors})

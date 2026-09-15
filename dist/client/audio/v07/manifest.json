@@ -5,9 +5,9 @@
       "source": "An_assault_rifle_rel_#1-1789414927918.wav",
       "derived": false,
       "sourceStart": 0.0,
-      "duration": 1.4169,
-      "peakDb": -3.0,
-      "bytes": 125014
+      "duration": 0.4844,
+      "peakDb": -6.0,
+      "bytes": 42764
     },
     {
       "id": "defeat",
@@ -32,9 +32,9 @@
       "source": "\u201cA_compact_submachin_#4-1789412936472.wav",
       "derived": false,
       "sourceStart": 0.009,
-      "duration": 0.8991,
-      "peakDb": -3.0,
-      "bytes": 79342
+      "duration": 1.1179,
+      "peakDb": -6.0,
+      "bytes": 98644
     },
     {
       "id": "kilo-shot",
@@ -59,18 +59,18 @@
       "source": "A_double-barrel_shot_#4-1789413218391.wav",
       "derived": false,
       "sourceStart": 0.0,
-      "duration": 1.3471,
-      "peakDb": -3.0,
-      "bytes": 118854
+      "duration": 0.2948,
+      "peakDb": -6.0,
+      "bytes": 26044
     },
     {
       "id": "edge-slash",
-      "source": "\u201cA_short_knife_swing_#2-1789413304023.wav",
+      "source": "soft swoosh- use for knife's air sound- trim and use the first part only..wav",
       "derived": false,
       "sourceStart": 0.0,
-      "duration": 0.3,
-      "peakDb": -3.0,
-      "bytes": 26504
+      "duration": 1.0,
+      "peakDb": -53.28,
+      "bytes": 88244
     },
     {
       "id": "edge-stab",
@@ -110,12 +110,12 @@
     },
     {
       "id": "slide",
-      "source": "\u201cA_short,_fast_body__#1-1789413799884.wav",
+      "source": "seeded filtered air noise",
       "derived": false,
       "sourceStart": 0.0,
-      "duration": 0.3643,
-      "peakDb": -3.95,
-      "bytes": 32174
+      "duration": 0.32,
+      "peakDb": -19.0,
+      "bytes": 28268
     },
     {
       "id": "victory",
@@ -191,84 +191,84 @@
     },
     {
       "id": "echo-reload-open",
-      "source": "echo-reload source",
+      "source": "possible echo reload.wav",
       "derived": true,
       "sourceStart": 0.0,
-      "duration": 0.1697,
-      "peakDb": -3.0,
-      "bytes": 15014
+      "duration": 0.2795,
+      "peakDb": -6.0,
+      "bytes": 24694
     },
     {
       "id": "echo-reload-feed",
-      "source": "echo-reload source",
+      "source": "possible echo reload.wav",
       "derived": true,
       "sourceStart": 0.0,
-      "duration": 0.4495,
-      "peakDb": -3.0,
-      "bytes": 39692
+      "duration": 0.559,
+      "peakDb": -6.0,
+      "bytes": 49344
     },
     {
       "id": "echo-reload-close",
-      "source": "echo-reload source",
+      "source": "possible echo reload.wav",
       "derived": true,
       "sourceStart": 0.0,
-      "duration": 0.2246,
-      "peakDb": -3.0,
-      "bytes": 19854
+      "duration": 0.2795,
+      "peakDb": -6.0,
+      "bytes": 24694
     },
     {
       "id": "kilo-reload-open",
-      "source": "kilo-reload source",
+      "source": "KILO RELOAD.wav",
       "derived": true,
       "sourceStart": 0.0,
-      "duration": 0.2296,
-      "peakDb": -3.0,
-      "bytes": 20294
+      "duration": 0.1211,
+      "peakDb": -16.96,
+      "bytes": 10724
     },
     {
       "id": "kilo-reload-feed",
-      "source": "kilo-reload source",
+      "source": "KILO RELOAD.wav",
       "derived": true,
       "sourceStart": 0.5278,
-      "duration": 0.1806,
-      "peakDb": -3.0,
-      "bytes": 15976
+      "duration": 0.2422,
+      "peakDb": -10.28,
+      "bytes": 21404
     },
     {
       "id": "kilo-reload-close",
-      "source": "kilo-reload source",
+      "source": "KILO RELOAD.wav",
       "derived": true,
       "sourceStart": 0.0,
-      "duration": 0.3542,
-      "peakDb": -3.0,
-      "bytes": 31288
+      "duration": 0.1211,
+      "peakDb": -6.0,
+      "bytes": 10724
     },
     {
       "id": "mica-reload-open",
-      "source": "mica-reload source",
+      "source": "gamified_double_barr_#1-1789451134285.wav",
       "derived": true,
       "sourceStart": 0.0,
-      "duration": 0.1598,
-      "peakDb": -3.0,
-      "bytes": 14134
+      "duration": 0.0737,
+      "peakDb": -6.0,
+      "bytes": 6544
     },
     {
       "id": "mica-reload-feed",
-      "source": "mica-reload source",
+      "source": "gamified_double_barr_#1-1789451134285.wav",
       "derived": true,
       "sourceStart": 0.0,
-      "duration": 0.65,
-      "peakDb": -52.45,
-      "bytes": 57374
+      "duration": 0.1474,
+      "peakDb": -6.0,
+      "bytes": 13044
     },
     {
       "id": "mica-reload-close",
-      "source": "mica-reload source",
+      "source": "gamified_double_barr_#1-1789451134285.wav",
       "derived": true,
       "sourceStart": 0.1886,
-      "duration": 0.1482,
-      "peakDb": -3.0,
-      "bytes": 13116
+      "duration": 0.0737,
+      "peakDb": -7.24,
+      "bytes": 6544
     }
   ],
   "missing": [],
@@ -279,6 +279,7 @@
     "footsteps"
   ],
   "notes": {
-    "defeat": "Original retained by user request; filtered and level-limited. Source distortion cannot be fully restored."
+    "defeat": "Original retained by user request; filtered and level-limited. Source distortion cannot be fully restored.",
+    "fire": "Runtime uses the original v0.6 clips from /audio/weapons; v07 generated shot files are unused."
   }
 }

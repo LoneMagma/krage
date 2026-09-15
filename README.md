@@ -1,6 +1,6 @@
 # kRAGE v0.7.0
 
-Browser arena FPS with public Quick Play, private friend rooms and practice bots. Three primaries, one blade, four modes and two arenas. Built with Three.js, TypeScript, React and Vinext. Models are procedural; audio uses the supplied prepared sound pack with procedural fallbacks.
+Browser arena FPS with public Quick Play, private friend rooms and practice bots. Three primaries, one blade, four modes and two arenas. Built with Three.js, TypeScript, React and Vinext. Characters are Blender-authored faceted assets; weapons use articulated Three.js meshes. Audio combines the original v0.6 gunfire with edited supplied effects.
 
 This pre-v1 build requires frontend and room server protocol 9. See [release notes](docs/V0.7.md) and [Render deployment instructions](docs/DEPLOY.md).
 

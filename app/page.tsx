@@ -1,4 +1,5 @@
 'use client';
+import { matchReward } from '@/lib/game/progression';
 import { ArenaChat } from '@/components/game/arena-chat';
 import { GameChoice } from '@/components/game/game-choice';
 import { type RoomClient, defaultRoomURL } from '@/lib/game/room-client';
@@ -303,6 +304,8 @@ export default function Home() {
     [profileLoaded, setProfileLoaded] = useState(false);
   const [reward,setReward]=useState<{id:number;title:string;amount:number}|null>(null);
   const [lastAward,setLastAward]=useState(0);
+  const [previewRotation,setPreviewRotation]=useState(0);
+  const rotateCharacter=(delta:number)=>{arena.current?.rotateLobby(delta);setPreviewRotation(p=>(p+delta*180/Math.PI+360)%360);};
   const [chatRoom,setChatRoom]=useState<RoomClient|null>(null);
   const claimable=claimableCount(profile);
   useEffect(()=>{if(!reward)return;const timer=setTimeout(()=>setReward(null),2300);return()=>clearTimeout(timer);},[reward]);
@@ -396,7 +399,7 @@ export default function Home() {
           };
           instance.onMatchComplete = (receipt) => {
             setProfile((p) => recordMatch(p, receipt));
-            setLastAward(receipt.eligible&&receipt.seconds>=30&&receipt.id?20+Math.min(40,receipt.kills*2):0);
+            setLastAward(receipt.eligible&&receipt.seconds>=30&&receipt.id?matchReward(receipt):0);
           };
           instance.onFeed = setFeed;
           instance.onError = setError;
@@ -582,7 +585,7 @@ export default function Home() {
   return (
     <main data-section={!inGame ? modal ?? 'play' : 'game'} className={'game-shell ' + (inGame ? 'match-shell' : 'lobby-shell')}>
       <div className="world" ref={mount} />
-      {reward&&<output key={reward.id} className="reward-toast"><span>✦</span><div><small>{reward.title}</small>{reward.amount>0?<strong>+{reward.amount} KM</strong>:<strong>READY TO GO</strong>}</div></output>}
+      {reward&&<output key={reward.id} className="reward-toast"><span>✦</span><div><small>{reward.title}</small>{reward.amount>0?<strong>+{reward.amount} KR</strong>:<strong>READY TO GO</strong>}</div></output>}
       {!inGame && (
         <>
           <div className="menu-vignette" />
@@ -591,7 +594,7 @@ export default function Home() {
               <KrageLogo />
             </Link>
             <nav aria-label="Main navigation">{[['play','PLAY'],['online','LOBBY'],['locker','LOCKER'],['challenges','CHALLENGES'],['settings','SETTINGS']].map(([id,label])=><Button key={id} className={'nav-button '+((modal==='controls'?'settings':modal==='loadout'?'play':modal??'play')===id?'active':'')} onClick={()=>setModal(id==='play'?null:id as 'online'|'locker'|'challenges'|'settings')}>{label}{id==='challenges'&&claimable>0&&<b className="claim-badge">{claimable}</b>}</Button>)}</nav>
-            <button className="nav-wallet" onClick={()=>setModal('challenges')} aria-label="Credits and challenges"><span className="currency-symbol">◆</span><strong key={profile.balance}>{profile.balance.toLocaleString()}</strong><small>KM</small></button>
+            <button className="nav-wallet" onClick={()=>setModal('challenges')} aria-label="Credits and challenges"><span className="currency-symbol">◆</span><strong key={profile.balance}>{profile.balance.toLocaleString()}</strong><small>KR</small></button>
           </header>
           <section className="lobby lobby-v4">
             <div className="lobby-workspace">
@@ -615,12 +618,17 @@ export default function Home() {
                     </h1>
                     <MapDiagram id={map} />
                   </div>
-                  <div
+                  <button type="button"
                     className="operator-window"
-                    aria-label="Your character carrying the selected primary"
+                    aria-label={`Rotate character. Drag or use arrow keys. ${Math.round(previewRotation)} degrees`}
+                    onClick={e=>{if(e.detail===0)rotateCharacter(.15);}}
+                    onPointerDown={e=>{e.currentTarget.setPointerCapture(e.pointerId);e.currentTarget.dataset.dragX=String(e.clientX);}}
+                    onPointerMove={e=>{if(e.currentTarget.hasPointerCapture(e.pointerId)){const previous=Number(e.currentTarget.dataset.dragX??e.clientX);rotateCharacter((e.clientX-previous)*.012);e.currentTarget.dataset.dragX=String(e.clientX);}}}
+                    onPointerUp={e=>{if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);}}
+                    onKeyDown={e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();rotateCharacter(e.key==='ArrowLeft'?-.15:.15);}}}
                   >
 
-                  </div>
+                  </button>
                 </div>
                 <div className="arena-tabs" aria-label="Choose arena">
                   {maps.map((m, i) => (
@@ -643,7 +651,7 @@ export default function Home() {
               </section>
               <div className="hero-actions">
                 <div className="character-toggle" aria-label="Character">
-                  <button aria-label="Previous character" onClick={()=>setProfile(p=>({...p,operator:['op-scout','op-warden','op-spectre'][(['op-scout','op-warden','op-spectre'].indexOf(p.operator)+2)%3]}))}>‹</button><strong>{profile.operator==='op-scout'?'ROOK':profile.operator==='op-warden'?'VERA':'WRAITH'}</strong><button aria-label="Next character" onClick={()=>setProfile(p=>({...p,operator:['op-scout','op-warden','op-spectre'][(['op-scout','op-warden','op-spectre'].indexOf(p.operator)+1)%3]}))}>›</button>
+                  <button aria-label="Previous character" onClick={()=>setProfile(p=>({...p,operator:['op-scout','op-warden','op-spectre'][(['op-scout','op-warden','op-spectre'].indexOf(p.operator)+2)%3]}))}>‹</button><strong>{profile.operator==='op-scout'?'ROOK':profile.operator==='op-warden'?'VERA':'BLAKE'}</strong><button aria-label="Next character" onClick={()=>setProfile(p=>({...p,operator:['op-scout','op-warden','op-spectre'][(['op-scout','op-warden','op-spectre'].indexOf(p.operator)+1)%3]}))}>›</button>
                 </div>
                 <button className="hero-loadout" aria-haspopup="dialog" onClick={() => setModal('loadout')}>LOADOUT <span>{GUNS[weapon].short}</span></button>
               </div>
@@ -743,7 +751,7 @@ export default function Home() {
               <a href="https://github.com/lonemagma" target="_blank" rel="noreferrer">v0.7</a>
             </span>
 
-
+            <span className="project-credit"><strong>MADE IN INDIA</strong><span>A <a href="https://pacify.site" target="_blank" rel="noreferrer">pacify</a> project</span></span>
           </footer>
         </>
       )}
@@ -1241,7 +1249,7 @@ export default function Home() {
                     <span>HEADSHOT FRAGS</span>
                   </div>
                 </div>
-                <div className="result-progression"><strong>+{lastAward} KM</strong><button onClick={()=>{arena.current?.lobby();setModal('challenges');}}>{claimable>0?`${claimable} REWARDS READY`:'CHALLENGES'} ↗</button></div>
+                <div className="result-progression"><strong>+{lastAward} KR</strong><button onClick={()=>{arena.current?.lobby();setModal('challenges');}}>{claimable>0?`${claimable} REWARDS READY`:'CHALLENGES'} ↗</button></div>
                 <details className="result-board"><summary>SCOREBOARD</summary><Scoreboard snap={snap} mode={activeMode}/></details>
                 {snap.network && <Button className="deploy-button" disabled={snap.network.status!=='connected'||(!snap.network.public&&snap.network.host!==snap.network.you)} onClick={()=>arena.current?.playAgain()}>{snap.network.public?'PLAY AGAIN':snap.network.host===snap.network.you?'RETURN PARTY TO LOBBY':'WAITING FOR HOST'}</Button>}
                 {snap.network?.message && <output>{snap.network.message}</output>}

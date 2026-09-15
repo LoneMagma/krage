@@ -301,6 +301,8 @@ export class Arena {
   lastDeath: Snapshot['lastDeath'] = null;
   botFootsteps = new Map<number, number>();
   operatorVariant = 0;
+  lobbyRotation = 0;
+  rotateLobby(delta:number){this.lobbyRotation+=delta;}
   finishVariant = 0;
   weaponFinishes: number[] = [0, 0, 0];
   lastFragTime = -Infinity;
@@ -1063,7 +1065,7 @@ export class Arena {
       const preview = {
         ...this.match.player,
         pos: v(),
-        yaw: Math.PI + 0.38 + Math.sin(this.time * 0.22) * 0.08,
+        yaw: Math.PI + 0.38 + this.lobbyRotation,
         pitch: 0,
         alive: true,
         crouched: false,
