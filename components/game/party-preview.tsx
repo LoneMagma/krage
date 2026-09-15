@@ -14,7 +14,7 @@ export function PartyPreview({ players }: { players: WireActor[] }) {
       camera.position.set(1.8,1.6,3.6);camera.lookAt(0,.9,0);
       scene.add(new T.HemisphereLight('#eef3ff','#596052',2.8));
       const light=new T.DirectionalLight('#ffe4c5',2);light.position.set(2,4,3);scene.add(light);
-      const plate=G.cylinder(scene,0,-.04,0,.64,.09,'#405265',16);
+
       const base=new C.Match(0,0,0).player;
       const models=new Map<number,ReturnType<typeof G.avatar>>();
       let frame=0,last=0;
@@ -39,7 +39,7 @@ export function PartyPreview({ players }: { players: WireActor[] }) {
         });
       };
       frame=requestAnimationFrame(tick);
-      stop=()=>{cancelAnimationFrame(frame);models.forEach(m=>G.disposeObject(m.group));G.disposeObject(plate);renderer.dispose();renderer.domElement.remove();};
+      stop=()=>{cancelAnimationFrame(frame);models.forEach(m=>G.disposeObject(m.group));renderer.dispose();renderer.domElement.remove();};
     }).catch(()=>{});
     return()=>{disposed=true;stop();};
   },[]);

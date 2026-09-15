@@ -4,7 +4,8 @@
   "include": [
     "lib/game/core.ts",
     "lib/game/progression.ts",
-    "lib/game/network-state.ts"
+    "lib/game/network-state.ts",
+    "lib/game/room-client.ts"
   ],
   "exclude": ["node_modules"]
 }

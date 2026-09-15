@@ -1,0 +1,61 @@
+{
+  "fire": "Original public/audio/weapons v0.6 clips",
+  "effects": [
+    {
+      "id": "mica-reload-open",
+      "source": "gamified_double_barr_#1-1789451134285.wav",
+      "duration": 0.07369614512471655
+    },
+    {
+      "id": "mica-reload-feed",
+      "source": "gamified_double_barr_#1-1789451134285.wav",
+      "duration": 0.1473922902494331
+    },
+    {
+      "id": "mica-reload-close",
+      "source": "gamified_double_barr_#1-1789451134285.wav",
+      "duration": 0.07369614512471655
+    },
+    {
+      "id": "kilo-reload-open",
+      "source": "KILO RELOAD.wav",
+      "duration": 0.12108843537414966
+    },
+    {
+      "id": "kilo-reload-feed",
+      "source": "KILO RELOAD.wav",
+      "duration": 0.24217687074829933
+    },
+    {
+      "id": "kilo-reload-close",
+      "source": "KILO RELOAD.wav",
+      "duration": 0.12108843537414966
+    },
+    {
+      "id": "echo-reload-open",
+      "source": "possible echo reload.wav",
+      "duration": 0.27947845804988664
+    },
+    {
+      "id": "echo-reload-feed",
+      "source": "possible echo reload.wav",
+      "duration": 0.5589569160997733
+    },
+    {
+      "id": "echo-reload-close",
+      "source": "possible echo reload.wav",
+      "duration": 0.27947845804988664
+    },
+    {
+      "id": "edge-slash",
+      "source": "soft swoosh- use for knife's air sound- trim and use the first part only..wav",
+      "sourceStart": 0,
+      "duration": 1.0
+    },
+    {
+      "id": "slide",
+      "source": "seeded filtered air noise",
+      "duration": 0.32
+    }
+  ]
+}

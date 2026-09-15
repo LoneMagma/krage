@@ -33,6 +33,7 @@ import {
   modelVariant,
   cloneAvatar,
   animateAvatar,
+  poseLobbyAvatar,
   makeWeapon,
   poseAvatar,
   RIG_LINKS,
@@ -227,6 +228,8 @@ export class Arena {
     }
     if (!this.network) {
       this.network = new NetworkState(snapshot);
+      this.roundId=snapshot.roundId?`room:${snapshot.roundId}:${snapshot.you}`:'';
+      this.completedRound=null;
       this.match = this.network.match;
       this.resetEffects();
       this.lastDeath = null;
@@ -247,6 +250,7 @@ export class Arena {
     const paused = this.phase === 'paused';
     this.processEvents();
     if (this.match.ended) {
+      this.completeMatch();
       this.phase = 'ended';
       this.onScoreboard(false);
       if (document.pointerLockElement) document.exitPointerLock();
@@ -302,6 +306,7 @@ export class Arena {
   lastFragTime = -Infinity;
   comboCount = 0;
   roundId = '';
+  completedRound: string | null = null;
   onMatchComplete: (receipt: MatchReceipt) => void = () => {};
   flash: T.Mesh;
   sun: T.DirectionalLight;
@@ -1058,7 +1063,7 @@ export class Arena {
       const preview = {
         ...this.match.player,
         pos: v(),
-        yaw: Math.PI + 0.22 + Math.sin(this.time * 0.32) * 0.045,
+        yaw: Math.PI + 0.38 + Math.sin(this.time * 0.22) * 0.08,
         pitch: 0,
         alive: true,
         crouched: false,
@@ -1073,11 +1078,7 @@ export class Arena {
         reload: 0,
       };
       animateAvatar(this.lobbyAvatar, preview, this.time, dt);
-      this.lobbyAvatar.weapon.rotation.x = -0.12 + Math.sin(this.time * 1.2) * 0.025;
-      this.lobbyAvatar.weapon.position.y = 1.07 + Math.sin(this.time * 1.2) * 0.008;
-      this.lobbyAvatar.joints[4].z -= 0.06;
-      this.lobbyAvatar.joints[7].z -= 0.08;
-      poseAvatar(this.lobbyAvatar, this.lobbyAvatar.joints);
+      poseLobbyAvatar(this.lobbyAvatar,this.time);
 
     }
 
@@ -1458,29 +1459,7 @@ export class Arena {
         }
       }
       if (e.type === 'equip' && e.actor === 0 && !predicted) this.audio.equip(e.weapon ?? 1);
-      if (e.type === 'end') {
-        const report = matchReport(
-          this.match.mode,
-          this.match.actors,
-          this.match.teams,
-        );
-        this.audio.result(report.outcome === 'victory');
-        const player = this.match.player;
-        this.onMatchComplete({
-          id: this.roundId,
-          seconds: this.match.elapsed,
-          eligible:
-            !this.network &&
-            !this.benchmark &&
-            this.match.difficulty !== 'dummy' &&
-            this.match.actors.length > 1,
-          kills: player.kills,
-          headshots: player.headshots,
-          meleeKills: player.meleeKills,
-          matches: 1,
-          wins: report.outcome === 'victory' ? 1 : 0,
-        });
-      }
+      if (e.type === 'end') this.completeMatch();
       if (e.type === 'reload' && e.actor === 0 && !predicted)
         this.audio.reload(e.weapon ?? 1);
       if (e.type === 'land' && e.actor === 0) {
@@ -1889,6 +1868,15 @@ export class Arena {
       map: this.match.map.name,
     };
     this.onSnapshot(this.snap);
+  }
+  completeMatch() {
+    if(this.completedRound===this.roundId)return;
+    this.completedRound=this.roundId;
+    const report=matchReport(this.match.mode,this.match.actors,this.match.teams),p=this.match.player;
+    this.audio.result(report.outcome==='victory');
+    this.onMatchComplete({id:this.roundId,seconds:this.match.elapsed,
+      eligible:!this.benchmark&&(!!this.network||this.match.difficulty!=='dummy')&&this.match.actors.length>1,
+      kills:p.kills,headshots:p.headshots,meleeKills:p.meleeKills,matches:1,wins:report.outcome==='victory'?1:0});
   }
   resetEffects() {
     for (const m of this.marks) disposeObject(m.mesh);

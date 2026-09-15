@@ -59,6 +59,7 @@ export function createArenaServer({
       joined: false,
       alive: true,
       eventSent: 0,
+      chatName: null, chatAt: 0,
     };
     peers.set(ws, peer);
     ws.on('pong', () => {
@@ -79,8 +80,25 @@ export function createArenaServer({
         const m = JSON.parse(raw.toString());
         if (!m || typeof m !== 'object' || Array.isArray(m))
           throw new Error('Invalid message');
-        action = m.type;
-        if (m.type === 'create' || m.type === 'join' || m.type === 'quick') {
+        action = typeof m.type==='string'?m.type:'';
+        if(m.type==='chat-hello'){
+          peer.chatName=String(m.name??'Player').split('').filter(c=>c.charCodeAt(0)>=32&&c!=='<'&&c!=='>').join('').trim().slice(0,16)||'Player';
+          send(ws,{type:'chat-ready'});
+        }else if(m.type==='chat'){
+          if(now-peer.chatAt<1000)throw new Error('Wait a moment before sending again');
+          if(!['global','match','team'].includes(m.channel)||typeof m.text!=='string')throw new Error('Invalid chat');
+          const text=m.text.split('').map(c=>c.charCodeAt(0)<32?' ':c).join('').trim().slice(0,160);
+          if(!text)return;
+          const slot=peer.room?.slots.get(peer.token),actor=slot?peer.room.match.actors[slot.id]:null;
+          if(m.channel==='global'?!peer.chatName:!actor)throw new Error('Join chat first');
+          if(m.channel==='team'&&peer.room.mode<2)throw new Error('No teams in this mode');
+          peer.chatAt=now;
+          const message={type:'chat',channel:m.channel,name:m.channel==='global'?peer.chatName:actor.name,text};
+          for(const [other,p] of peers){
+            const recipient=p.room?.slots.get(p.token);
+            if(m.channel==='global'?!!p.chatName:p.room===peer.room&&recipient&&(m.channel!=='team'||p.room.match.actors[recipient.id].team===actor.team))send(other,message);
+          }
+        }else if (m.type === 'create'  || m.type === 'join' || m.type === 'quick') {
           if (peer.joined) throw new Error('Already joined');
           let room;
           if (m.type === 'quick') {
@@ -127,7 +145,7 @@ export function createArenaServer({
         else throw new Error('Unknown message');
       } catch (error) {
         send(ws, {
-          type: ['lobby','start','rematch'].includes(action) ? 'lobby-error' : 'error',
+          type: action.startsWith('chat')?'chat-error':['lobby','start','rematch'].includes(action) ? 'lobby-error' : 'error',
           message: error instanceof Error ? error.message : 'Invalid request',
         });
       }

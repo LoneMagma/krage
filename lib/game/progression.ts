@@ -7,6 +7,9 @@ export type MatchReceipt = Counts & {
   eligible: boolean;
 };
 export const CATALOG = [
+  { id: 'skin-echo-carbon', kind: 'finish', name: 'ECHO / Circuit', note: '', cost: 180, variant: 4, color: '#85d9cf', weapon: 0 },
+  { id: 'skin-kilo-carbon', kind: 'finish', name: 'KILO / Blackout', note: '', cost: 220, variant: 4, color: '#d8b68a', weapon: 1 },
+  { id: 'skin-mica-carbon', kind: 'finish', name: 'MICA / Nightfall', note: '', cost: 240, variant: 4, color: '#b4a0dc', weapon: 2 },
   { id: 'skin-echo', kind: 'finish', name: 'ECHO / Glacier', note: '', cost: 0, variant: 1, color: '#b8d7f0', weapon: 0 },
   { id: 'skin-kilo', kind: 'finish', name: 'KILO / Copperhead', note: '', cost: 0, variant: 2, color: '#f78a50', weapon: 1 },
   { id: 'skin-mica', kind: 'finish', name: 'MICA / Amethyst', note: '', cost: 0, variant: 3, color: '#ac8cf5', weapon: 2 },
@@ -33,7 +36,7 @@ export const CATALOG = [
     kind: 'operator',
     name: 'Spectre',
     note: 'Dark reconnaissance kit',
-    cost: 300,
+    cost: 0,
     variant: 2,
     color: '#726ca3',
   },
@@ -97,7 +100,7 @@ export function newProfile(now = Date.now()): Profile {
   return {
     version: 1,
     balance: 200,
-    owned: ['op-scout', 'op-warden', 'finish-factory'],
+    owned: ['op-scout', 'op-warden', 'op-spectre', 'finish-factory'],
     operator: 'op-scout',
     finish: 'finish-factory',
     ...periods(now),
@@ -111,7 +114,7 @@ export function newProfile(now = Date.now()): Profile {
 }
 export function refreshProfile(profile: Profile, now = Date.now()): Profile {
   const { day, week } = periods(now),
-    p = { ...profile };
+    p = { ...profile, owned: Array.from(new Set([...profile.owned,'op-scout','op-warden','op-spectre'])) };
   if (day > p.day) {
     p.day = day;
     p.daily = ZERO();
@@ -310,6 +313,19 @@ export function loadProfile(value: string | null, now = Date.now()): Profile {
 }
 
 export function weaponFinish(profile: Profile, weapon: number) {
+  if(profile.weaponFinishes?.[weapon]==='finish-factory')return 0;
   const item = CATALOG.find(i => i.id === profile.weaponFinishes?.[weapon] && 'weapon' in i && i.weapon === weapon && profile.owned.includes(i.id));
   return item?.variant ?? CATALOG.find(i => i.id === profile.finish)?.variant ?? 0;
+}
+
+/** Equip only an owned finish belonging to this primary. Factory is always available. */
+export function equipWeaponFinish(profile: Profile, weapon: number, id: string): Profile {
+  if(![0,1,2].includes(weapon))return profile;
+  if(id!=='finish-factory'&&!CATALOG.some(item=>item.id===id&&'weapon' in item&&item.weapon===weapon&&profile.owned.includes(id)))return profile;
+  const weaponFinishes=Array.from({length:3},(_,i)=>profile.weaponFinishes?.[i]??'finish-factory');
+  weaponFinishes[weapon]=id;
+  return {...profile,weaponFinishes};
+}
+export function claimableCount(profile: Profile) {
+  return challenges(profile).filter(c=>!profile.claimed.includes(c.id)&&profile[c.period][c.metric]>=c.target).length;
 }

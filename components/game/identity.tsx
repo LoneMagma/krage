@@ -6,11 +6,7 @@ export function KrageLogo({ compact = false }: { compact?: boolean }) {
   return (
     <span className="krage-logo" aria-label="kRAGE">
       <Image unoptimized src="/krage-logo.png" width="52" height="52" alt="" />
-      {!compact && (
-        <span>
-          kRAGE
-        </span>
-      )}
+      {!compact && <span className="brand-name">kRAGE</span>}
     </span>
   );
 }
@@ -25,8 +21,8 @@ export function WeaponGlyph({
 }) {
   const key = useId().replace(/:/g, ''),
     accent = WEAPON_COLORS[id],
-    wood = finish === 1 ? '#dce7ec' : finish === 2 ? '#e78851' : finish === 3 ? '#ac8cf5' : '#a6643f',
-    steel = finish === 1 ? '#bacbdc' : finish === 2 ? '#8e614d' : finish === 3 ? '#726494' : '#65778e';
+    wood = finish === 4 ? '#24363b' : finish === 1 ? '#dce7ec' : finish === 2 ? '#e78851' : finish === 3 ? '#ac8cf5' : '#a6643f',
+    steel = finish === 4 ? '#657c83' : finish === 1 ? '#bacbdc' : finish === 2 ? '#8e614d' : finish === 3 ? '#726494' : '#65778e';
   return (
     <svg viewBox="0 0 240 88" aria-hidden="true" className="weapon-glyph">
       <defs>
@@ -36,6 +32,7 @@ export function WeaponGlyph({
           <stop offset="1" stopColor="#293a50" />
         </linearGradient>
       </defs>
+      {finish===4&&<path d="M92 39H154M97 43H145" stroke={accent} strokeWidth="3"/>}
       <path d="M18 78H222" stroke="#a4bacb" opacity="0.15"/>
       <g stroke="#101b2c" strokeWidth="1.5" strokeLinejoin="round">
         {id === 3 ? (

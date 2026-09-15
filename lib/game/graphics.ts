@@ -1,3 +1,4 @@
+import { CHARACTER_MESHES } from './assets/characters.js';
 import { solveLimb } from './motion.js';
 import { ARENA_PALETTES, COLORS } from './palette.js';
 import { motionState, weaponPose } from './animation.js';
@@ -633,9 +634,9 @@ export function buildMap(map: ArenaMap) {
 }
 export function makeWeapon(index: number, firstPerson = true, finish = 0) {
   const g = new T.Group();
-  const dark = finish === 1 ? '#3f5e7b' : finish === 2 ? '#172331' : finish === 3 ? '#261e39' : '#233032',
-    metal = finish === 1 ? '#bacbdc' : finish === 2 ? '#8e614d' : finish === 3 ? '#726494' : '#687b90',
-    wood = finish === 1 ? '#dce7ec' : finish === 2 ? '#e78851' : finish === 3 ? '#ac8cf5' : '#a6643f';
+  const dark = finish === 4 ? '#18272c' : finish === 1 ? '#3f5e7b' : finish === 2 ? '#172331' : finish === 3 ? '#261e39' : '#233032',
+    metal = finish === 4 ? '#748489' : finish === 1 ? '#bacbdc' : finish === 2 ? '#8e614d' : finish === 3 ? '#726494' : '#687b90',
+    wood = finish === 4 ? '#2b3e43' : finish === 1 ? '#dce7ec' : finish === 2 ? '#e78851' : finish === 3 ? '#ac8cf5' : '#a6643f';
   if (index === 3) {
     armor(g, 0.01, 0, 0.05, 0.075, 0.09, 0.27, dark);
     armor(g, 0.01, 0.01, -0.1, 0.19, 0.045, 0.05, metal);
@@ -813,20 +814,14 @@ export function makeWeapon(index: number, firstPerson = true, finish = 0) {
       gas.rotation.x = Math.PI / 2;
       armor(g, 0.069, 0.005, 0.08, 0.012, 0.022, 0.16, metal).rotation.x = -0.15;
       armor(g, 0, -0.01, 0.455, 0.125, 0.145, 0.025, dark);
-      for (let i = 0; i < 4; i++) {
-        const segment = armor(
-          g,
-          0,
-          -0.24 - i * 0.043,
-          -0.015 - i * 0.017,
-          0.086,
-          0.05,
-          0.12,
-          '#3b4850',
-        );
-        segment.rotation.x = -0.28 - i * 0.07;
-        segment.name = 'magazine-extension';
-      }
+      // Continuous curved magazine rather than a stack of rectangular blocks.
+      for(const child of g.children.filter(c=>c.name.startsWith('magazine'))){disposeObject(child);g.remove(child);}
+      const profile=new T.Shape();profile.moveTo(-.025,-.08);profile.lineTo(.075,-.08);profile.quadraticCurveTo(.085,-.24,.19,-.40);profile.lineTo(.07,-.43);profile.quadraticCurveTo(-.01,-.28,-.025,-.08);
+      const mag=new T.Mesh(new T.ExtrudeGeometry(profile,{depth:.077,steps:1,bevelEnabled:true,bevelSize:.006,bevelThickness:.004,bevelSegments:2,curveSegments:6}),material('#35413e'));
+      mag.rotation.y=Math.PI/2;mag.position.x=-.0385;mag.name='magazine';g.add(mag);
+      for(const side of [-1,1])for(let i=0;i<3;i++){const rib=armor(g,side*.043,-.17-i*.075,-.025-i*.04,.008,.065,.015,metal);rib.rotation.x=-.22-i*.12;rib.name='magazine-extension';}
+      const cover=cylinder(g,0,.064,.01,.061,.34,metal,12);cover.rotation.x=Math.PI/2;cover.scale.x=.82;
+
     }
     if (index === 2) {
       armor(g, 0.055, -0.02, -0.3, 0.075, 0.13, 0.3, wood);
@@ -852,14 +847,24 @@ export function makeWeapon(index: number, firstPerson = true, finish = 0) {
     }
     armor(g,0,0.076,0.075,0.018,0.026,0.12,metal).rotation.y=0.25;
   }
+  if(finish===4&&index<3){
+    const accent=['#85d9cf','#d8b68a','#b4a0dc'][index];
+    for(const side of [-1,1]){
+      armor(g,side*.077,.043,-.09,.009,.013,.2,accent);
+      for(let n=0;n<3;n++)armor(g,side*.079,.016-n*.02,-.01+n*.018,.008,.007,.035,accent);
+    }
+  }
   if (firstPerson) {
     const hands = new T.Group();
     hands.name = 'support-hand';
     g.add(hands);
-    armor(g, 0.04, -0.15, 0.12, 0.14, 0.13, 0.19, '#293b39');
+    armor(g, 0.04, -0.15, 0.12, 0.12, 0.11, 0.17, '#293b39');
+    for(let i=0;i<3;i++)armor(g,.097,-.17+i*.025,.085,.024,.02,.07,'#465650');
+    armor(g,.038,-.205,.19,.13,.018,.055,'#182b2d');
     armor(g, 0.05, -0.22, 0.3, 0.14, 0.15, 0.35, '#56625e');
     if (index !== 3) {
-      armor(hands, -0.07, -0.12, -0.35, 0.12, 0.13, 0.19, '#293b39');
+      armor(hands, -0.07, -0.12, -0.35, 0.11, 0.11, 0.17, '#293b39');
+      for(let i=0;i<3;i++)armor(hands,-.025,-.1,-.4+i*.04,.07,.024,.023,'#465650');
       const arm = armor(hands, -0.18, -0.24, -0.2, 0.14, 0.15, 0.36, '#56625e');
       arm.rotation.y = -0.55;
     }
@@ -1013,95 +1018,26 @@ export function poseAvatar(model: Avatar, points: T.Vector3[], yaw = 0) {
   if (points !== model.joints)
     for (let i = 0; i < points.length; i++) model.joints[i].copy(points[i]);
 }
-function tapered(parent:T.Object3D,top:number,bottom:number,height:number,depth:number,color:string){
-  const mesh=new T.Mesh(new T.CylinderGeometry(top,bottom,height,8,1),material(color));
-  mesh.scale.z=depth;mesh.castShadow=mesh.receiveShadow=true;parent.add(mesh);return mesh;
-}
+const characterMaterial=new T.MeshPhongMaterial({vertexColors:true,shininess:12,specular:'#30383b'});
 export function avatar(color: string, variant = 0, finish = 0): Avatar {
-  const female = variant % 2 === 1;
-  const cloth = female ? '#304959' : '#82734d';
-  const kit = female ? '#ab6952' : '#374c42';
-  const skin = female ? '#bc8768' : '#b58b70';
   const group = new T.Group();
   group.userData.operator = variant;
-  const points = RIG_POINTS.map((p) => new T.Vector3(...p));
-  const parts = RIG_LINKS.map(([a, b], i) => {
-    const part = new T.Group(),
-      length = points[a].distanceTo(points[b]);
-    part.userData.length = length;
-    group.add(part);
-    if (i === 0) {
-      // Human field operators, sharing the same combat skeleton and hit volume.
-      const skull=new T.Mesh(new T.IcosahedronGeometry(0.185,1),material(skin));
-      skull.scale.set(female?0.84:0.93,1,0.86);skull.position.y=0.025;part.add(skull);
-      if(female){
-        const hair=new T.Mesh(new T.SphereGeometry(0.184,10,6,0,Math.PI*2,0,Math.PI*0.57),material('#322925'));
-        hair.position.set(0,0.08,0.018);hair.scale.set(0.94,0.75,0.97);part.add(hair);
-        const scarf=tapered(part,0.14,0.12,0.085,0.85,kit);scarf.position.y=-0.14;
-      }else{
-        const helmet=new T.Mesh(new T.SphereGeometry(0.202,10,6,0,Math.PI*2,0,Math.PI*0.6),material('#40534b'));
-        helmet.position.y=0.085;helmet.scale.y=0.75;part.add(helmet);
-        armor(part,0,0.09,-0.18,0.26,0.042,0.07,'#293a36');
-        armor(part,0,0.16,-0.155,0.04,0.055,0.035,'#b6ac83');
-      }
-      armor(part, 0, 0.06, 0.13, 0.31, female ? 0.28 : 0.14, 0.08, '#332b27');
-      if (female) armor(part, 0, -0.06, 0.18, 0.11, 0.28, 0.13, '#332b27');
-      for (const side of [-1, 1]) {
-        armor(part, side * 0.072, 0.05, -0.151, 0.042, 0.027, 0.018, '#282924');
-        armor(part, side * 0.072, 0.09, -0.15, 0.06, 0.018, 0.018, '#443931');
-        armor(part, side * 0.164, 0.015, 0, 0.035, 0.085, 0.07, skin);
-      }
-      armor(part, 0, 0.005, -0.161, 0.045, 0.055, 0.05, skin);
-      armor(part, 0, -0.067, -0.15, 0.085, 0.015, 0.016, '#805348');
-      armor(part, -0.178, 0.045, 0, 0.032, 0.09, 0.09, '#303833');
-      armor(part, -0.14, -0.04, -0.12, 0.022, 0.02, 0.13, '#303833');
-    } else if (i === 1) {
-      tapered(part,female?0.225:0.27,female?0.18:0.22,length,0.62,cloth);
-      armor(part, 0, length * 0.43, 0, 0.24, 0.075, 0.30, kit);
-      armor(part, 0, 0.08, -0.17, female ? 0.39 : 0.45, 0.31, 0.1, kit);
-      armor(part, 0, 0.02, 0.18, 0.38, 0.38, 0.1, '#303d40');
-      for (const x of [-0.14, 0, 0.14]) {
-        armor(part, x, -0.13, -0.2, 0.115, 0.2, 0.085, '#777a67');
-        armor(part, x, -0.12, -0.248, 0.09, 0.014, 0.008, '#424b41');
-      }
-      for (const side of [-1, 1]) {
-        armor(part, side * 0.18, 0.16, -0.232, 0.048, 0.23, 0.023, '#c2cedb');
-        armor(part, side * 0.18, 0.08, -0.25, 0.059, 0.05, 0.025, '#182537');
-      }
-      if(female){
-        const strap=armor(part,0,0,-0.229,0.05,length*0.8,0.025,'#d3bf9c');strap.rotation.z=-0.42;
-        armor(part,0.21,-0.12,0,0.085,0.16,0.13,'#2c353e');
-      }else{
-        for(const side of [-1,1])armor(part,side*0.22,0.18,0,0.12,0.17,0.32,kit);
-      }
-      // Team accents are visible from front and back, on both operator variants.
-      armor(part, 0, 0.12, -0.229, 0.27, 0.055, 0.016, color);
-      armor(part, 0, 0.12, 0.237, 0.27, 0.055, 0.016, color);
-      armor(part, 0, -0.28, 0, 0.43, 0.085, 0.32, '#263136');
-      armor(part, -0.14, 0.19, -0.228, 0.075, 0.035, 0.009, '#e0d6b7');
-    } else {
-      const leg = i >= 6,
-        lower = i === 3 || i === 5 || i === 7 || i === 9;
-      tapered(part,(leg?0.115:0.095)*(female?0.87:1),(leg?0.085:0.068)*(female?0.9:1),length*0.94,leg?1:0.92,cloth);
-      if (!leg && !lower) armor(part, 0, length * 0.23, 0, 0.175, 0.07, 0.205, color);
-      if (!lower)
-        armor(
-          part,
-          0,
-          length * 0.24,
-          -0.015,
-          leg ? 0.205 : 0.22,
-          length * 0.45,
-          0.245,
-          leg ? kit : cloth,
-        );
-      else if (leg) {
-        armor(part, 0, length * 0.34, -0.11, 0.19, 0.14, 0.11, kit);
-        armor(part, 0, -length * 0.43, -0.065, 0.22, 0.16, 0.34, '#263237');
-        armor(part, 0, -length * 0.57, -0.075, 0.225, 0.035, 0.35, '#101b20');
-      } else armor(part, 0, -length * 0.43, 0, 0.16, 0.13, 0.2, '#273536');
+  const points = RIG_POINTS.map(p=>new T.Vector3(...p));
+  const parts = RIG_LINKS.map(([a,b],i)=>{
+    const part=new T.Group();part.userData.length=points[a].distanceTo(points[b]);group.add(part);
+    const [packed,triangles]=CHARACTER_MESHES[Math.max(0,Math.min(2,variant))][i];
+    const raw=Uint8Array.from(atob(packed),c=>c.charCodeAt(0)),view=new DataView(raw.buffer),count=raw.length/12;
+    const position=new Float32Array(count*3),normal=new Float32Array(count*3),colors=new Float32Array(count*3);
+    for(let n=0;n<count;n++)for(let axis=0;axis<3;axis++){
+      position[n*3+axis]=view.getInt16(n*12+axis*2,true)/10000;
+      normal[n*3+axis]=view.getInt8(n*12+6+axis)/127;
+      colors[n*3+axis]=view.getUint8(n*12+9+axis)/255;
     }
-    batchPart(part);
+    const bytes=Uint8Array.from(atob(triangles),c=>c.charCodeAt(0)),iv=new DataView(bytes.buffer),index=new Uint16Array(bytes.length/2);
+    for(let n=0;n<index.length;n++)index[n]=iv.getUint16(n*2,true);
+    const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.BufferAttribute(position,3));geometry.setAttribute('normal',new T.BufferAttribute(normal,3));geometry.setAttribute('color',new T.BufferAttribute(colors,3));geometry.setIndex(new T.BufferAttribute(index,1));
+    const mesh=new T.Mesh(geometry,characterMaterial);mesh.castShadow=mesh.receiveShadow=true;part.add(mesh);
+    if(i===1){armor(part,0,.12,-.174,.20,.035,.012,color);armor(part,0,.12,.173,.20,.035,.012,color);}
     return part;
   });
   const gun = makeWeapon(1, false, finish);
@@ -1280,6 +1216,21 @@ export function animateAvatar(model: Avatar, a: Actor, time: number, frameDt = 1
   model.weapon.rotation.set(a.pitch * 0.7 - reload * 0.4, 0, -reload * 0.3);
   if(a.weapon===3){model.weapon.position.z-=edgeAmount*(a.edgeAttack==='stab'?0.35:0.12);model.weapon.position.x+=a.edgeAttack==='stab'?0:edgeAmount*edgeSide*0.28;model.weapon.rotation.z+=a.edgeAttack==='stab'?0:edgeAmount*edgeSide*1.1;}
 
+}
+/** Lobby-only carry pose: hands follow actual weapon grip locations. */
+export function poseLobbyAvatar(model:Avatar,time:number){
+ const gun=model.weapon,female=(model.group.userData.operator??0)%2===1,breath=Math.sin(time*1.5)*.006;
+ gun.position.set(.08,1.04+breath,-.17);gun.rotation.set(-.08,female?-1.35:-1.15,.06);
+ const points=model.joints;
+ for(const i of [0,1,2,3,6,9,10,11,12,13,14])points[i].set(...RIG_POINTS[i] as [number,number,number]);
+ for(const [shoulder,elbow,hand,grip] of [[3,4,5,[-.065,-.11,-.35]],[6,7,8,[.04,-.14,.1]]] as const){
+   const target=new T.Vector3(...grip).multiplyScalar(.65).applyEuler(gun.rotation).add(gun.position);
+   const upper=new T.Vector3(...RIG_POINTS[shoulder]).distanceTo(new T.Vector3(...RIG_POINTS[elbow]));
+   const lower=new T.Vector3(...RIG_POINTS[elbow]).distanceTo(new T.Vector3(...RIG_POINTS[hand]));
+   const solved=solveLimb(points[shoulder],target,upper,lower,{x:shoulder===3?-.35:.35,y:-.25,z:-.1});
+   points[elbow].copy(solved.joint);points[hand].copy(solved.end);
+ }
+ poseAvatar(model,points);
 }
 export function disposeObject(o: T.Object3D) {
   if (o.userData.borrowed) {

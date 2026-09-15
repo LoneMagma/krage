@@ -34,6 +34,7 @@ export class Room {
     if (![0, 1, 2, 3].includes(mode) || ![0, 1].includes(map))
       throw new Error('Invalid room settings');
     this.code = code;
+    this.roundId=randomBytes(12).toString('hex');
     this.mode = mode;
     this.map = map;
     const duration = options.duration ?? 300;
@@ -119,7 +120,7 @@ export class Room {
       a.meleeKills =
         0;
     a.primary = [0, 1, 2].includes(primary) ? primary : 1;
-    a.operator = this.mode >= 2 ? a.team : operator === 1 ? 1 : 0;
+    a.operator = this.mode >= 2 ? a.team : [0,1,2].includes(operator) ? operator : 0;
     this.match.spawn(a, true);
     this.match.remoteInputs.set(a.id, emptyInput());
     if (!this.hostToken) this.hostToken = token;
@@ -144,7 +145,7 @@ export class Room {
     if (!slot?.connected || !this.staging || this.started) throw new Error('Lobby is not editable');
     const a = this.match.actors[slot.id];
     if (change.primary !== undefined && ![0,1,2].includes(change.primary)) throw new Error('Invalid weapon');
-    if (change.operator !== undefined && ![0,1].includes(change.operator)) throw new Error('Invalid character');
+    if (change.operator !== undefined && ![0,1,2].includes(change.operator)) throw new Error('Invalid character');
     if (change.primary !== undefined || change.operator !== undefined) {
       if (change.primary !== undefined) a.primary = a.weapon = change.primary;
       if (change.operator !== undefined) a.operator = this.mode >= 2 ? a.team : change.operator;
@@ -156,6 +157,7 @@ export class Room {
   rematch(token) {
     if(this.public || token!==this.hostToken || !this.match.ended) throw new Error('Only the host can reopen a finished private match');
     const m=this.match;
+    this.roundId=randomBytes(12).toString('hex');
     m.ended=false;m.time=m.duration;m.elapsed=0;m.teams=[0,0];m.winner='';m.pendingSpawn=false;m.events=[];
     m.recentSpawns=[];m.recentDeaths=[];this.finishedAt=0;this.started=false;this.staging=true;this.lagHistory=new LagHistory();this.eventLog=[];
     for(const a of m.actors){a.kills=a.deaths=a.score=a.headshots=a.hits=a.shots=a.meleeKills=a.streak=0;if(a.bot)m.spawn(a,true);}
@@ -316,6 +318,7 @@ export class Room {
     }
     return {
       type: 'snapshot',
+      roundId:this.roundId,
       protocol: 9,
       staging: this.staging && !this.started,
       host: this.slots.get(this.hostToken)?.id ?? null,

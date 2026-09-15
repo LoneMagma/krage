@@ -1,6 +1,6 @@
 {
   "name": "krage-arena",
-  "version": "0.4.1-dev",
+  "version": "0.7.0",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
@@ -9,15 +9,15 @@
     "dev": "vinext dev",
     "build": "vinext build",
     "start": "wrangler dev --config dist/server/wrangler.json",
-    "build:render": "vinext build",
-    "start:render": "wrangler dev --config dist/server/wrangler.json --ip 0.0.0.0 --port $PORT --local-protocol http",
     "lint": "oxlint app lib/game components/game tests server",
     "format": "oxfmt",
     "test": "tsc -p tsconfig.test.json && node .test-build/tests/core.test.js && node .test-build/tests/presentation.test.js",
     "build:server": "tsc -p tsconfig.server.json",
     "server": "npm run build:server && node server/index.mjs",
     "test:server": "npm run build:server && node --test tests/server.test.mjs",
-    "deploy:web": "npm run build && wrangler deploy --config dist/server/wrangler.json"
+    "deploy:web": "npm run build && wrangler deploy --config dist/server/wrangler.json",
+    "build:render": "KRAGE_NODE=1 vinext build",
+    "start:render": "vinext start"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",

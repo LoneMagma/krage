@@ -1,4 +1,4 @@
-## v0.6.0: deploy frontend and rooms together
+## v0.7.0: deploy frontend and rooms together
 This build requires **protocol 9**. Reload existing tabs after both deployments. `/health` must report protocol 9. Matches remain in server memory; restarting the room process ends them.
 
 For players in India, test a **Singapore room-server service**. The existing service region has not been verified. Render cannot move an existing service between regions: create a replacement, set `KRAGE_ORIGINS`, then rebuild the frontend with that service's `NEXT_PUBLIC_ROOM_URL`. Keep one room instance until room routing exists. See [Render regions](https://render.com/docs/regions).
@@ -17,13 +17,13 @@ Rooms start: `node server/index.mjs`
 Rooms environment: `KRAGE_ORIGINS=https://krage-frontend-n5rj.onrender.com`
 Rooms health path: `/health`. Both processes honor Render's `PORT`.
 Redeploy both existing services together; do not use the Wrangler development server as the Render start command.
-Play Online joins Quick Play. Friends contains Create Lobby and Join Friends.
+Play Online joins Quick Play. Lobby contains Create Lobby and Join Lobby.
 
 # Deploy kRAGE
 
 1. Deploy `Dockerfile.rooms` on a container host with WebSocket support. Route HTTPS to container port **3002**. Set `KRAGE_ORIGINS=https://YOUR-GAME-DOMAIN` (comma-separated, no trailing slashes). Health check: `/health`.
 2. Set `NEXT_PUBLIC_ROOM_URL=wss://YOUR-ROOM-HOST/play` when building the frontend. Authenticate Wrangler with your Cloudflare account, then run `npm run deploy:web`. This builds and publishes the existing Workers frontend.
-3. Set the room server's `KRAGE_ORIGINS` to the exact deployed frontend origin. For Quick Play, use matching mode/map/time on both devices. For private games, open **FRIENDS**, create a lobby and share its code.
+3. Set the room server's `KRAGE_ORIGINS` to the exact deployed frontend origin. For Quick Play, use matching mode/map/time on both devices. For private games, open **LOBBY**, create a lobby and share its code.
 
 Use one room-server instance for this small deployment: rooms live in memory and restart with the server. The container does not require a database for matches. Quick Play joins public rooms and fills vacancies with server bots; private room codes remain available. Cosmetics remain device-local. Keep the frontend and room server on the same release.
 

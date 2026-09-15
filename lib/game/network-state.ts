@@ -22,6 +22,7 @@ export type InputFrame = Input & {
   life: number;
 };
 export type RoomSnapshot = {
+  roundId?: string;
   staging?: boolean;
   host?: number | null;
   fragLimit?: number;

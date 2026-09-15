@@ -43,7 +43,12 @@ export function defaultRoomURL() {
   );
 }
 /** Transport owns reconnect/heartbeat. Combat and prediction live outside the socket lifecycle. */
+export type ChatMessage={channel:'global'|'match'|'team';name:string;text:string};
 export class RoomClient {
+  onChat: ((message:ChatMessage)=>void)|null=null;
+  subscribeChat(receive:(message:ChatMessage)=>void){this.onChat=receive;return()=>{if(this.onChat===receive)this.onChat=null;};}
+  chat(channel:'match'|'team',text:string){if(this.socket?.readyState===1)this.socket.send(JSON.stringify({type:'chat',channel,text:text.slice(0,160)}));}
+
   socket: WebSocket | null = null;
   token = '';
   stopped = false;
@@ -109,7 +114,9 @@ export class RoomClient {
       this.lastMessage = Date.now();
       try {
         const m = JSON.parse(event.data);
-        if (m.type === 'welcome') {
+        if(m.type==='chat')this.onChat?.(m);
+        else if(m.type==='chat-error')this.onChat?.({channel:'match',name:'SYSTEM',text:String(m.message)});
+        else if (m.type === 'welcome') {
           if (m.protocol !== ROOM_PROTOCOL) {
             this.stop();
             this.notify({

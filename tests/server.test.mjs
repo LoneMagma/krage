@@ -407,9 +407,10 @@ await test('online secondary EDGE attack is server timed and reaches beyond slas
 await test('private rematch preserves party, clears combat and accepts the next life sequence',()=>{
  const r=new Room(1,0,undefined,{staging:true});const x=r.join('A'),y=r.join('B');
  r.lobbyChange(x.token,{primary:0,ready:true});r.lobbyChange(y.token,{primary:2,ready:true});r.startMatch(x.token);
+ const roundId=r.snapshot(x.token).roundId;assert.ok(roundId);assert.equal(r.snapshot(y.token).roundId,roundId);
  r.slots.get(x.token).seq=500;r.match.actors[x.id].kills=20;r.match.finish();
  assert.throws(()=>r.rematch(y.token),/host/);r.rematch(x.token);
- const s=r.snapshot(x.token);assert.equal(s.staging,true);assert.equal(s.actors.find(a=>a.id===x.id).primary,0);assert.equal(s.actors.find(a=>a.id===y.id).primary,2);assert.equal(s.actors.find(a=>a.id===x.id).kills,0);
+ const s=r.snapshot(x.token);assert.notEqual(s.roundId,roundId);assert.equal(s.staging,true);assert.equal(s.actors.find(a=>a.id===x.id).primary,0);assert.equal(s.actors.find(a=>a.id===y.id).primary,2);assert.equal(s.actors.find(a=>a.id===x.id).kills,0);
  assert.equal(r.input(x.token,message(501,{life:0})),false);
  r.lobbyChange(x.token,{ready:true});r.lobbyChange(y.token,{ready:true});r.startMatch(x.token);
  assert.equal(r.input(x.token,message(1,{life:0})),false);assert.equal(r.input(x.token,message(1,{life:1})),true);
@@ -429,10 +430,11 @@ await test('delayed input bursts retire stale frames without disconnecting or fa
 });
 await test('reconnecting after 90 seconds preserves identity, score and equipment; expired slots reject', () => {
   const r=new Room(1,0);r.join('A');const b=r.join('B');
+  const receiptRound=r.snapshot(b.token).roundId;
   const actor=r.match.actors[b.id];actor.kills=7;actor.deaths=3;actor.score=850;actor.primary=2;
   r.disconnect(b.token,1000);r.step(91000);
   const back=r.join('ignored',b.token,91000);
-  assert.equal(back.id,b.id);assert.equal(back.token,b.token);
+  assert.equal(back.id,b.id);assert.equal(back.token,b.token);assert.equal(r.snapshot(back.token).roundId,receiptRound);
   assert.deepEqual([actor.kills,actor.deaths,actor.score,actor.primary],[7,3,850,2]);
   r.disconnect(b.token,92000);r.step(213001);
   assert.throws(()=>r.join('ignored',b.token,213001),/Session unavailable/);
@@ -504,4 +506,28 @@ await test('four live friends share one match and a returning socket keeps its s
     assert.equal(snap.actors.filter(a=>a.connected&&!a.bot).length,4);
     assert.deepEqual([own.kills,own.score,own.deaths],[6,720,2]);assert.equal(snap.duration,600);
   }finally{for(const ws of sockets)ws.terminate();await server.close();}
+});
+
+await test('global chat is bounded, identifies senders and rate limits without dropping sockets', {timeout:10000},async()=>{
+ const server=createArenaServer({port:0}),address=await server.listen(),sockets=[];
+ const wait=(ws,type)=>new Promise((resolve,reject)=>{const timer=setTimeout(()=>{ws.off('message',handler);reject(Error(type));},2500);const handler=raw=>{const m=JSON.parse(raw);if(m.type===type){clearTimeout(timer);ws.off('message',handler);resolve(m);}};ws.on('message',handler);});
+ try{
+  for(const name of ['One','Two']){const ws=new WebSocket(`ws://127.0.0.1:${address.port}/play`);sockets.push(ws);await once(ws,'open');const ready=wait(ws,'chat-ready');ws.send(JSON.stringify({type:'chat-hello',name}));await ready;}
+  const received=wait(sockets[1],'chat');sockets[0].send(JSON.stringify({type:'chat',channel:'global',text:'x'.repeat(200),name:'spoof'}));const message=await received;assert.equal(message.name,'One');assert.equal(message.text.length,160);
+  const limited=wait(sockets[0],'chat-error');sockets[0].send(JSON.stringify({type:'chat',channel:'global',text:'again'}));await limited;assert.equal(sockets[0].readyState,1);
+ }finally{sockets.forEach(s=>s.terminate());await server.close();}
+});
+await test('third character is selectable online and invalid variants are rejected',()=>{
+ const r=new Room(0,0,undefined,{staging:true}),a=r.join('Third',undefined,Date.now(),1,2);
+ assert.equal(r.match.actors[a.id].operator,2);r.lobbyChange(a.token,{operator:1});r.lobbyChange(a.token,{operator:2});assert.equal(r.snapshot(a.token).actors.find(p=>p.id===a.id).operator,2);assert.throws(()=>r.lobbyChange(a.token,{operator:9}));
+});
+await test('match and team chat never leak into other rooms or opposing teams', {timeout:10000},async()=>{
+ const server=createArenaServer({port:0}),address=await server.listen(),clients=[];
+ const connect=async options=>{const ws=new WebSocket(`ws://127.0.0.1:${address.port}/play`),entry={ws,messages:[],id:0,room:''};clients.push(entry);await once(ws,'open');const welcome=new Promise(resolve=>ws.on('message',raw=>{const m=JSON.parse(raw);if(m.type==='welcome'){entry.id=m.id;entry.room=m.room;resolve(m);}if(m.type==='chat')entry.messages.push(m);}));ws.send(JSON.stringify(options));await welcome;return entry;};
+ try{
+  const a=await connect({type:'create',name:'A',mode:2,map:0});await connect({type:'join',name:'B',room:a.room});await connect({type:'join',name:'C',room:a.room});await connect({type:'create',name:'Other',mode:0,map:0});
+  a.ws.send(JSON.stringify({type:'chat',channel:'team',text:'private'}));await new Promise(r=>setTimeout(r,100));
+  const room=server.rooms.get(a.room),team=room.match.actors[a.id].team;
+  for(const c of clients)assert.equal(c.messages.length,c.room===a.room&&room.match.actors[c.id].team===team?1:0);
+ }finally{clients.forEach(c=>c.ws.terminate());await server.close();}
 });

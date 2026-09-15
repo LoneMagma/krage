@@ -1,6 +1,8 @@
-# krage v0.4 development build
+# kRAGE v0.7.0
 
-Local bot arena FPS with a private-room multiplayer alpha. Three primary weapons, one blade, four modes, two arenas. Built with Three.js, TypeScript, React and the Sites Vinext starter. Art and audio are procedural; supplied references are not redistributed.
+Browser arena FPS with public Quick Play, private friend rooms and practice bots. Three primaries, one blade, four modes and two arenas. Built with Three.js, TypeScript, React and Vinext. Models are procedural; audio uses the supplied prepared sound pack with procedural fallbacks.
+
+This pre-v1 build requires frontend and room server protocol 9. See [release notes](docs/V0.7.md) and [Render deployment instructions](docs/DEPLOY.md).
 
 ## Play
 
@@ -13,14 +15,14 @@ Choose Free for all, 1v1, 2v2 or 3v3, an arena, a primary and bot difficulty. FF
 | WASD / mouse       | Move / look                                         |
 | Left / right mouse | Fire / aim                                          |
 | Space              | Jump; release and press for the next jump           |
-| Shift              | Tap: toggle crouch; double-tap: slide while moving  |
+| Shift              | Hold: crouch; double-tap: slide while moving  |
 | C                  | Separate slide shortcut; both bindings configurable |
 | R                  | Reload                                              |
 | 1 / 2              | Your primary / blade                                |
 | Q or wheel         | Toggle primary and blade                            |
 | Tab / Escape       | Scores / pause                                      |
 
-Touch controls are included. WebGL 2 is required. If an embedded browser blocks mouse capture, choose **Play with drag aim** on the pause screen, or open the game in a full browser tab for unrestricted mouse look. In drag mode, hold a mouse button while moving to look; I/J/K/L also turn the camera. On the spawn screen, 1/2/3 select a primary and Enter deploys.
+Touch controls are included. WebGL 2 is required. If an embedded browser blocks mouse capture, choose **Play with drag aim** on the pause screen, or open the game in a full browser tab for unrestricted mouse look. In drag mode, hold a mouse button while moving to look; I/J/K/L also turn the camera. On the spawn screen, 1/2/3 select a primary and Space/Enter deploys.
 
 ## Private rooms
 

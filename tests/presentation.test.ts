@@ -299,7 +299,8 @@ await test('practice rewards, purchases and claims are idempotent and UTC schedu
   assert.equal(p.balance, 140);
   assert.deepEqual(purchase(p, 'finish-frost'), p);
   assert.equal(equipCosmetic(p, 'finish-frost').finish, 'finish-frost');
-  assert.equal(equipCosmetic(p, 'op-spectre').operator, 'op-scout');
+  assert.equal(equipCosmetic(p, 'op-spectre').operator, 'op-spectre');
+  assert.equal(equipCosmetic(p, 'unknown-operator').operator, 'op-scout');
   p = recordMatch(p, { ...receipt, id: 'match-2' }, now);
   const challenge = challenges(p).find(
     (c) => c.period === 'daily' && p.daily[c.metric] >= c.target,
@@ -451,6 +452,12 @@ await test('recorded gunfire plays one source per shot, pans remotely and releas
   assert.ok(filters.at(-1)!.frequency.value<filters[0].frequency.value);
   sources.forEach(s=>s.onended());assert.equal(audio.voices,0);
   assert.equal(audio.recordedShot(3,.2,0,0,true),false);
+  for(const name of ['click','hit','headshot','echo-reload-open','echo-reload-feed','echo-reload-close','edge-stab','edge-hit','victory','reward','defeat','kilo-reload-open','kilo-reload-feed','kilo-reload-close'])audio.effects.set(name,{} as AudioBuffer);
+  const actions=[()=>audio.click(),()=>audio.hit(),()=>audio.hit(true),()=>audio.reload(0),()=>audio.reloadPhase('feed',0),()=>audio.reloadPhase('close',0),()=>audio.shot(3,v(),v(),0,true,'stab'),()=>audio.bladeContact(true),()=>audio.result(true),()=>audio.reward(),()=>audio.result(false),()=>audio.reload(1),()=>audio.reloadPhase('feed',1),()=>audio.reloadPhase('close',1)];
+  const previous=starts;actions.forEach(action=>action());
+  assert.equal(starts-previous,actions.length,'each recorded event plays once without synthesized overlap');
+  sources.slice(previous).forEach(source=>source.onended());assert.equal(audio.voices,0);
+  audio.voices=48;assert.equal(audio.effect('click'),true);assert.equal(starts,previous+actions.length,'voice budget prevents unbounded overlapping sounds');
 });
 
 await test('two-bone IK preserves limb length for crouched, airborne and unreachable targets', async () => {
@@ -533,4 +540,43 @@ await test('capture requests reject stale failures and repeated respawn keys',as
  const guard=new CaptureGuard();const first=guard.begin();guard.cancel();const second=guard.begin();
  assert.equal(guard.settle(first),false);assert.equal(guard.pending,true);assert.equal(guard.settle(second),true);assert.equal(guard.settle(second),false);
  assert.equal(respawnShortcut('Space',false),true);assert.equal(respawnShortcut('Enter',false),true);assert.equal(respawnShortcut('Space',true),false);
+});
+
+await test('premium finishes require ownership and Factory restores only the selected weapon', async () => {
+ const {newProfile,purchase,equipWeaponFinish,weaponFinish,loadProfile}=await import('../lib/game/progression.js');
+ let p=newProfile();
+ assert.deepEqual(equipWeaponFinish(p,0,'skin-echo-carbon'),p);
+ p=purchase(p,'skin-echo-carbon');assert.equal(p.balance,20);
+ assert.deepEqual(purchase(p,'skin-echo-carbon'),p);
+ assert.deepEqual(equipWeaponFinish(p,1,'skin-echo-carbon'),p);
+ p=equipWeaponFinish(p,0,'skin-echo-carbon');
+ p=equipWeaponFinish(purchase(p,'skin-kilo'),1,'skin-kilo');
+ assert.deepEqual([0,1,2].map(w=>weaponFinish(p,w)),[4,2,0]);
+ p=loadProfile(JSON.stringify(equipWeaponFinish(p,0,'finish-factory')));
+ assert.deepEqual([0,1,2].map(w=>weaponFinish(p,w)),[0,2,0]);
+ assert.deepEqual(purchase(p,'skin-mica-carbon'),p);
+});
+await test('lobby carry poses preserve arm lengths across both models and all primaries', async () => {
+ const {poseLobbyAvatar}=await import('../lib/game/graphics.js');
+ const {RIG_POINTS}=await import('../lib/game/graphics.js');
+ for(const variant of [0,1])for(const weapon of [0,1,2]){
+  const model=avatar('#aabbcc',variant),m=new Match(0,0,weapon);
+  for(const time of [0,1,5]){
+   animateAvatar(model,m.player,time,.016);poseLobbyAvatar(model,time);
+   for(const [a,b] of [[3,4],[4,5],[6,7],[7,8]]){
+    const expected=new Vector3(...RIG_POINTS[a]).distanceTo(new Vector3(...RIG_POINTS[b]));
+    assert.ok(Math.abs(model.joints[a].distanceTo(model.joints[b])-expected)<1e-5);
+   }
+  }
+  disposeObject(model.group);
+ }
+});
+await test('all three Blender character meshes are finite, distinct and within the lightweight budget',()=>{
+ const counts=[];
+ for(const variant of [0,1,2]){
+  const model=avatar('#ff8855',variant);let triangles=0;
+  for(const part of model.parts)part.traverse(o=>{if(o instanceof Mesh){const p=o.geometry.getAttribute('position');for(let i=0;i<p.count;i++)assert.ok(Number.isFinite(p.getX(i))&&Number.isFinite(p.getY(i))&&Number.isFinite(p.getZ(i)));triangles+=(o.geometry.index?.count??p.count)/3;}});
+  assert.ok(triangles>3000&&triangles<12000);counts.push(triangles);disposeObject(model.group);
+ }
+ assert.equal(new Set(counts).size,3);
 });
