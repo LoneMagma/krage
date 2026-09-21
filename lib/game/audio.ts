@@ -255,8 +255,7 @@ export class AudioSystem {
     this.tone(130, 0.055, 0.02, 'sine', 80);
   }
   slide(surface: 'metal' | 'stone') {
-    if(this.effect('slide',0.45,0,surface==='metal'?1.08:.95))return;
-    this.burst(0.24, 0.025, 900);
+    this.burst(.29,.045,surface==='metal'?1150:850);
   }
   spawn() {
     this.tone(300, 0.16, 0.04, 'sine', 620);

@@ -5,7 +5,7 @@ import { WebSocket } from 'ws';
 import { Room, sanitizeInput } from '../server/rooms.mjs';
 import { createArenaServer } from '../server/index.mjs';
 import { NetworkState, localId } from '../.server-build/network-state.js';
-import { emptyInput } from '../.server-build/core.js';
+import { emptyInput, makeLegacyMap } from '../.server-build/core.js';
 import { EconomyStore } from '../server/economy.mjs';
 const message = (seq, extra = {}) => ({
   seq,
@@ -355,7 +355,7 @@ await test('authoritative shot events identify input frame and expose tick diagn
 
 await test('room hitscan uses historical targets but still respects solid cover', () => {
   for (const blocked of [false,true]) {
-    const r=new Room(1,1), owner=r.join('A');r.join('B');
+    const r=new Room(1,1), owner=r.join('A');r.join('B');r.match.map=makeLegacyMap(1);
     const [a,b]=r.match.actors;
     a.pos={x:-5,y:0,z:-2};b.pos={x:-5,y:0,z:-7};
     a.yaw=0;a.pitch=0;a.cooldown=0;a.equip=0;a.shield=0;b.shield=0;
@@ -419,7 +419,7 @@ await test('private rematch preserves party, clears combat and accepts the next 
 
 await test('delayed input bursts retire stale frames without disconnecting or fast-forwarding', () => {
   const r=new Room(1,0),a=r.join('A');r.join('B');
-  const actor=r.match.actors[a.id];actor.pos={x:-20,y:0,z:10};
+  const actor=r.match.actors[a.id];actor.pos={x:-22,y:0,z:10};
   for(let seq=1;seq<=180;seq++)assert.equal(r.input(a.token,message(seq)),true);
   assert.ok(r.slots.get(a.token).queue.length<=6);
   assert.ok(r.snapshot(a.token).droppedInputs>0);
@@ -530,4 +530,18 @@ await test('match and team chat never leak into other rooms or opposing teams', 
   const room=server.rooms.get(a.room),team=room.match.actors[a.id].team;
   for(const c of clients)assert.equal(c.messages.length,c.room===a.room&&room.match.actors[c.id].team===team?1:0);
  }finally{clients.forEach(c=>c.ws.terminate());await server.close();}
+});
+
+await test('Dune and Skirmish rooms expose their matching shared arena and protocol',()=>{
+ for(const map of [0,2]){
+  const room=new Room(0,map,undefined,{public:true,capacity:4});const player=room.join('Explorer');
+  const state=room.snapshot(player.token);assert.equal(state.map,map);assert.equal(state.protocol,14);
+  assert.equal(room.match.map.width,map===0?72:60);assert.equal(room.match.map.name,map===0?'DUNE':'CELL I');
+  for(const a of room.match.actors)assert.ok(!room.match.map.blocks.some(b=>Math.abs(a.pos.x-b.x)<b.w/2+.33&&Math.abs(a.pos.z-b.z)<b.d/2+.33&&b.y-b.h/2<a.pos.y+1.85&&b.y+b.h/2>a.pos.y+.01));
+ }
+ assert.throws(()=>new Room(0,4));
+});
+
+await test('new Snow and CELL II are selectable online with shared geometry',()=>{
+ for(const map of [1,3]){const room=new Room(2,map,undefined,{botFill:true});const a=room.join('A'),b=room.join('B');assert.equal(room.snapshot(a.token).map,map);assert.equal(room.snapshot(b.token).protocol,14);assert.equal(room.match.map.name,map===1?'SNOW':'CELL II');}
 });

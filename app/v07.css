@@ -104,3 +104,54 @@
 .lobby-shell button.operator-window{background:transparent!important;border:0!important;padding:0!important;border-radius:0!important}
 .lobby-shell .lobby-footer{width:auto!important;max-width:none!important}.lobby-shell .project-credit{white-space:nowrap}
 .lobby-shell .lobby-footer{z-index:90;pointer-events:auto}
+
+/* Three arenas share the same compact selector. */
+.lobby-shell .arena-tabs{width:220px!important;gap:10px!important}.lobby-shell .arena-tab strong{font-size:10px}.lobby-shell .stage-map{width:170px!important}@media(max-width:750px){.lobby-shell .arena-tabs{width:180px!important;gap:7px!important}.lobby-shell .arena-tab strong{font-size:9px}}
+
+/* Four arenas stay accessible without horizontal scrolling. */
+.lobby-shell .arena-tabs{width:250px!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px 14px!important}
+@media(max-width:750px){.lobby-shell .arena-tabs{width:170px!important}}
+
+/* v0.9: centered navigation and a clear visual map selector. */
+.lobby-shell .topbar{display:grid!important;grid-template-columns:minmax(150px,1fr) auto minmax(150px,1fr);gap:20px!important}
+.lobby-shell .topbar nav{justify-content:center;gap:8px;padding:5px 10px;background:#152b35b8;border:1px solid #bad7dd22;border-radius:14px}
+.lobby-shell .nav-button{padding:12px 15px!important;border-radius:9px!important;color:#c2ced2;background:transparent!important}
+.lobby-shell .nav-button.active{background:#edf5f012!important;color:#fff1d4}
+.lobby-shell .nav-button.active::after{left:25%;right:25%;bottom:4px;background:#e7ae71}
+.lobby-shell .nav-wallet{justify-self:end}
+.map-switcher{display:flex;align-items:center;gap:10px}.map-switcher button{width:32px;height:48px;border:1px solid #d6e8e133;border-radius:9px;background:#142c39c9;color:#fff1d4;font-size:28px;cursor:pointer;flex-shrink:0}.map-switcher button:hover{background:#486574}
+.lobby-shell .stage-map{width:248px!important}.lobby-shell .stage-map .map-diagram{width:140px;height:87px;opacity:1}
+.lobby-shell .arena-tab{border:1px solid #a9c2cd25!important;border-radius:8px!important;padding:9px!important;background:#142631ab!important;text-align:left;min-height:39px}
+.lobby-shell .arena-tab[aria-pressed=true]{border-color:#e5b274!important;background:#74563770!important;color:#fff1d4}
+@media(max-width:1000px){.lobby-shell .topbar{grid-template-columns:130px 1fr 75px;gap:8px!important}.lobby-shell .nav-button{padding:10px 8px!important;font-size:10px!important}.lobby-shell .topbar nav{gap:4px}}
+@media(max-width:750px){.lobby-shell .topbar{display:flex!important}.lobby-shell .topbar nav{padding:2px 5px}.lobby-shell .stage-map{width:170px!important}.map-switcher{justify-content:space-between}.map-switcher button{height:28px;width:28px;font-size:23px}.lobby-shell .arena-tabs{top:198px!important}}
+
+.lobby-shell .arena-tab{display:flex!important;align-items:center}.lobby-shell .arena-tab strong{white-space:nowrap}
+
+/* v0.9 predeployment: quiet navigation, spacious choices and local controls. */
+.lobby-shell .nav-button::after,.lobby-shell .nav-button::before{display:none!important;content:none!important}
+.lobby-shell .nav-button{border-bottom:0!important;text-decoration:none!important}
+.lobby-shell .arena-tabs{top:286px!important;width:248px!important;display:grid!important;grid-template-columns:1fr 1fr;gap:8px!important}
+.lobby-shell .arena-tab{min-width:0;min-height:34px;justify-content:center}
+.lobby-shell .map-switcher{gap:10px;justify-content:space-between}
+.lobby-shell .setup-panel.match-setup{overflow:visible!important;border-radius:20px!important;background:linear-gradient(150deg,#19333bdc,#111c24ed)!important}
+.lobby-shell .practice-settings summary{list-style:none;display:flex;align-items:center;gap:8px;width:100%;padding:10px 12px;border:1px solid #91b4bb38;border-radius:8px;font:700 11px var(--font-ui);color:#d8e5e4;cursor:pointer;background:#ffffff05}
+.lobby-shell .practice-settings summary::before{content:'‹';font-size:20px;line-height:12px;color:#e0b483}
+.lobby-shell .practice-settings[open] summary{background:#49616955;border-color:#a3c5c666}
+.lobby-shell .practice-settings[open] .bot-options{right:calc(100% + 36px);bottom:0;width:260px;border-radius:14px;background:#172b32f5;box-shadow:0 14px 38px #0006;z-index:30}
+.lobby-shell .practice-settings .game-choice{display:flex;flex-wrap:wrap;gap:5px}
+.lobby-shell .game-choice button,.lobby-shell .mode-button,.lobby-shell .secondary-play-actions button{border-radius:8px;transition:background .15s,border-color .15s}
+.lobby-shell button[aria-pressed=true]{box-shadow:inset 0 0 0 1px #e9b17a66}
+.lobby-shell .secondary-play-actions button{min-height:38px;background:#36505944;border:1px solid #9db7bd38;color:#e1eae7}
+.kr-credit{width:24px;height:24px;display:inline-block;vertical-align:middle;flex-shrink:0;color:#e9bb76}
+.mission-reward .kr-credit{width:18px;height:18px}.mission-list{gap:8px}.mission-list article{padding:13px 14px}.mission-details h3{margin-bottom:6px}
+.friend-lobby-panel .room-config{display:flex;flex-direction:column;gap:22px;background:none;border:0;flex:1}
+.friend-lobby-panel .room-config nav{display:flex;flex-direction:row;gap:6px;padding:0;border:0;flex:none}
+.friend-lobby-panel .room-config nav button{flex:1;border:1px solid #b9cbcb20;border-radius:9px;padding:11px 8px;background:#ffffff04}
+.friend-lobby-panel .room-config nav button[aria-pressed=true]{background:#bda17b28;color:#ffe0af}
+.friend-lobby-panel .room-config-fields{padding:0 4px}.friend-lobby-panel .room-options{gap:22px}
+.friend-lobby-panel .room-options label{gap:9px;font-size:11px;color:#b9cdcf}
+.friend-lobby-panel .game-choice{gap:8px}.friend-lobby-panel .game-choice button{min-height:42px;border-radius:10px;background:#243d4570;font-size:12px}
+.friend-lobby-panel .room-recap{padding:12px 0;color:#a7bdbd}
+@media(max-height:760px){.lobby-shell .arena-tabs{top:257px!important}.mission-list article{padding:9px 12px}.mission-details h3{font-size:14px}.mission-reward button{padding:6px 9px}.friend-lobby-panel .room-config{gap:12px}.friend-lobby-panel .room-options{gap:12px}}
+@media(max-width:750px){.lobby-shell .arena-tabs{top:224px!important;width:170px!important}.lobby-shell .stage-map .map-diagram{width:92px!important;height:58px!important}.lobby-shell .practice-settings[open] .bot-options{width:220px;right:calc(100% + 20px)}.friend-lobby-panel .game-choice button{min-height:34px;font-size:10px}}

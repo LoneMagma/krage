@@ -7,15 +7,12 @@ export type MatchReceipt = Counts & {
   eligible: boolean;
 };
 export const CATALOG = [
-  { id: 'skin-echo-corona', kind: 'finish', name: 'ECHO / Corona', note: 'PRESTIGE', cost: 3600, variant: 5, color: '#85f4dd', weapon: 0 },
-  { id: 'skin-kilo-regent', kind: 'finish', name: 'KILO / Regent', note: 'PRESTIGE', cost: 4200, variant: 5, color: '#e1b55e', weapon: 1 },
-  { id: 'skin-mica-nebula', kind: 'finish', name: 'MICA / Nebula', note: 'PRESTIGE', cost: 4800, variant: 5, color: '#e389ff', weapon: 2 },
-  { id: 'skin-echo-carbon', kind: 'finish', name: 'ECHO / Circuit', note: '', cost: 900, variant: 4, color: '#85d9cf', weapon: 0 },
-  { id: 'skin-kilo-carbon', kind: 'finish', name: 'KILO / Blackout', note: '', cost: 1050, variant: 4, color: '#d8b68a', weapon: 1 },
-  { id: 'skin-mica-carbon', kind: 'finish', name: 'MICA / Nightfall', note: '', cost: 1200, variant: 4, color: '#b4a0dc', weapon: 2 },
-  { id: 'skin-echo', kind: 'finish', name: 'ECHO / Glacier', note: '', cost: 300, variant: 1, color: '#b8d7f0', weapon: 0 },
-  { id: 'skin-kilo', kind: 'finish', name: 'KILO / Copperhead', note: '', cost: 350, variant: 2, color: '#f78a50', weapon: 1 },
-  { id: 'skin-mica', kind: 'finish', name: 'MICA / Amethyst', note: '', cost: 400, variant: 3, color: '#ac8cf5', weapon: 2 },
+  { id: 'skin-echo-corona', kind: 'finish', name: 'ECHO / Glacier', note: 'PRESTIGE', cost: 2800, variant: 5, color: '#85f4dd', weapon: 0 },
+  { id: 'skin-kilo-regent', kind: 'finish', name: 'KILO / Regent', note: 'PRESTIGE', cost: 3200, variant: 5, color: '#e1b55e', weapon: 1 },
+  { id: 'skin-mica-nebula', kind: 'finish', name: 'MICA / Nebula', note: 'PRESTIGE', cost: 3600, variant: 5, color: '#8399a3', weapon: 2 },
+  { id: 'skin-echo-carbon', kind: 'finish', name: 'ECHO / Circuit', note: '', cost: 750, variant: 4, color: '#85d9cf', weapon: 0 },
+  { id: 'skin-kilo-carbon', kind: 'finish', name: 'KILO / Blackout', note: '', cost: 900, variant: 4, color: '#d8b68a', weapon: 1 },
+  { id: 'skin-mica-carbon', kind: 'finish', name: 'MICA / Nightfall', note: '', cost: 1000, variant: 4, color: '#b4a0dc', weapon: 2 },
   {
     id: 'op-scout',
     kind: 'operator',
@@ -126,6 +123,15 @@ export function refreshProfile(profile: Profile, now = Date.now()): Profile {
     p.week = week;
     p.weekly = ZERO();
   }
+  // Retired finishes are refunded exactly once, including saved equipped copies.
+  const retired:Record<string,number>={'skin-echo':300,'skin-kilo':350,'skin-mica':400};
+  for(const [id,cost] of Object.entries(retired))if(p.owned.includes(id)){
+    const receipt=`retired:${id}`;
+    if(!p.ledger.some(e=>e.id===receipt)){p.balance+=cost;p.ledger=[{id:receipt,amount:cost,reason:'Retired finish refund'},...p.ledger];}
+    p.owned=p.owned.filter(owned=>owned!==id);
+  }
+  p.weaponFinishes=p.weaponFinishes?.map(id=>id in retired?'finish-factory':id);
+  if(p.finish in retired)p.finish='finish-factory';
   return p;
 }
 type Challenge = {
@@ -145,6 +151,10 @@ const dailyDeck: [string, Metric, number, number][] = [
   ['Close the gap', 'meleeKills', 3, 70],
   ['Take the round', 'wins', 1, 60],
   ['Frag rhythm', 'kills', 18, 80],
+  ['Warm streak', 'kills', 15, 70],
+  ['Second round', 'matches', 3, 65],
+  ['Steady aim', 'headshots', 5, 70],
+  ['Blade work', 'meleeKills', 2, 50],
 ];
 const weeklyDeck: [string, Metric, number, number][] = [
   ['Arena regular', 'matches', 8, 180],
@@ -152,6 +162,9 @@ const weeklyDeck: [string, Metric, number, number][] = [
   ['Sharp focus', 'headshots', 20, 200],
   ['Winning run', 'wins', 5, 220],
   ['Close quarters', 'meleeKills', 12, 200],
+  ['Centurion', 'kills', 100, 260],
+  ['Weekend regular', 'matches', 10, 220],
+  ['Precision run', 'headshots', 25, 240],
 ];
 export function challenges(p: Profile): Challenge[] {
   const make = (
@@ -159,27 +172,21 @@ export function challenges(p: Profile): Challenge[] {
     period: 'daily' | 'weekly',
     epoch: number,
     count: number,
-  ) =>
-    Array.from({ length: count }, (_, i) => {
-      const index =
-          (((epoch * 2 + i) % deck.length) + deck.length) % deck.length,
-        [title, metric, target, reward] = deck[index];
-      return {
-        id: `${period}:${epoch}:${index}`,
-        title,
-        metric,
-        target,
-        reward,
-        period,
-        expires:
-          period === 'daily' ? (epoch + 1) * DAY : ((epoch + 1) * 7 - 3) * DAY,
-      };
+  ) => {
+    // Stable UTC-seeded shuffle; unique objectives in each set, no server cron needed.
+    let seed=(epoch^(period==='daily'?0x51f15e:0x9e3779b9))>>>0;
+    const order=deck.map((_,i)=>i);
+    for(let i=order.length-1;i>0;i--){seed=(Math.imul(seed,1664525)+1013904223)>>>0;const j=seed%(i+1);[order[i],order[j]]=[order[j],order[i]];}
+    const metrics=new Set<Metric>();
+    return order.filter(i=>{const metric=deck[i][1];if(metrics.has(metric))return false;metrics.add(metric);return true;}).slice(0,count).map(index=>{
+      const [title,metric,target,reward]=deck[index];
+      return {id:`${period}:${epoch}:${index}`,title,metric,target,reward,period,
+        expires:period==='daily'?(epoch+1)*DAY:((epoch+1)*7-3)*DAY};
     });
-  return [
-    ...make(dailyDeck, 'daily', p.day, 2),
-    ...make(weeklyDeck, 'weekly', p.week, 3),
-  ];
+  };
+  return [...make(dailyDeck,'daily',p.day,3),...make(weeklyDeck,'weekly',p.week,4)];
 }
+
 function credit(p: Profile, id: string, amount: number, reason: string) {
   if (p.ledger.some((l) => l.id === id)) return p;
   return {

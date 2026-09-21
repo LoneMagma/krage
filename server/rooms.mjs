@@ -31,7 +31,7 @@ export class Room {
     code = randomBytes(3).toString('hex').toUpperCase(),
     options = {},
   ) {
-    if (![0, 1, 2, 3].includes(mode) || ![0, 1].includes(map))
+    if (![0, 1, 2, 3].includes(mode) || ![0, 1, 2, 3].includes(map))
       throw new Error('Invalid room settings');
     this.code = code;
     this.roundId=randomBytes(12).toString('hex');
@@ -319,7 +319,7 @@ export class Room {
     return {
       type: 'snapshot',
       roundId:this.roundId,
-      protocol: 9,
+      protocol: 14,
       staging: this.staging && !this.started,
       host: this.slots.get(this.hostToken)?.id ?? null,
       fragLimit: this.match.fragLimit,

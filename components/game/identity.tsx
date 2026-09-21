@@ -21,8 +21,8 @@ export function WeaponGlyph({
 }) {
   const key = useId().replace(/:/g, ''),
     accent = WEAPON_COLORS[id],
-    wood = finish === 5 ? ['#25414a','#292d32','#45366b'][id] : finish === 4 ? '#24363b' : finish === 1 ? '#dce7ec' : finish === 2 ? '#e78851' : finish === 3 ? '#ac8cf5' : '#a6643f',
-    steel = finish === 5 ? ['#d7e4e0','#d5ad62','#9a89c6'][id] : finish === 4 ? '#657c83' : finish === 1 ? '#bacbdc' : finish === 2 ? '#8e614d' : finish === 3 ? '#726494' : '#65778e';
+    wood = finish === 5 ? ['#25414a','#292d32','#26363f'][id] : finish === 4 ? '#24363b' : finish === 1 ? '#dce7ec' : finish === 2 ? '#e78851' : finish === 3 ? '#ac8cf5' : '#a6643f',
+    steel = finish === 5 ? ['#d7e4e0','#d5ad62','#687e88'][id] : finish === 4 ? '#657c83' : finish === 1 ? '#bacbdc' : finish === 2 ? '#8e614d' : finish === 3 ? '#726494' : '#65778e';
   return (
     <svg viewBox="0 0 240 88" aria-hidden="true" className="weapon-glyph">
       <defs>
@@ -115,7 +115,10 @@ export function WeaponGlyph({
           </>
         )}
       </g>
-      {finish===5&&id<3&&<g stroke={['#85f4dd','#f5ce78','#ed9eff'][id]} fill="none"><path d="M82 34H149M88 38H144" strokeWidth="2"/><path d="M109 42l5 4-5 4-5-4Z" strokeWidth="2"/><path d="M157 47l5-6m1 6 5-6m1 6 5-6" strokeWidth="1.5"/></g>}
+      {finish===5&&id<3&&<g stroke={['#85f4dd','#f5ce78','#a4bac0'][id]} fill="none"><path d="M82 34H149M88 38H144" strokeWidth="2"/><path d="M109 42l5 4-5 4-5-4Z" strokeWidth="2"/><path d="M157 47l5-6m1 6 5-6m1 6 5-6" strokeWidth="1.5"/></g>}
     </svg>
   );
 }
+
+/** A stamped K inside an open credit token. */
+export function KrCredit(){return <svg className="kr-credit" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2 28 9v14l-12 7L4 23V9Z" fill="none" stroke="currentColor" strokeWidth="2"/><path d="M10 9h4v6l6-6h5l-8 8 8 7h-6l-5-5v5h-4Z" fill="currentColor"/><path d="M26 5v5M23 7.5h6" stroke="currentColor" strokeWidth="1.5"/></svg>;}

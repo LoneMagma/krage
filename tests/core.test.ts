@@ -4,6 +4,7 @@ import {
   Match,
   Navigation,
   makeMap,
+  makeLegacyMap,
   rayBox,
   hasLOS,
   v,
@@ -11,6 +12,7 @@ import {
   moveActor,
   eye,
   shotSpread,
+  bodyHeight,
   type Mode,
 } from '../lib/game/core.js';
 const step = (m: Match, seconds: number, input = emptyInput()) => {
@@ -18,6 +20,7 @@ const step = (m: Match, seconds: number, input = emptyInput()) => {
 };
 function duel() {
   const m = new Match(1, 1, 1, 'normal', 123);
+  m.map=makeLegacyMap(1);
   m.random = () => 0.5;
   const [a, b] = m.actors;
   a.pos = v(-5, 0, -2);
@@ -170,7 +173,7 @@ await test('player jumps, lands, and remains above the ground', () => {
   assert.equal(a.pos.y, 0);
 });
 await test('movement collides with a building and cannot escape arena bounds', () => {
-  const m = new Match(0, 0, 0);
+  const m = new Match(0, 2, 0);
   const a = m.player;
   a.pos = v(-17, 0, -5);
   a.yaw = 0;
@@ -201,7 +204,7 @@ await test('slide gives a bounded impulse and obeys its cooldown', () => {
   assert.ok(a.slideCooldown < 0.8);
 });
 await test('small steps lead onto the central platform', () => {
-  const m = new Match(0, 0, 0);
+  const m = new Match(0, 2, 0);
   m.player.pos = v(-13, 0, 0);
   m.player.yaw = -Math.PI / 2;
   const input = emptyInput();
@@ -245,8 +248,8 @@ await test('team score, time limit, and ties use frags, not bonus points', () =>
   assert.equal(n.winner, 'YOUR TEAM WINS');
   assert.equal(n.teams[0], 20);
 });
-await test('navigation paths route around geometry on both maps', () => {
-  for (const id of [0, 1]) {
+await test('navigation paths route around geometry on every map', () => {
+  for (const id of [0, 1, 2, 3]) {
     const map = makeMap(id),
       nav = new Navigation(map);
     const path = nav.path(map.spawns[0], map.spawns[1]);
@@ -261,8 +264,8 @@ await test('navigation paths route around geometry on both maps', () => {
       );
   }
 });
-await test('bots navigate and produce real combat in every mode on both maps', () => {
-  for (const id of [0, 1])
+await test('bots navigate and produce real combat in every mode on every map', () => {
+  for (const id of [0, 1, 2, 3])
     for (const mode of [0, 1, 2, 3] as Mode[]) {
       const m = new Match(mode, id, 5, 'normal', 123, 1000);
       step(m, 65);
@@ -377,8 +380,8 @@ await test('stationary test bots neither move nor fire', () => {
   );
   assert.ok(m.actors.slice(1).every((a) => a.shots === 0));
 });
-await test('Foundry shooting slit is physically open between solid sill and lintel', () => {
-  const map = makeMap(0);
+await test('Skirmish shooting slit is physically open between solid sill and lintel', () => {
+  const map = makeMap(2);
   assert.ok(hasLOS(v(0, 1.4, 8), v(0, 1.4, 12), map.blocks));
   assert.equal(hasLOS(v(0, 0.8, 8), v(0, 0.8, 12), map.blocks), false);
   assert.equal(hasLOS(v(0, 2, 8), v(0, 2, 12), map.blocks), false);
@@ -386,6 +389,7 @@ await test('Foundry shooting slit is physically open between solid sill and lint
 await test('Relay service gate blocks standing but allows crouched passage', () => {
   const run = (crouch: boolean) => {
     const m = new Match(0, 1, 0);
+    m.map=makeLegacyMap(1);
     m.player.pos = v(0, 0, 16);
     m.player.yaw = 0;
     const input = emptyInput();
@@ -400,9 +404,9 @@ await test('Relay service gate blocks standing but allows crouched passage', () 
   assert.ok(crouched.pos.z < 11);
 });
 await test('the gantry underpass and separated landing are real walkable surfaces', () => {
-  const map = makeMap(0);
+  const map = makeMap(2);
   assert.ok(hasLOS(v(-4, 1.6, 0), v(4, 1.6, 0), map.blocks));
-  const m = new Match(0, 0, 0);
+  const m = new Match(0, 2, 0);
   m.player.pos = v(4, 3.6, 0);
   m.player.yaw = -Math.PI / 2;
   m.player.grounded = true;
@@ -420,6 +424,7 @@ await test('the gantry underpass and separated landing are real walkable surface
 });
 await test('crouch uses the current collision height on its first simulation step', () => {
   const m = new Match(0, 1, 0);
+    m.map=makeLegacyMap(1);
   m.player.pos = v(0, 0, 13.36);
   m.player.yaw = 0;
   const input = emptyInput();
@@ -442,7 +447,8 @@ await test('recoil rises on fire then settles without erasing mouse adjustment',
   assert.ok(Math.abs(a.pitch - -0.1) < 0.001, `pitch ${a.pitch}`);
 });
 await test('shot events distinguish misses, world surfaces and individual shotgun pellets', () => {
-  const m = new Match(0, 0, 0);
+  const m = new Match(0, 2, 0);
+  m.map=makeLegacyMap(0);
   const a = m.player;
   a.pos = v(-26, 0, 5);
   a.pitch = 1.4;
@@ -466,7 +472,7 @@ await test('shot events distinguish misses, world surfaces and individual shotgu
   assert.equal(a.ammo[2], 1);
 });
 await test('stepping up stairs does not snap the shared camera and bullet eye upward', () => {
-  const m = new Match(0, 0, 0),
+  const m = new Match(0, 2, 0),
     a = m.player,
     input = emptyInput();
   a.pos = v(-12.4, 0, 0);
@@ -546,10 +552,11 @@ await test('descending ordinary stairs preserves contact while deliberate jumps 
 });
 
 await test('slide steering bends the route gradually without adding speed', () => {
-  const m = new Match(0, 0, 0),
+  const m = new Match(0, 2, 0),
     a = m.player;
   m.map.blocks = [];
   a.pos = v();
+  a.yaw = 0;
   a.vel = v(0, 0, -8);
   a.slide = 0.4;
   const input = emptyInput();
@@ -695,4 +702,85 @@ await test('light weapons remain faster than KILO and MICA after the global spee
  const {GUNS}=await import('../lib/game/core.js');
  assert.ok(GUNS[3].speed>GUNS[1].speed&&GUNS[0].speed>GUNS[1].speed);
  assert.ok(GUNS[3].speed<1.06&&GUNS[0].speed<1.04);
+});
+
+await test('Dune has twelve clear spawn pockets and connected routes to every area and terrace',()=>{
+ const map=makeMap(0),nav=new Navigation(map);
+ assert.equal(map.width,72);assert.equal(map.depth,60);assert.equal(map.spawns.length,12);
+ for(const p of map.spawns){
+  assert.ok(!map.blocks.some(b=>Math.abs(p.x-b.x)<b.w/2+.34&&Math.abs(p.z-b.z)<b.d/2+.34&&b.y-b.h/2<1.85),JSON.stringify(p));
+  for(const q of map.spawns)if(p!==q)assert.ok(nav.path(p,q).length>0,`disconnected ${JSON.stringify([p,q])}`);
+ }
+ for(const p of [v(18,2.8,-16),v(17,2.8,0),v(18,2.8,-6)]){
+  const path=nav.path(map.spawns[0],p);assert.ok(path.length>0);assert.ok(Math.abs(path.at(-1)!.y-2.8)<.01);
+  assert.ok(nav.path(p,map.spawns[0]).length>0,'terrace needs a return route');
+ }
+});
+await test('both Dune terraces are reachable on foot and their underpasses remain open',()=>{
+ for(const [pos,yaw] of [[v(32,0,-16),Math.PI/2],[v(18,0,11),0]] as [ReturnType<typeof v>,number][]){
+  const m=new Match(0,0,0);m.player.pos=pos;m.player.yaw=yaw;
+  const input=emptyInput();input.forward=1;step(m,2.1,input);
+  assert.ok(Math.abs(m.player.pos.y-2.8)<.01);assert.ok(m.player.grounded);
+ }
+ const map=makeMap(0);
+ assert.ok(hasLOS(v(17,1.6,-22),v(17,1.6,-10),map.blocks));
+ assert.ok(hasLOS(v(17,1.6,-5),v(17,1.6,3),map.blocks));
+ assert.equal(hasLOS(v(-20,1.6,3),v(4,1.6,3),map.blocks),false,'mid divider must break the all-map angle');
+});
+await test('Dune pipeline gap requires a jump and lands on the second terrace',()=>{
+ const run=(jump:boolean)=>{
+  const m=new Match(0,0,0);m.player.pos=v(18,2.8,-7);m.player.yaw=Math.PI;m.player.grounded=true;
+  const input=emptyInput();input.forward=1;step(m,.2,input);input.jump=jump;step(m,.02,input);input.jump=false;step(m,.58,input);return m.player;
+ };
+ const jumped=run(true),walked=run(false);
+ assert.ok(jumped.pos.z>-3&&jumped.pos.y>=2.79,JSON.stringify(jumped.pos));
+ assert.ok(walked.pos.y<2.7,'walking must not bridge the gap');
+});
+await test('Skirmish preserves the compact arena and invalid map ids fail explicitly',()=>{
+ const map=makeMap(2);assert.equal(map.name,'CELL I');assert.equal(map.width,60);assert.equal(map.depth,50);
+ assert.ok(map.blocks.some(b=>b.kind==='step'));assert.throws(()=>makeMap(4));
+});
+
+await test('Dune bot stair paths can be followed by the actual standing collider',()=>{
+ for(const destination of [v(18,2.8,-16),v(18,2.8,0)]){
+  const m=new Match(0,0,0),a=m.player;a.pos={...m.map.spawns[0]};
+  const path=m.nav.path(a.pos,destination),input=emptyInput();input.forward=1;
+  for(const point of path){let ticks=0;while(Math.hypot(point.x-a.pos.x,point.z-a.pos.z)>.17&&ticks++<480){a.yaw=Math.atan2(a.pos.x-point.x,a.pos.z-point.z);moveActor(a,input,1/120,m.map);}assert.ok(ticks<480,`blocked at ${JSON.stringify([a.pos,point])}`);}
+  assert.ok(Math.abs(a.pos.y-2.8)<.01);
+ }
+});
+
+await test('Dune protrusions stop movement and bullets while the valve opening stays open',()=>{
+ const map=makeMap(0);
+ assert.equal(hasLOS(v(-2.5,1.82,-7),v(-2.5,1.82,-8),map.blocks),false,'wheel rim must catch bullets');
+ assert.equal(hasLOS(v(-2.5,1.5,-7.6),v(-2.5,1.5,-7.73),map.blocks),true,'wheel opening must not become invisible cover');
+ assert.equal(hasLOS(v(18,2,-9),v(18,2,-8),map.blocks),false,'underside of pipe must be solid');
+ const run=(crouch:boolean)=>{const m=new Match(0,0,0);m.player.pos=v(16,0,-9);m.player.yaw=0;const input=emptyInput();input.right=1;input.crouch=crouch;let compressed=false;
+ for(let i=0;i<156;i++){moveActor(m.player,input,1/120,m.map);compressed ||= m.player.crouched;
+ const p=m.player.pos,h=bodyHeight(m.player);assert.ok(!m.map.blocks.some(b=>Math.abs(p.x-b.x)<b.w/2+.33&&Math.abs(p.z-b.z)<b.d/2+.33&&p.y+h>b.y-b.h/2+.02&&p.y<b.y+b.h/2-.02),'actor must never penetrate the pipe');}
+ return {player:m.player,compressed};};
+ const standing=run(false);assert.ok(standing.player.pos.x<18||standing.compressed,'pipe forces actual clearance');
+ assert.ok(run(true).player.pos.x>18.5,'crouch clearance beneath pipe must remain usable');
+});
+
+await test('all four maps have clear spawn pockets, connected routes and open cells',()=>{
+ for(const id of [0,1,2,3]){const map=makeMap(id),nav=new Navigation(map);
+ for(const p of map.spawns){assert.ok(!map.blocks.some(b=>Math.abs(p.x-b.x)<b.w/2+.34&&Math.abs(p.z-b.z)<b.d/2+.34&&b.y-b.h/2<1.85&&b.y+b.h/2>.01),`${map.name} obstructed spawn ${JSON.stringify(p)}`);
+ if(p!==map.spawns[0])assert.ok(nav.path(map.spawns[0],p).length>0,`${map.name} disconnected spawn`);}
+ if(id>=2){assert.ok(!map.blocks.some(b=>b.kind==='ceiling'));for(const p of map.spawns)assert.equal(hasLOS(v(p.x,1.6,p.z),v(p.x,20,p.z),map.blocks),true);}
+ }
+ const old=makeLegacyMap(1),small=makeMap(3);assert.ok(small.width*small.depth<old.width*old.depth*.45);
+});
+await test('Snow gallery has two physical stair routes and bot access',()=>{
+ const map=makeMap(1),nav=new Navigation(map);assert.ok(nav.path(map.spawns[0],v(-6,3,-13)).length>0);
+ for(const x of [-14,2]){const m=new Match(0,1,0);m.player.pos=v(x,0,-1);m.player.yaw=0;const input=emptyInput();input.forward=1;step(m,2.05,input);assert.ok(Math.abs(m.player.pos.y-3)<.01,JSON.stringify(m.player.pos));}
+});
+
+await test('v0.9 airborne WASD reverses direction without adding speed and jump carries a slide',()=>{
+ const m=new Match(0,0,0),a=m.player;m.map.blocks=[];a.pos=v(0,4,0);a.vel=v(6,0,0);a.grounded=false;a.yaw=0;
+ const input=emptyInput();input.right=-1;
+ for(let i=0;i<44;i++){moveActor(a,input,1/120,m.map);assert.ok(Math.hypot(a.vel.x,a.vel.z)<=6.081);}
+ assert.ok(a.vel.x<-.5,'air direction must respond to WASD before landing');
+ a.pos=v();a.vel=v(0,0,-8);a.grounded=true;a.slide=.3;a.jumpHeld=false;input.right=0;input.forward=1;input.jump=true;
+ moveActor(a,input,1/120,m.map);assert.ok(a.vel.y>8);assert.equal(a.slide,0);assert.ok(Math.hypot(a.vel.x,a.vel.z)>7.7);
 });

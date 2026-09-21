@@ -1,4 +1,5 @@
-import { CHARACTER_MESHES } from './assets/characters.js';
+import {buildFacility} from './maps/facility-render.js';
+import { buildDuneEnvironment } from './maps/dune-render.js';
 import { solveLimb } from './motion.js';
 import { ARENA_PALETTES, COLORS } from './palette.js';
 import { motionState, weaponPose } from './animation.js';
@@ -101,7 +102,7 @@ export function cylinder(
   r: number,
   h: number,
   c: string,
-  n = 16,
+  n = 8,
 ) {
   const m = new T.Mesh(new T.CylinderGeometry(r, r, h, n), material(c));
   m.position.set(x, y, z);
@@ -186,6 +187,9 @@ export function buildSky(mapId: number) {
   return sky;
 }
 export function buildMap(map: ArenaMap) {
+  if(map.id===0)return buildDuneEnvironment(map,buildSky(0));
+  if(map.id===1)return buildFacility(map,buildSky(1));
+  if(map.id>=2)return buildFacility(map,buildSky(map.id===3?1:0));
   const group = new T.Group();
   const palette = ARENA_PALETTES[map.id];
   group.add(buildSky(map.id));
@@ -416,7 +420,7 @@ export function buildMap(map: ArenaMap) {
     );
   }
   if (map.id === 0) {
-    label(group, 'DUNE', -17, 5.6, -7.96, 1.15, '#ffcf85');
+    label(group, 'SKIRMISH', -17, 5.6, -7.96, 1.15, '#ffcf85');
     label(group, '07', 0, 2.6, -15.46, 0.65, '#f3b669');
     // Exhaust stacks, pipes and ribbed steel distinguish the warm industrial yard.
     for (const x of [-2.5, 0, 2.5]) {
@@ -633,10 +637,11 @@ export function buildMap(map: ArenaMap) {
   return group;
 }
 export function makeWeapon(index: number, firstPerson = true, finish = 0) {
+  const armor=box; // Crisp block forms, without bevel tessellation on every component.
   const g = new T.Group();
-  const dark = finish === 5 ? ['#d7e4e0','#151b24','#252043'][index]??'#242938' : finish === 4 ? '#18272c' : finish === 1 ? '#3f5e7b' : finish === 2 ? '#172331' : finish === 3 ? '#261e39' : '#233032',
-    metal = finish === 5 ? ['#41666c','#d5ad62','#9a89c6'][index]??'#8898a0' : finish === 4 ? '#748489' : finish === 1 ? '#bacbdc' : finish === 2 ? '#8e614d' : finish === 3 ? '#726494' : '#687b90',
-    wood = finish === 5 ? ['#25414a','#292d32','#45366b'][index]??'#343c49' : finish === 4 ? '#2b3e43' : finish === 1 ? '#dce7ec' : finish === 2 ? '#e78851' : finish === 3 ? '#ac8cf5' : '#a6643f';
+  const dark = finish === 5 ? ['#d7e4e0','#151b24','#141d25'][index]??'#242938' : finish === 4 ? '#18272c' : finish === 1 ? '#3f5e7b' : finish === 2 ? '#172331' : finish === 3 ? '#261e39' : '#233032',
+    metal = finish === 5 ? ['#41666c','#d5ad62','#687e88'][index]??'#8898a0' : finish === 4 ? '#748489' : finish === 1 ? '#bacbdc' : finish === 2 ? '#8e614d' : finish === 3 ? '#726494' : '#687b90',
+    wood = finish === 5 ? ['#25414a','#292d32','#26363f'][index]??'#343c49' : finish === 4 ? '#2b3e43' : finish === 1 ? '#dce7ec' : finish === 2 ? '#e78851' : finish === 3 ? '#ac8cf5' : '#a6643f';
   if (index === 3) {
     armor(g, 0.01, 0, 0.05, 0.075, 0.09, 0.27, dark);
     armor(g, 0.01, 0.01, -0.1, 0.19, 0.045, 0.05, metal);
@@ -648,7 +653,7 @@ export function makeWeapon(index: number, firstPerson = true, finish = 0) {
     shape.lineTo(-0.045, 0.37);
     shape.closePath();
     const blade = new T.Mesh(
-      new T.ExtrudeGeometry(shape, { depth: 0.016, bevelEnabled: true, bevelSegments:1, steps:1, bevelSize:0.004, bevelThickness:0.004 }),
+      new T.ExtrudeGeometry(shape, { depth: 0.016, bevelEnabled: false, steps:1 }),
       material('#b8d0ca'),
     );
     blade.rotation.x = -Math.PI / 2;
@@ -737,9 +742,11 @@ export function makeWeapon(index: number, firstPerson = true, finish = 0) {
     armor(g, 0, 0.107, 0.08, 0.08, 0.04, 0.09, dark);
     armor(g, -0.035, 0.147, 0.1, 0.015, 0.055, 0.025, metal);
     armor(g, 0.035, 0.147, 0.1, 0.015, 0.055, 0.025, metal);
+    if(index!==2){
     armor(g, 0, 0.085, -0.56, 0.035, 0.09, 0.05, metal);
     armor(g, 0, 0.146, -0.56, 0.013, 0.065, 0.03, dark);
     armor(g, 0, 0.184, -0.56, 0.012, 0.009, 0.018, '#d9e8b0');
+    }else{armor(g,0,.052,-.63,.018,.012,.43,metal);armor(g,0,.065,-.83,.023,.02,.02,'#ead5ac');}
     armor(g, 0.07, 0.02, -0.04, 0.02, 0.06, 0.17, '#69807d');
     if (index === 0)
       armor(g, -0.065, -0.005, -0.16, 0.009, 0.032, 0.13, '#ef7548');
@@ -759,13 +766,13 @@ export function makeWeapon(index: number, firstPerson = true, finish = 0) {
         index === 2 ? 0.031 : 0.023,
         0.003,
         '#080f19',
-        20,
+        8,
       );
       bore.rotation.x = Math.PI / 2;
     }
     // Trigger guard, ejection port, receiver pins, ribbing and tactile grips.
     const guard = new T.Mesh(
-      new T.TorusGeometry(0.07, 0.012, 6, 16, Math.PI * 1.65),
+      new T.TorusGeometry(0.07, 0.012, 4, 8, Math.PI * 1.65),
       material(metal),
     );
     guard.position.set(0, -0.14, 0.01);
@@ -776,7 +783,7 @@ export function makeWeapon(index: number, firstPerson = true, finish = 0) {
       const pin = cylinder(g, 0.073, 0.008, z, 0.011, 0.012, '#95a4a8');
       pin.rotation.z = Math.PI / 2;
     }
-    for (let z = -0.42; z < -0.23; z += 0.032)
+    for (let z = -0.42; z < -0.23; z += 0.064)
       armor(
         g,
         0,
@@ -817,7 +824,7 @@ export function makeWeapon(index: number, firstPerson = true, finish = 0) {
       // Continuous curved magazine rather than a stack of rectangular blocks.
       for(const child of g.children.filter(c=>c.name.startsWith('magazine'))){disposeObject(child);g.remove(child);}
       const profile=new T.Shape();profile.moveTo(-.025,-.08);profile.lineTo(.075,-.08);profile.quadraticCurveTo(.085,-.24,.19,-.40);profile.lineTo(.07,-.43);profile.quadraticCurveTo(-.01,-.28,-.025,-.08);
-      const mag=new T.Mesh(new T.ExtrudeGeometry(profile,{depth:.077,steps:1,bevelEnabled:true,bevelSize:.006,bevelThickness:.004,bevelSegments:2,curveSegments:6}),material('#35413e'));
+      const mag=new T.Mesh(new T.ExtrudeGeometry(profile,{depth:.077,steps:1,bevelEnabled:false,curveSegments:4}),material('#35413e'));
       mag.rotation.y=Math.PI/2;mag.position.x=-.0385;mag.name='magazine';g.add(mag);
       for(const side of [-1,1])for(let i=0;i<3;i++){const rib=armor(g,side*.043,-.17-i*.075,-.025-i*.04,.008,.065,.015,metal);rib.rotation.x=-.22-i*.12;rib.name='magazine-extension';}
       const cover=cylinder(g,0,.064,.01,.061,.34,metal,12);cover.rotation.x=Math.PI/2;cover.scale.x=.82;
@@ -837,7 +844,8 @@ export function makeWeapon(index: number, firstPerson = true, finish = 0) {
     for(const side of [-1,1])armor(g,side*0.054,0.015,0.27,0.021,0.035,0.3,dark);
     armor(g,0,-0.025,0.46,0.115,0.18,0.04,dark);
   }else if(index===1){
-    const cover=cylinder(g,0,0.055,0,0.059,0.37,metal,10);cover.rotation.x=Math.PI/2;
+    armor(g,0,.08,-.45,.085,.04,.24,wood);
+    armor(g,0,-.02,.4,.12,.18,.18,wood);
     for(const side of [-1,1])for(const z of [-0.12,0.08]){const pin=cylinder(g,side*0.066,-0.014,z,0.009,0.008,'#a7b0ad',6);pin.rotation.z=Math.PI/2;}
     armor(g,0.075,-0.01,0.07,0.015,0.019,0.16,dark).rotation.x=-0.16;
   }else if(index===2){
@@ -855,7 +863,7 @@ export function makeWeapon(index: number, firstPerson = true, finish = 0) {
     }
   }
   if(finish===5&&index<3){
-    const accent=['#85f4dd','#f5ce78','#ed9eff'][index];
+    const accent=['#85f4dd','#f5ce78','#a4bac0'][index];
     for(const side of [-1,1]){
       armor(g,side*.077,.054,-.045,.008,.012,.33,accent);
       for(let n=0;n<5;n++){const inlay=armor(g,side*.078,.025-n*.008,-.13+n*.054,.009,.012,.031,accent);inlay.rotation.x=.5;}
@@ -868,10 +876,16 @@ export function makeWeapon(index: number, firstPerson = true, finish = 0) {
     const hands = new T.Group();
     hands.name = 'support-hand';
     g.add(hands);
+    if(index===3){
+      armor(g,.025,-.015,.07,.14,.115,.20,'#293b39');
+      for(let i=0;i<3;i++)armor(g,.09,.005,.02+i*.045,.025,.055,.034,'#465650');
+      armor(g,.065,-.12,.28,.15,.17,.33,'#56625e').rotation.x=-.28;
+    }else{
     armor(g, 0.04, -0.15, 0.12, 0.12, 0.11, 0.17, '#293b39');
     for(let i=0;i<3;i++)armor(g,.097,-.17+i*.025,.085,.024,.02,.07,'#465650');
     armor(g,.038,-.205,.19,.13,.018,.055,'#182b2d');
     armor(g, 0.05, -0.22, 0.3, 0.14, 0.15, 0.35, '#56625e');
+    }
     if (index !== 3) {
       armor(hands, -0.07, -0.12, -0.35, 0.11, 0.11, 0.17, '#293b39');
       for(let i=0;i<3;i++)armor(hands,-.025,-.1,-.4+i*.04,.07,.024,.023,'#465650');
@@ -1028,26 +1042,46 @@ export function poseAvatar(model: Avatar, points: T.Vector3[], yaw = 0) {
   if (points !== model.joints)
     for (let i = 0; i < points.length; i++) model.joints[i].copy(points[i]);
 }
-const characterMaterial=new T.MeshPhongMaterial({vertexColors:true,shininess:12,specular:'#30383b'});
 export function avatar(color: string, variant = 0, finish = 0): Avatar {
   const group = new T.Group();
   group.userData.operator = variant;
   const points = RIG_POINTS.map(p=>new T.Vector3(...p));
   const parts = RIG_LINKS.map(([a,b],i)=>{
     const part=new T.Group();part.userData.length=points[a].distanceTo(points[b]);group.add(part);
-    const [packed,triangles]=CHARACTER_MESHES[Math.max(0,Math.min(2,variant))][i];
-    const raw=Uint8Array.from(atob(packed),c=>c.charCodeAt(0)),view=new DataView(raw.buffer),count=raw.length/12;
-    const position=new Float32Array(count*3),normal=new Float32Array(count*3),colors=new Float32Array(count*3);
-    for(let n=0;n<count;n++)for(let axis=0;axis<3;axis++){
-      position[n*3+axis]=view.getInt16(n*12+axis*2,true)/10000;
-      normal[n*3+axis]=view.getInt8(n*12+6+axis)/127;
-      colors[n*3+axis]=view.getUint8(n*12+9+axis)/255;
+    const style=Math.max(0,Math.min(2,variant));
+    const shirt=['#48674c','#377e9d','#6c426e'][style],pants=['#354538','#253d57','#343040'][style],skin=['#c8946e','#dda784','#9b7055'][style],hair=['#3c3027','#362a26','#26272e'][style],accent=['#d99b4c','#e3d9bb','#cca763'][style];
+    const length=part.userData.length;
+    if(i===0){
+      box(part,0,.055,0,.35,.35,.33,skin);
+      box(part,0,.22,.005,.37,.09,.35,hair);
+      for(const x of [-.08,.08]){box(part,x,.08,-.169,.065,.055,.012,'#efe9d6');box(part,x,.075,-.177,.025,.038,.008,'#202c31');}
+      box(part,style===1?.01:0,-.045,-.17,style===2?.065:.09,.018,.012,'#6f4235');
+      for(const x of [-.08,.08])box(part,x,.125,-.178,.066,.013,.01,hair);
+      if(style===0){box(part,-.115,-.027,-.176,.027,.012,.012,'#b87d5e');box(part,-.195,.025,0,.035,.075,.085,'#26393b');}
+      if(style===1){for(const x of [-.11,.11])box(part,x,-.005,-.176,.042,.016,.009,'#bd7961');box(part,.195,-.045,0,.025,.045,.025,accent);}
+      if(style===2)box(part,.12,-.012,-.176,.012,.05,.009,'#d2a48a');
+      if(style===0){box(part,0,.24,0,.39,.07,.37,shirt);box(part,0,.205,-.23,.37,.035,.16,shirt);}
+      if(style===1){box(part,0,.03,.17,.37,.31,.09,hair);box(part,-.155,.1,-.14,.09,.22,.06,hair);box(part,.13,.19,-.17,.11,.10,.035,hair);}
+      if(style===2){box(part,0,.07,.17,.41,.39,.07,shirt);for(const x of [-.09,.09])box(part,x,.12,-.188,.12,.07,.015,accent);box(part,.205,.27,0,.03,.17,.04,'#35464c');}
+    }else if(i===1){
+      box(part,0,0,0,.49,.54,.28,shirt);box(part,0,-.20,0,.5,.1,.30,pants);
+      box(part,0,.14,-.15,.31,.11,.025,color);
+      for(const x of [-.15,.15])box(part,x,-.07,-.17,.13,.14,.06,accent);
+      box(part,0,.02,.185,.32,.36,.1,pants);
+      if(style===0){box(part,-.21,.09,-.17,.05,.3,.04,pants);box(part,.19,.06,.26,.085,.23,.085,accent);}
+      if(style===1){box(part,0,.25,-.02,.5,.065,.33,accent);box(part,-.18,-.18,.21,.10,.17,.12,shirt);}
+      if(style===2)box(part,-.18,.03,-.16,.035,.32,.028,accent);
+      if(style===2)box(part,.19,.14,.20,.08,.2,.08,accent);
+    }else if(i<6){
+      box(part,0,0,0,.20,length*.98,.22,i===2||i===4?shirt:skin);
+      if(i===3||i===5)box(part,0,-length*.37,0,.215,.13,.235,pants);
+      else box(part,0,length*.3,0,.215,.10,.235,accent);
+    }else{
+      box(part,0,0,0,.22,length,.24,pants);
+      if(i===7||i===9)box(part,0,-length*.33,-.045,.235,.17,.34,'#27333a');
+      else box(part,0,-length*.28,-.13,.16,.13,.035,shirt);
     }
-    const bytes=Uint8Array.from(atob(triangles),c=>c.charCodeAt(0)),iv=new DataView(bytes.buffer),index=new Uint16Array(bytes.length/2);
-    for(let n=0;n<index.length;n++)index[n]=iv.getUint16(n*2,true);
-    const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.BufferAttribute(position,3));geometry.setAttribute('normal',new T.BufferAttribute(normal,3));geometry.setAttribute('color',new T.BufferAttribute(colors,3));geometry.setIndex(new T.BufferAttribute(index,1));
-    const mesh=new T.Mesh(geometry,characterMaterial);mesh.castShadow=mesh.receiveShadow=true;part.add(mesh);
-    if(i===1){armor(part,0,.12,-.174,.20,.035,.012,color);armor(part,0,.12,.173,.20,.035,.012,color);}
+    batchPart(part);
     return part;
   });
   const gun = makeWeapon(1, false, finish);
@@ -1149,33 +1183,34 @@ export function animateAvatar(model: Avatar, a: Actor, time: number, frameDt = 1
   const leanX=Math.cos(a.yaw)*memory.lean.x-Math.sin(a.yaw)*memory.lean.z;
   const leanZ=Math.sin(a.yaw)*memory.lean.x+Math.cos(a.yaw)*memory.lean.z;
   memory.air += ((a.grounded ? 0 : 1) - memory.air) * blend;
-  const compression=(a.landingCompression??0)*0.13;
+  const compression=(a.landingCompression??0)*0.13 + .025*Math.min(1,speed/2)*(1-stance)*(a.grounded?1:0);
   const air=a.grounded?0:Math.max(0,Math.min(1,(a.vel.y+9)/18));
   for (const i of [0,1,2,3,4,5,6,7,8,9,12]) {
-    points[i].y-=compression + 0.06 * (1-stance);
+    points[i].y-=compression;
     points[i].x+=leanX*(i===0?1:0.6);
     points[i].z+=leanZ*(i===0?1:0.6);
   }
   for (const [hip,knee,foot,offset,index] of [[9,10,11,0,0],[12,13,14,Math.PI,1]]) {
-    const phase=(a.stride*3.5+offset)%(Math.PI*2);
+    const phase=(a.stride*2.7+offset)%(Math.PI*2);
     const lateral=speed>0.1?(Math.cos(a.yaw)*a.vel.x-Math.sin(a.yaw)*a.vel.z)/speed:0;
     const forward=speed>0.1?(Math.sin(a.yaw)*a.vel.x+Math.cos(a.yaw)*a.vel.z)/speed:0;
-    const stride=Math.sin(phase)*Math.min(0.26,speed*0.043);
+    const stride=-Math.cos(phase)*Math.min(0.24,speed*0.045);
     const target=points[foot];
-    target.x+=stride*lateral;target.z+=stride*forward;
-    target.y+=(1-memory.air)*Math.max(0,Math.sin(phase))*Math.min(0.14,speed*0.024)+memory.air*(0.08+air*0.12);
+    target.x+=stride*lateral*.48;target.z+=stride*forward;
+    target.y+=(1-memory.air)*Math.max(0,Math.sin(phase))*Math.min(0.095,speed*0.017)+memory.air*(0.08+air*0.12);
     target.z+=(a.slideBlend??0)*0.22;
     const planted=a.grounded && speed>0.3 && a.slide<=0 && phase>=Math.PI;
     if(planted){
       if(!memory.planted[index]) memory.feet[index].copy(target).applyAxisAngle(new T.Vector3(0,1,0),a.yaw).add(a.pos);
       target.copy(memory.feet[index]).sub(a.pos).applyAxisAngle(new T.Vector3(0,1,0),-a.yaw);
       // Release a plant if a turn or correction would overextend the leg.
-      if(target.distanceTo(points[hip])>0.775) { memory.planted[index]=false; target.set(RIG_POINTS[foot][0],0.08,0); }
+      if(target.distanceTo(points[hip])>0.775 || Math.abs(target.x-points[hip].x)>.17) { memory.planted[index]=false; target.set(RIG_POINTS[foot][0],0.08,0); }
       else memory.planted[index]=true;
     } else {
       memory.planted[index]=false;
       target.copy(memory.footTargets[index].lerp(target,1-Math.exp(-dt*24)));
     }
+    if(speed<.1&&a.grounded&&stance<.01&&compression<.005){points[knee].set(...RIG_POINTS[knee] as [number,number,number]);target.set(...RIG_POINTS[foot] as [number,number,number]);memory.footTargets[index].copy(target);continue;}
     const solved=solveLimb(points[hip],target,0.4,0.38,{x:0,y:0,z:-1});
     points[knee].copy(solved.joint);target.copy(solved.end);
     memory.footTargets[index].copy(target);
@@ -1192,7 +1227,7 @@ export function animateAvatar(model: Avatar, a: Actor, time: number, frameDt = 1
   points[7].y += aimLift * 0.5;
   points[5].set(
     0.15 - reload * 0.12,
-    1.02 - stance * 0.65 - compression - 0.06 * (1-stance) - reload * 0.22 + aimLift,
+    1.02 - stance * 0.65 - compression - reload * 0.22 + aimLift,
     -0.53 + reload * 0.35,
   );
   const edgeSpec=EDGE_ATTACKS[a.edgeAttack ?? 'slash'];
@@ -1203,8 +1238,14 @@ export function animateAvatar(model: Avatar, a: Actor, time: number, frameDt = 1
   const edgeSide=a.edgeSide||1;
   points[8].z-=edgeAmount*(a.edgeAttack==='stab'?0.35:0.12);
   points[8].x+=a.edgeAttack==='stab'?0:edgeAmount*edgeSide*0.28;
+  if(a.weapon!==3){
+    const rotation=new T.Euler(a.pitch*.7-reload*.4,0,-reload*.3);
+    for(const [hand,grip] of [[5,[-.065,-.11,-.35]],[8,[.04,-.14,.1]]] as const){
+      points[hand].set(grip[0],grip[1],grip[2]).multiplyScalar(.65).applyEuler(rotation).add(new T.Vector3(.2,1.1-stance*.65-compression+breath+aimLift*.5,-.3+a.fired*.2));
+    }
+  }
   for (const [shoulder,elbow,hand] of [[3,4,5],[6,7,8]]) {
-    const solved=solveLimb(points[shoulder],points[hand],0.405,0.435,{x:shoulder===3?-1:1,y:-0.4,z:0});
+    const solved=solveLimb(points[shoulder],points[hand],0.405,0.435,{x:shoulder===3?-.25:.25,y:-1,z:-.15});
     points[elbow].copy(solved.joint);points[hand].copy(solved.end);
   }
   for (let i=0;i<points.length;i++) {
@@ -1222,15 +1263,15 @@ export function animateAvatar(model: Avatar, a: Actor, time: number, frameDt = 1
     model.group.add(model.weapon);
     model.gunId = a.weapon;
   }
-  model.weapon.position.set(0.2, 1.1 - stance * 0.65 - compression - 0.06 * (1-stance) + breath + aimLift * 0.5, -0.3 + a.fired * 0.2);
+  model.weapon.position.set(0.2, 1.1 - stance * 0.65 - compression + breath + aimLift * 0.5, -0.3 + a.fired * 0.2);
   model.weapon.rotation.set(a.pitch * 0.7 - reload * 0.4, 0, -reload * 0.3);
   if(a.weapon===3){model.weapon.position.z-=edgeAmount*(a.edgeAttack==='stab'?0.35:0.12);model.weapon.position.x+=a.edgeAttack==='stab'?0:edgeAmount*edgeSide*0.28;model.weapon.rotation.z+=a.edgeAttack==='stab'?0:edgeAmount*edgeSide*1.1;}
 
 }
 /** Lobby-only carry pose: hands follow actual weapon grip locations. */
 export function poseLobbyAvatar(model:Avatar,time:number){
- const gun=model.weapon,female=(model.group.userData.operator??0)%2===1,breath=Math.sin(time*1.5)*.006;
- gun.position.set(.08,1.04+breath,-.17);gun.rotation.set(-.08,female?-1.35:-1.15,.06);
+ const gun=model.weapon,breath=Math.sin(time*1.5)*.006;
+ gun.position.set(.16,1.1+breath,-.28);gun.rotation.set(-.04,-.20,-.05);
  const points=model.joints;
  for(const i of [0,1,2,3,6,9,10,11,12,13,14])points[i].set(...RIG_POINTS[i] as [number,number,number]);
  for(const [shoulder,elbow,hand,grip] of [[3,4,5,[-.065,-.11,-.35]],[6,7,8,[.04,-.14,.1]]] as const){
@@ -1257,6 +1298,8 @@ export function disposeObject(o: T.Object3D) {
       }
     }
   });
+  for(const m of o.userData.mapMaterials??[])m.dispose();
+  for(const t of o.userData.mapTextures??[])t.dispose();
   o.removeFromParent();
 }
 export function disposeMaterials() {

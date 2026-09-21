@@ -1,0 +1,74 @@
+import * as T from 'three';
+import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
+import type {ArenaMap} from '../core.js';
+/** Batched facility kit; all playable solid silhouettes originate in map.blocks. */
+export function buildFacility(map:ArenaMap,sky?:T.Object3D){
+ const group=new T.Group();group.name=map.id===1?'alpine-relay':'open-cell';if(sky)group.add(sky);
+ const indoor=map.id>=2,small=map.id===3;
+ const textures:T.Texture[]=[],materials:T.Material[]=[],cache=new Map<string,T.Material>(),buckets=new Map<T.Material,T.BufferGeometry[]>();
+ const tex=(surface:string)=>{const data=new Uint8Array(128*128*4);for(let y=0;y<128;y++)for(let x=0;x<128;x++){
+  let hash=Math.imul(x+y*128+13,1597334677);hash=Math.imul(hash^(hash>>>16),2246822507);const noise=((hash^(hash>>>13))>>>0)%11;let c=235+noise;
+  if(surface==='snow')c=231+noise+Math.sin(x*Math.PI/64)*Math.cos(y*Math.PI/64)*5;
+  if(surface==='metal')c=(x%64<2||y%64<2)?158:229+noise;
+  if(surface==='rubber')c=((x+y)%12<2)?199:228+noise;
+  data.set([c,c,c,255],(x+y*128)*4);
+ }const t=new T.DataTexture(data,128,128);t.name=surface;t.wrapS=t.wrapT=T.RepeatWrapping;t.generateMipmaps=true;t.minFilter=T.LinearMipmapLinearFilter;t.magFilter=T.LinearFilter;t.anisotropy=4;t.colorSpace=T.SRGBColorSpace;t.needsUpdate=true;textures.push(t);return t;};
+ const tiles={snow:tex('snow'),metal:tex('metal'),rubber:tex('rubber')};
+ const material=(color:string,surface:keyof typeof tiles,glow=false)=>{const key=color+surface+glow;let m=cache.get(key);if(!m){m=glow?new T.MeshBasicMaterial({color}):new T.MeshLambertMaterial({color,map:tiles[surface]});cache.set(key,m);materials.push(m);}return m;};
+ const add=(g:T.BufferGeometry,x:number,y:number,z:number,c:string,s:keyof typeof tiles='metal',r?:T.Euler,glow=false)=>{
+  const geo=g.index?g.toNonIndexed():g;if(geo!==g)g.dispose();if(r)geo.applyMatrix4(new T.Matrix4().makeRotationFromEuler(r));geo.translate(x,y,z);
+  const p=geo.getAttribute('position'),n=geo.getAttribute('normal'),uv=geo.getAttribute('uv');for(let i=0;i<p.count;i++)uv?.setXY(i,(Math.abs(n.getX(i))>.5?p.getZ(i):p.getX(i))*.4,(Math.abs(n.getY(i))>.5?p.getZ(i):p.getY(i))*.4);
+  const m=material(c,s,glow);if(!buckets.has(m))buckets.set(m,[]);buckets.get(m)!.push(geo);
+ };
+ const box=(x:number,y:number,z:number,w:number,h:number,d:number,c:string,s:keyof typeof tiles='metal',glow=false)=>add(new T.BoxGeometry(w,h,d),x,y,z,c,s,undefined,glow);
+ const floor=(x:number,z:number,w:number,d:number,c:string,s:keyof typeof tiles='rubber')=>add(new T.PlaneGeometry(w,d),x,.012,z,c,s,new T.Euler(-Math.PI/2,0,0));
+ box(0,-.2,0,indoor?map.width:190,.4,indoor?map.depth:190,indoor?'#3b4850':'#ccdce2',indoor?'rubber':'snow');
+ if(!indoor){floor(-6,-6,23,23,'#667b84');floor(-8,23,19,7,'#596d79');floor(19,5,11,42,'#9aadb4');}
+ for(const b of map.blocks){
+  box(b.x,b.y,b.z,b.w,b.h,b.d,b.color,b.kind==='rock'?'snow':'metal',b.kind==='ceiling');
+  if(['panel','boundary','building','wall'].includes(b.kind??'')){
+   // Painted lower band and flush panel joints, no false walkable ledges.
+   const band=indoor?(small?'#986a80':'#3a9191'):'#cd8052';
+   if(!indoor&&b.h>3)box(b.x,b.y+b.h*.24,b.z,b.w+.01,b.h*.36,b.d+.01,'#b4c5ce');
+   if(b.h>2)box(b.x,b.y-b.h/2+.8,b.z,b.w+.016,.5,b.d+.016,band);
+   if(b.w>4)for(let x=b.x-b.w/2+2;x<b.x+b.w/2;x+=4)box(x,b.y,b.z,.025,b.h,b.d+.02,'#344c5d');
+   if(b.d>4)for(let z=b.z-b.d/2+2;z<b.z+b.d/2;z+=4)box(b.x,b.y,z,b.w+.02,b.h,.025,'#344c5d');
+  }
+  if(b.kind==='cargo'||b.kind==='crate'){
+   for(let x=b.x-b.w/2+.3;x<b.x+b.w/2;x+=.65)box(x,b.y,b.z,.055,b.h,b.d+.025,'#455966');
+   box(b.x,b.y+.5,b.z+b.d/2+.014,Math.min(2,b.w-.3),.18,.018,'#e9c38a');
+  }
+  if(b.kind==='roof'&&!indoor)box(b.x,b.y+b.h/2+.025,b.z,b.w,.05,b.d,'#e0eaf0','snow');
+  if(b.kind==='step')box(b.x,b.y+b.h/2+.009,b.z,b.w,.018,b.d,'#adb9b9','rubber');
+  if(b.kind==='generator'){for(let y=.55;y<1.8;y+=.22)box(b.x,y,b.z+b.d/2+.014,b.w*.7,.09,.022,'#263d4c');box(b.x,b.y+.5,b.z+b.d/2+.027,.18,.12,.01,'#bde6c6','metal',true);}
+  if(b.kind==='turbine'){for(let x=b.x-2;x<=b.x+2;x+=2)box(x,1.5,b.z+3.015,1.4,2,.025,'#193344');for(let y=.8;y<2.6;y+=.35)box(b.x,y,b.z+3.033,5,.045,.016,'#74a5aa');}
+ }
+ if(indoor){
+  for(const side of [-1,1])for(let z=-map.depth/2+5;z<map.depth/2;z+=10)box(side*(map.width/2-.51),3.9,z,.025,.2,2,small?'#e0c9ed':'#bce8e1','metal',true);
+  for(const x of [-map.width/2+3,map.width/2-3])floor(x,0,.1,map.depth-3,small?'#b78da5':'#58b5af');
+ }else{
+  // Warm readable hangar and tunnel fixtures; inexpensive emissive strips.
+  for(const x of [-13,1])box(x,7.58,-6,.35,.035,18,'#d6f0ef','metal',true);
+  box(-8,3.57,23,16,.035,.3,'#f2cca0','metal',true);
+  // Mountain amphitheatre and glacier shelves stay outside the playable boundary.
+  for(let i=0;i<18;i++){
+   const a=i*Math.PI*2/18,r=67+i%3*8,h=19+i%5*5,x=Math.sin(a)*r,z=Math.cos(a)*r,width=18+i%4*4;
+   const rock:number[]=[],snow:number[]=[],bottom:T.Vector3[]=[],line:T.Vector3[]=[];
+   const peak=new T.Vector3(Math.sin(i*3.7)*5,h,Math.cos(i*2.3)*4);
+   for(let j=0;j<9;j++){const angle=j*Math.PI*2/8,shape=.82+.18*Math.sin(j*2.4+i);bottom.push(new T.Vector3(Math.cos(angle)*width*shape,0,Math.sin(angle)*width*.7*shape));const t=.45+.13*Math.sin(j*1.7+i);line.push(bottom[j].clone().lerp(peak,t));}
+   const tri=(out:number[],a:T.Vector3,b:T.Vector3,c:T.Vector3)=>out.push(...a.toArray(),...b.toArray(),...c.toArray());
+   for(let j=0;j<8;j++){tri(rock,bottom[j],line[j],bottom[j+1]);tri(rock,bottom[j+1],line[j],line[j+1]);tri(snow,line[j],peak,line[j+1]);}
+   for(const [vertices,color] of [[rock,i%2?'#8ca2b5':'#a1b5c4'],[snow,'#e1eaf1']] as [number[],string][]){const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(vertices,3));geo.setAttribute('uv',new T.Float32BufferAttribute(new Float32Array(vertices.length/3*2),2));geo.computeVertexNormals();add(geo,x,-3,z,color,'snow');}
+  }
+  for(let i=0;i<24;i++){const a=i*Math.PI*2/24,x=Math.sin(a)*43,z=Math.cos(a)*49;
+   if(Math.abs(x)<34&&Math.abs(z)<38)continue;
+   add(new T.CylinderGeometry(.17,.25,4,5),x,2,z,'#4a555d');
+   for(let j=0;j<3;j++)add(new T.ConeGeometry(2-j*.4,3,6),x,3+j*1.1,z,j%2?'#809b9d':'#466b72','snow');}
+  // Distant relay mast and dish: Snow's orientation landmark, unlike Dune's water tower.
+  box(37,8,-24,.7,16,.7,'#668392');box(37,13,-24,8,.3,.3,'#bdcfd4');
+  add(new T.SphereGeometry(4,12,6,0,Math.PI*2,0,Math.PI/2),37,14,-24,'#d9e5eb','metal',new T.Euler(.7,0,0));
+  box(37,17,-24,.16,2,.16,'#dd946b');
+ }
+ for(const [m,parts] of buckets){const geo=mergeGeometries(parts);parts.forEach(p=>p.dispose());if(geo){const mesh=new T.Mesh(geo,m);mesh.castShadow=mesh.receiveShadow=true;group.add(mesh);}}
+ group.userData.mapMaterials=materials;group.userData.mapTextures=textures;return group;
+}

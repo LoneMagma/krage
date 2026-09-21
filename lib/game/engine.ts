@@ -336,6 +336,7 @@ export class Arena {
   damageAngle = 0;
   keys = new Set<string>();
   crouchControl = new CrouchControl();
+  slideSoundPlayed = false;
   slidePulse = false;
   marks: Mark[] = [];
   radarTime = 0;
@@ -563,8 +564,8 @@ export class Arena {
     });
   }
   applyTheme() {
-    const foundry = this.match.map.id === 0,
-      palette = ARENA_PALETTES[this.match.map.id];
+    const foundry = this.match.map.id===0||this.match.map.id===2,
+      palette = ARENA_PALETTES[this.match.map.id%2];
     this.scene.background = new T.Color(palette.sky);
     this.scene.fog = new T.Fog(palette.sky, 65, 145);
     this.themeLight.color.set(palette.light);
@@ -573,10 +574,10 @@ export class Arena {
     this.sun.intensity = foundry ? 2.8 : 2.35;
     this.themeLight.intensity = foundry ? 1.65 : 1.9;
     this.sun.position.set(foundry ? -22 : 18, 38, 16);
-    this.sun.shadow.camera.left = -34;
-    this.sun.shadow.camera.right = 34;
-    this.sun.shadow.camera.top = 30;
-    this.sun.shadow.camera.bottom = -30;
+    this.sun.shadow.camera.left = this.match.map.id===0 ? -42 : -34;
+    this.sun.shadow.camera.right = this.match.map.id===0 ? 42 : 34;
+    this.sun.shadow.camera.top = this.match.map.id===0 ? 38 : 30;
+    this.sun.shadow.camera.bottom = this.match.map.id===0 ? -38 : -30;
     this.sun.shadow.camera.updateProjectionMatrix();
   }
   setCosmetics(operator: number, finish: number, weaponFinishes = [finish, finish, finish]) {
@@ -1059,7 +1060,7 @@ export class Arena {
     } else if (this.phase === 'menu') {
       this.camera.fov = 49;
       const orbit = Math.sin(this.time * 0.07) * 0.025;
-      this.camera.position.set(7 + orbit * 2, 2.7, 19);
+      this.camera.position.set(this.match.map.id===0?26:this.match.map.id===1?23:7 + orbit * 2, this.match.map.id<2?7.5:2.7, this.match.map.id===0?24:this.match.map.id===1?27:this.match.map.id===3?10:19);
       this.camera.lookAt(-3, 2.2, -8);
       this.camera.updateProjectionMatrix();
       const preview = {
@@ -1199,7 +1200,7 @@ export class Arena {
     this.gun.position.set(
       T.MathUtils.lerp(0.28, 0, this.adsLerp) + bob - this.swayX,
       -0.28 - Math.abs(bob) * 0.65 - this.landing + this.swayY - reload * 0.25,
-      -0.4 + this.gunKick * 0.18,
+      (weaponView.weapon===2 ? -.64 : -.4) + this.gunKick * .18,
     );
     this.gun.rotation.set(
       this.gunKick * 0.16 - reload * 0.6,
@@ -1209,7 +1210,7 @@ export class Arena {
     // Raise the sights to the center of the view in ADS.
     this.gun.position.y = T.MathUtils.lerp(
       this.gun.position.y,
-      -0.184,
+      weaponView.weapon===2 ? -.20 : -0.184,
       this.adsLerp * (1 - equip.lower),
     );
     this.gun.position.y -= equip.lower * 0.62;
@@ -1238,6 +1239,7 @@ export class Arena {
     this.flash.visible = weaponView.fired > 0.08 && weaponView.weapon !== 3 && weaponView.equip === 0;
     this.flash.rotation.z = Math.random() * Math.PI;
     this.flash.scale.set(weaponView.weapon===2?1.65:weaponView.weapon===0?0.7:1,weaponView.weapon===2?0.8:weaponView.weapon===0?0.7:1.25,1);
+    if(weaponView.weapon===3){this.gun.rotation.z=0;this.gun.rotation.y-=.06;this.gun.position.x+=.045;this.gun.position.y+=.015;}
     if (weaponView.weapon === 3 && weaponView.fired > 0) {
       const attack=weaponView.edgeAttack ?? 'slash', spec=EDGE_ATTACKS[attack];
       const t=clamp(1-weaponView.fired/spec.duration,0,1);
@@ -1248,10 +1250,10 @@ export class Arena {
         this.gun.rotation.x+=swing*0.22;
       } else {
         const side=weaponView.edgeSide || 1;
-        this.gun.position.x+=side*swing*0.4;
+        this.gun.position.x+=side*swing*0.29;
         this.gun.position.y+=swing*0.06;
-        this.gun.rotation.z+=side*swing*1.35;
-        this.gun.rotation.y+=side*swing*0.6;
+        this.gun.rotation.z+=side*swing*1.05;
+        this.gun.rotation.y+=side*swing*0.75;
         this.gun.position.z-=swing*0.16;
       }
     }
@@ -1280,6 +1282,8 @@ export class Arena {
         p.alive && weaponView.reload === 0 && this.adsLerp < 0.85 ? '1' : '0',
       );
     }
+    if(p.slide<=0||!p.alive||this.phase!=='playing')this.slideSoundPlayed=false;
+    else if(p.slide<=.34&&!this.slideSoundPlayed){this.slideSoundPlayed=true;this.audio.slide(this.surfaceAt(p.pos));}
     if (p.grounded && speed > 1.3 && p.alive && p.slide === 0) {
       this.footTime += speed * dt;
       if (this.footTime >= 1.65) {
@@ -1472,8 +1476,7 @@ export class Arena {
         );
       }
       if (e.type === 'jump' && e.actor === 0) this.audio.jump();
-      if (e.type === 'slide' && e.actor === 0)
-        this.audio.slide(this.surfaceAt(this.match.player.pos));
+      // Local predicted slide feedback is timed in the view, not delayed by network events.
       if (e.type === 'respawn' && e.actor === 0) {
         this.audio.spawn();
         this.previous.copy(this.match.player.pos);
@@ -1789,9 +1792,12 @@ export class Arena {
       c.stroke();
     }
     for (const b of map.blocks) {
+      if(b.kind==='detail-collision'||b.kind==='ceiling')continue;
+      c.globalAlpha = ['roof','canopy','lintel','platform','pipebridge'].includes(b.kind??'') ? .24 : 1;
       c.fillStyle = b.kind === 'crate' ? '#788678' : '#64786c';
       c.fillRect(X(b.x - b.w / 2), Z(b.z - b.d / 2), b.w * scale, b.d * scale);
     }
+    c.globalAlpha = 1;
     for (const a of this.match.actors) {
       if (!a.alive) continue;
       if (a.id !== 0 && this.match.enemy(this.match.player, a) && a.fired <= 0)

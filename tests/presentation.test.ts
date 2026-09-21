@@ -339,11 +339,11 @@ await test('damaged practice storage falls back without breaking the locker', as
 
 await test('weapon skins equip independently and survive saved-profile loading', async () => {
   const { newProfile, purchase, equipCosmetic, weaponFinish, loadProfile } = await import('../lib/game/progression.js');
-  let p = {...newProfile(),balance:2000};
-  for (const id of ['skin-echo', 'skin-kilo', 'skin-mica']) p = equipCosmetic(purchase(p, id), id);
-  assert.deepEqual([0, 1, 2].map(i => weaponFinish(p, i)), [1, 2, 3]);
+  let p = {...newProfile(),balance:4000};
+  for (const id of ['skin-echo-carbon', 'skin-kilo-carbon', 'skin-mica-carbon']) p = equipCosmetic(purchase(p, id), id);
+  assert.deepEqual([0, 1, 2].map(i => weaponFinish(p, i)), [4, 4, 4]);
   p = loadProfile(JSON.stringify(p));
-  assert.deepEqual([0, 1, 2].map(i => weaponFinish(p, i)), [1, 2, 3]);
+  assert.deepEqual([0, 1, 2].map(i => weaponFinish(p, i)), [4, 4, 4]);
 });
 
 await test('key rebinding remaps press and release, disables old keys and normalizes Shift', async () => {
@@ -546,20 +546,20 @@ await test('premium finishes require ownership and Factory restores only the sel
  const {newProfile,purchase,equipWeaponFinish,weaponFinish,loadProfile}=await import('../lib/game/progression.js');
  let p={...newProfile(),balance:1500};
  assert.deepEqual(equipWeaponFinish(p,0,'skin-echo-carbon'),p);
- p=purchase(p,'skin-echo-carbon');assert.equal(p.balance,600);
+ p=purchase(p,'skin-echo-carbon');assert.equal(p.balance,750);
  assert.deepEqual(purchase(p,'skin-echo-carbon'),p);
  assert.deepEqual(equipWeaponFinish(p,1,'skin-echo-carbon'),p);
  p=equipWeaponFinish(p,0,'skin-echo-carbon');
- p=equipWeaponFinish(purchase(p,'skin-kilo'),1,'skin-kilo');
- assert.deepEqual([0,1,2].map(w=>weaponFinish(p,w)),[4,2,0]);
+ p=equipWeaponFinish(purchase({...p,balance:950},'skin-kilo-carbon'),1,'skin-kilo-carbon');
+ assert.deepEqual([0,1,2].map(w=>weaponFinish(p,w)),[4,4,0]);
  p=loadProfile(JSON.stringify(equipWeaponFinish(p,0,'finish-factory')));
- assert.deepEqual([0,1,2].map(w=>weaponFinish(p,w)),[0,2,0]);
+ assert.deepEqual([0,1,2].map(w=>weaponFinish(p,w)),[0,4,0]);
  assert.deepEqual(purchase(p,'skin-mica-carbon'),p);
 });
-await test('lobby carry poses preserve arm lengths across both models and all primaries', async () => {
+await test('lobby carry poses preserve arm lengths across all models and all primaries', async () => {
  const {poseLobbyAvatar}=await import('../lib/game/graphics.js');
  const {RIG_POINTS}=await import('../lib/game/graphics.js');
- for(const variant of [0,1])for(const weapon of [0,1,2]){
+ for(const variant of [0,1,2])for(const weapon of [0,1,2]){
   const model=avatar('#aabbcc',variant),m=new Match(0,0,weapon);
   for(const time of [0,1,5]){
    animateAvatar(model,m.player,time,.016);poseLobbyAvatar(model,time);
@@ -571,19 +571,19 @@ await test('lobby carry poses preserve arm lengths across both models and all pr
   disposeObject(model.group);
  }
 });
-await test('all three Blender character meshes are finite, distinct and within the lightweight budget',()=>{
+await test('all three block character meshes are finite, distinct and within the lightweight budget',()=>{
  const counts=[];
  for(const variant of [0,1,2]){
   const model=avatar('#ff8855',variant);let triangles=0;
   for(const part of model.parts)part.traverse(o=>{if(o instanceof Mesh){const p=o.geometry.getAttribute('position');for(let i=0;i<p.count;i++)assert.ok(Number.isFinite(p.getX(i))&&Number.isFinite(p.getY(i))&&Number.isFinite(p.getZ(i)));triangles+=(o.geometry.index?.count??p.count)/3;}});
-  assert.ok(triangles>3000&&triangles<12000);counts.push(triangles);disposeObject(model.group);
+  assert.ok(triangles>200&&triangles<900);counts.push(triangles);disposeObject(model.group);
  }
  assert.equal(new Set(counts).size,3);
 });
 await test('KR challenge sets award bonuses once, refresh on UTC boundaries and retain savings',async()=>{
  const {newProfile,challenges,claimChallenge,refreshProfile,DAY,CATALOG,purchase,recordMatch}=await import('../lib/game/progression.js');
  const now=Date.UTC(2026,8,14,12);let p=newProfile(now);
- assert.deepEqual(purchase(p,'skin-echo'),p,'starter credits alone cannot unlock a field skin');
+ assert.deepEqual(purchase(p,'skin-echo-carbon'),p,'starter credits alone cannot unlock an elite skin');
  p=recordMatch(p,{id:'earned',eligible:true,seconds:60,kills:10,headshots:3,meleeKills:2,matches:1,wins:1},now);assert.equal(p.balance,253);
  for(const key of ['kills','headshots','meleeKills','matches','wins'] as const)p.daily[key]=p.weekly[key]=100;
  const initial=p.balance,list=challenges(p);
@@ -591,5 +591,49 @@ await test('KR challenge sets award bonuses once, refresh on UTC boundaries and 
  assert.equal(p.balance,initial+list.reduce((n,c)=>n+c.reward,0)+200);
  for(const c of list)assert.deepEqual(claimChallenge(p,c.id,now),p);
  const next=refreshProfile(p,now+7*DAY);assert.equal(next.balance,p.balance);assert.equal(next.daily.kills,0);assert.equal(next.weekly.kills,0);
- for(const weapon of [0,1,2]){const skins=CATALOG.filter(i=>'weapon'in i&&i.weapon===weapon).sort((a,b)=>a.cost-b.cost);assert.equal(skins.length,3);assert.ok(skins[0].cost<skins[1].cost&&skins[1].cost<skins[2].cost);assert.equal(skins[2].variant,5);}
+ for(const weapon of [0,1,2]){const skins=CATALOG.filter(i=>'weapon'in i&&i.weapon===weapon).sort((a,b)=>a.cost-b.cost);assert.equal(skins.length,2);assert.ok(skins[0].cost<skins[1].cost);assert.equal(skins[1].variant,5);}
+});
+
+await test('Dune static scenery stays within a small draw and geometry budget',async()=>{
+ const {buildMap}=await import('../lib/game/graphics.js');const {makeMap}=await import('../lib/game/core.js');
+ const group=buildMap(makeMap(0));let meshes=0,triangles=0;
+ group.traverse(o=>{if(o instanceof Mesh){meshes++;const p=o.geometry.getAttribute('position');triangles+=(o.geometry.index?.count??p.count)/3;for(let i=0;i<p.count;i++)assert.ok(Number.isFinite(p.getX(i)+p.getY(i)+p.getZ(i)));}});
+ assert.ok(meshes<100,`${meshes} draws`);assert.ok(triangles<40000,`${triangles} triangles`);
+ assert.equal(group.userData.mapTextures.length,7);
+ const tiles=group.userData.mapTextures as import('three').DataTexture[];
+ assert.equal(new Set(tiles.map(t=>Buffer.from(t.image.data as Uint8Array).toString('base64'))).size,7,'each surface needs its own texture');
+ for(const tile of tiles){assert.equal(tile.image.width,128);assert.equal(tile.image.height,128);assert.ok(tile.generateMipmaps);}
+ disposeObject(group);
+});
+
+await test('Snow and open cells stay within geometry budgets',async()=>{
+ const {buildMap}=await import('../lib/game/graphics.js');const {makeMap}=await import('../lib/game/core.js');
+ for(const id of [1,2,3]){const g=buildMap(makeMap(id));let triangles=0,draws=0;g.traverse(o=>{if(o instanceof Mesh){draws++;const p=o.geometry.getAttribute('position');triangles+=(o.geometry.index?.count??p.count)/3;for(let i=0;i<p.count;i++)assert.ok(Number.isFinite(p.getX(i)+p.getY(i)+p.getZ(i)));}});assert.ok(draws<75);assert.ok(triangles<35000);if(id>=2)assert.equal(g.name,'open-cell');disposeObject(g);}
+});
+
+await test('v0.9 block rigs stand upright at rest and weapon meshes stay inexpensive',async()=>{
+ const {poseLobbyAvatar}=await import('../lib/game/graphics.js');
+ for(const variant of [0,1,2]){const m=new Match(0,0,0),model=avatar('#bbccdd',variant);m.player.vel=v();m.player.grounded=true;
+ animateAvatar(model,m.player,0);poseLobbyAvatar(model,0);
+ for(const [hip,knee,foot] of [[9,10,11],[12,13,14]]){assert.equal(model.joints[hip].x,model.joints[knee].x);assert.equal(model.joints[knee].x,model.joints[foot].x);assert.equal(model.joints[knee].z,model.joints[foot].z);}
+ disposeObject(model.group);}
+ for(const weapon of [0,1,2,3])for(const finish of [0,1,2,3,4,5]){const g=makeWeapon(weapon,true,finish);let triangles=0;g.traverse(o=>{if(o instanceof Mesh)triangles+=(o.geometry.index?.count??o.geometry.getAttribute('position').count)/3;});assert.ok(triangles<2500,`${weapon}/${finish}: ${triangles}`);disposeObject(g);}
+});
+
+await test('retired finishes refund once and reset equipped copies without losing savings',async()=>{
+ const {newProfile,loadProfile,refreshProfile,weaponFinish}=await import('../lib/game/progression.js');
+ const now=Date.UTC(2026,8,21),old={...newProfile(now),balance:40,owned:['op-scout','finish-factory','skin-echo','skin-kilo','skin-mica','skin-echo-corona'],weaponFinishes:['skin-echo','skin-kilo','skin-mica']};
+ const p=loadProfile(JSON.stringify(old),now);assert.equal(p.balance,1090);assert.deepEqual([0,1,2].map(w=>weaponFinish(p,w)),[0,0,0]);assert.ok(p.owned.includes('skin-echo-corona'));
+ assert.deepEqual(refreshProfile(p,now),p);assert.deepEqual(loadProfile(JSON.stringify(p),now),p);
+});
+await test('authored challenge rotation is deterministic, diverse and refreshes while retaining earnings',async()=>{
+ const {newProfile,challenges,refreshProfile,claimChallenge,DAY}=await import('../lib/game/progression.js');
+ const start=Date.UTC(2026,8,21);const seen=new Set<string>();
+ for(let day=0;day<35;day++){
+  const p=newProfile(start+day*DAY),list=challenges(p);assert.deepEqual(challenges(p),list);
+  for(const period of ['daily','weekly'] as const){const set=list.filter(c=>c.period===period);assert.equal(set.length,period==='daily'?3:4);assert.equal(new Set(set.map(c=>c.metric)).size,set.length);assert.ok(set.every(c=>c.expires>start+day*DAY));}
+  seen.add(list.filter(c=>c.period==='daily').map(c=>c.title).join(','));
+  const next=refreshProfile(p,start+(day+1)*DAY);assert.equal(next.balance,p.balance);assert.deepEqual(claimChallenge(next,list[0].id,start+(day+1)*DAY),next);
+ }
+ assert.ok(seen.size>20);
 });

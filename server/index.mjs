@@ -14,7 +14,7 @@ export function createArenaServer({
         'Content-Type': 'application/json',
         'Cache-Control': 'no-store',
       });
-      res.end(JSON.stringify({ ok: true, protocol: 9, rooms: rooms.size }));
+      res.end(JSON.stringify({ ok: true, protocol: 14, rooms: rooms.size }));
     } else {
       res.writeHead(404);
       res.end();
@@ -124,7 +124,7 @@ export function createArenaServer({
           peer.joined = true;
           send(ws, {
             type: 'welcome',
-            protocol: 9,
+            protocol: 14,
             room: room.code,
             ...session,
             tickRate: 120,

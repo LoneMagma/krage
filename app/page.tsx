@@ -34,6 +34,7 @@ import {
 } from '@/lib/game/engine';
 
 import { RoomPanel } from '@/components/game/room-panel';
+import { KrCredit } from '@/components/game/identity';
 import { Challenges } from '@/components/game/challenges';
 import { Locker } from '@/components/game/locker';
 import {
@@ -58,7 +59,7 @@ const gunDetails = [
   'Two shots. Make them count.',
   'Close the gap. One hit.',
 ];
-const maps = [makeMap(0), makeMap(1)];
+const maps = [makeMap(0), makeMap(1), makeMap(2), makeMap(3)];
 function MapDiagram({ id }: { id: number }) {
   const map = maps[id];
   return (
@@ -68,7 +69,7 @@ function MapDiagram({ id }: { id: number }) {
       aria-label={`${map.name} layout`}
     >
       {map.blocks
-        .filter((b) => b.kind !== 'step')
+        .filter((b) => b.kind !== 'step' && b.kind !== 'detail-collision' && b.kind !== 'ceiling')
         .map((b, i) => (
           <rect
             key={i}
@@ -77,7 +78,8 @@ function MapDiagram({ id }: { id: number }) {
             width={b.w}
             height={b.d}
             fill={b.color}
-            stroke={id === 0 ? '#d5ae77' : '#b9e2f2'}
+            opacity={['roof','canopy','lintel','platform','pipebridge'].includes(b.kind??'') ? .24 : 1}
+            stroke={id !== 1 ? '#d5ae77' : '#b9e2f2'}
             strokeWidth=".2"
           />
         ))}
@@ -417,7 +419,7 @@ export default function Home() {
             const saved = JSON.parse(localStorage.getItem('krage-lobby') || '{}');
             if ([60,180,300,600].includes(saved.duration)) setDuration(saved.duration);
             if ([0,1,2,3].includes(saved.mode)) setMode(saved.mode);
-            if ([0,1].includes(saved.map)) { setMap(saved.map); instance.setMap(saved.map); }
+            if ([0,1,2,3].includes(saved.map)) { setMap(saved.map); instance.setMap(saved.map); }
             if ([0,1,2].includes(saved.weapon)) { setWeapon(saved.weapon); instance.setPrimaryPreview(saved.weapon); }
           } catch {}
           try { savePlayerName(localStorage.getItem('krage-player-name') || `Player${Math.floor(1000+Math.random()*9000)}`); } catch {}
@@ -452,11 +454,15 @@ export default function Home() {
     }
   }, [snap.phase]);
   useEffect(() => {
-    const timer = setInterval(
-      () => setProfile((p) => refreshProfile(p)),
-      30000,
-    );
-    return () => clearInterval(timer);
+    let timer:ReturnType<typeof setTimeout>;
+    const refresh=()=>{
+      setProfile(p=>refreshProfile(p));
+      clearTimeout(timer);
+      const now=Date.now();timer=setTimeout(refresh,86400000-now%86400000+50);
+    };
+    const visible=()=>{if(document.visibilityState==='visible')refresh();};
+    refresh();window.addEventListener('focus',refresh);document.addEventListener('visibilitychange',visible);
+    return()=>{clearTimeout(timer);window.removeEventListener('focus',refresh);document.removeEventListener('visibilitychange',visible);};
   }, []);
   useEffect(() => {
     if (profileLoaded) {
@@ -585,7 +591,7 @@ export default function Home() {
   return (
     <main data-section={!inGame ? modal ?? 'play' : 'game'} className={'game-shell ' + (inGame ? 'match-shell' : 'lobby-shell')}>
       <div className="world" ref={mount} />
-      {reward&&<output key={reward.id} className="reward-toast"><span>✦</span><div><small>{reward.title}</small>{reward.amount>0?<strong>+{reward.amount} KR</strong>:<strong>READY TO GO</strong>}</div></output>}
+      {reward&&<output key={reward.id} className="reward-toast"><KrCredit/><div><small>{reward.title}</small>{reward.amount>0?<strong>+{reward.amount} KR</strong>:<strong>READY TO GO</strong>}</div></output>}
       {!inGame && (
         <>
           <div className="menu-vignette" />
@@ -594,7 +600,7 @@ export default function Home() {
               <KrageLogo />
             </Link>
             <nav aria-label="Main navigation">{[['play','PLAY'],['online','LOBBY'],['locker','LOCKER'],['challenges','CHALLENGES'],['settings','SETTINGS']].map(([id,label])=><Button key={id} className={'nav-button '+((modal==='controls'?'settings':modal==='loadout'?'play':modal??'play')===id?'active':'')} onClick={()=>setModal(id==='play'?null:id as 'online'|'locker'|'challenges'|'settings')}>{label}{id==='challenges'&&claimable>0&&<b className="claim-badge">{claimable}</b>}</Button>)}</nav>
-            <button className="nav-wallet" onClick={()=>setModal('challenges')} aria-label="Credits and challenges"><span className="currency-symbol">◆</span><strong key={profile.balance}>{profile.balance.toLocaleString()}</strong><small>KR</small></button>
+            <button className="nav-wallet" onClick={()=>setModal('challenges')} aria-label="Credits and challenges"><KrCredit/><strong key={profile.balance}>{profile.balance.toLocaleString()}</strong><small>KR</small></button>
           </header>
           <section className="lobby lobby-v4">
             <div className="lobby-workspace">
@@ -605,7 +611,7 @@ export default function Home() {
                 <div className="stage-heading">
                   <span className="eyebrow">ARENA</span>
                   <span className="stage-size">
-                    {map === 0 ? '60 × 50 M' : '48 × 42 M'}
+                    {`${maps[map].width} × ${maps[map].depth} M`}
                   </span>
                 </div>
                 <div className="stage-content">
@@ -613,10 +619,14 @@ export default function Home() {
                     <h1>
                       {maps[map].name}
                       <span>
-                        {map === 0 ? 'SANDSTONE YARD' : 'RESEARCH COMPLEX'}
+                        {['PUMP SETTLEMENT','ALPINE RELAY','TRAINING YARD','DUEL YARD'][map]}
                       </span>
                     </h1>
-                    <MapDiagram id={map} />
+                    <div className="map-switcher">
+                      <button aria-label="Previous map" onClick={()=>selectMap((map+maps.length-1)%maps.length)}>‹</button>
+                      <MapDiagram id={map} />
+                      <button aria-label="Next map" onClick={()=>selectMap((map+1)%maps.length)}>›</button>
+                    </div>
                   </div>
                   <button type="button"
                     className="operator-window"
@@ -641,9 +651,7 @@ export default function Home() {
                       <span>0{i + 1}</span>
                       <strong>{m.name}</strong>
                       <small>
-                        {i === 0
-                          ? 'GANTRY / OPEN LANES'
-                          : 'BRIDGE / CLOSE ANGLES'}
+                        {['SETTLEMENT / LINKED FLANKS','HALL / FREIGHT / GALLERY','OPEN / TRAINING','COMPACT / DUELS'][i]}
                       </small>
                     </button>
                   ))}
@@ -748,7 +756,7 @@ export default function Home() {
           <footer className="lobby-footer">
             <span>
               <MousePointer2 size={14} />
-              <a href="https://github.com/lonemagma" target="_blank" rel="noreferrer">v0.7</a>
+              <a href="https://github.com/lonemagma" target="_blank" rel="noreferrer">v0.9</a>
             </span>
 
             <span className="project-credit"><strong>MADE IN INDIA</strong><span>A <a href="https://pacify.site" target="_blank" rel="noreferrer">pacify</a> project</span></span>

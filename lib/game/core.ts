@@ -1,3 +1,5 @@
+import {makeSnow,makeCellII,encloseCellI} from './maps/snow.js';
+import { makeDune } from './maps/dune.js';
 /** Fixed-step gameplay, deliberately independent of the renderer and browser. */
 export type Vec = { x: number; y: number; z: number };
 export type Block = {
@@ -129,7 +131,15 @@ export type ArenaMap = {
   spawns: Vec[];
   patrol: Vec[];
 };
-export function makeMap(id: number): ArenaMap {
+export const MAP_NAMES=['DUNE','SNOW','CELL I','CELL II'] as const;
+export function makeMap(id:number):ArenaMap {
+ if(id===0)return makeDune();
+ if(id===1)return makeSnow();
+ if(id===2)return encloseCellI(makeLegacyMap(0));
+ if(id===3)return makeCellII();
+ throw new Error('Unknown arena');
+}
+export function makeLegacyMap(id: number): ArenaMap {
   const blocks: Block[] = [];
   const add = (
     x: number,
@@ -325,6 +335,8 @@ export type Actor = {
   hits: number;
   bot: boolean;
   ai: {
+    seenUntil?:number;
+    seenPos?:Vec;
     think: number;
     target: number;
     path: Vec[];
@@ -450,7 +462,7 @@ export function moveActor(a: Actor, input: Input, dt: number, map: ArenaMap) {
     fallingSpeed = Math.max(0, -a.vel.y);
   a.landingCompression = (a.landingCompression ?? 0) * Math.exp(-dt * 12);
   a.jumpBuffer =
-    input.jump && !a.jumpHeld ? 0.12 : Math.max(0, a.jumpBuffer - dt);
+    input.jump && !a.jumpHeld ? 0.15 : Math.max(0, a.jumpBuffer - dt);
   a.jumpHeld = input.jump;
   a.coyote = a.grounded ? 0.08 : Math.max(0, a.coyote - dt);
   if (
@@ -460,7 +472,7 @@ export function moveActor(a: Actor, input: Input, dt: number, map: ArenaMap) {
     a.grounded &&
     Math.hypot(a.vel.x, a.vel.z) > (a.crouched ? 2.5 : 4)
   ) {
-    a.slide = 0.48;
+    a.slide = 0.55;
     a.slideCooldown = 1.3;
     const speed = Math.hypot(a.vel.x, a.vel.z);
     a.vel.x = (a.vel.x / speed) * Math.min(8.8, Math.max(7.2, speed + 2.6));
@@ -498,7 +510,7 @@ export function moveActor(a: Actor, input: Input, dt: number, map: ArenaMap) {
     magnitude;
   if (a.slide > 0) {
     const length = Math.hypot(a.vel.x, a.vel.z),
-      next = length * Math.exp(-1.15 * dt);
+      next = length * Math.exp(-1.08 * dt);
     a.vel.x *= next / Math.max(length, 0.001);
     a.vel.z *= next / Math.max(length, 0.001);
     // A small steering arc preserves momentum without allowing instant turns.
@@ -517,15 +529,17 @@ export function moveActor(a: Actor, input: Input, dt: number, map: ArenaMap) {
       dz = wz * speed - a.vel.z,
       d = Math.hypot(dx, dz);
     const opposing = a.vel.x * wx + a.vel.z * wz < 0,
-      acceleration = magnitude === 0 ? 72 : opposing ? 64 : 46;
+      acceleration = magnitude === 0 ? 78 : opposing ? 72 : 54;
     const change = Math.min(1, (acceleration * dt) / Math.max(d, 0.001));
     a.vel.x += dx * change;
     a.vel.z += dz * change;
   } else if (magnitude > 0) {
-    const projected = a.vel.x * wx + a.vel.z * wz,
-      accel = Math.min(Math.max(0, speed - projected), 8 * dt * magnitude);
-    a.vel.x += wx * accel;
-    a.vel.z += wz * accel;
+    // Steer the horizontal velocity toward WASD, including reversing in mid-air.
+    // Retain slide-jump momentum without allowing air steering to manufacture speed.
+    const cap=Math.max(speed,Math.hypot(a.vel.x,a.vel.z));
+    const dx=wx*cap-a.vel.x,dz=wz*cap-a.vel.z;
+    const blend=Math.min(1,22*dt*magnitude/Math.max(.001,Math.hypot(dx,dz)));
+    a.vel.x+=dx*blend;a.vel.z+=dz*blend;
   }
   const horizontal = Math.hypot(a.vel.x, a.vel.z);
   if (horizontal > 10.2) {
@@ -542,7 +556,9 @@ export function moveActor(a: Actor, input: Input, dt: number, map: ArenaMap) {
   a.vel.y -= 30 * dt;
   if (a.grounded) a.stride += Math.hypot(a.vel.x, a.vel.z) * dt;
   for (const axis of ['x', 'z'] as const) {
-    a.pos[axis] += a.vel[axis] * dt;
+    // Keep the incoming direction across overlapping colliders; contact zeros velocity.
+    const travel=a.vel[axis],origin=a.pos[axis];
+    a.pos[axis] += travel * dt;
     for (const b of map.blocks) {
       if (
         !overlapsXZ(a.pos, b) ||
@@ -557,7 +573,7 @@ export function moveActor(a: Actor, input: Input, dt: number, map: ArenaMap) {
         continue;
       }
       a.pos[axis] =
-        a.vel[axis] > 0
+        (travel > 0 || (travel === 0 && origin < b[axis]))
           ? b[axis] - (axis === 'x' ? b.w : b.d) / 2 - 0.341
           : b[axis] + (axis === 'x' ? b.w : b.d) / 2 + 0.341;
       a.vel[axis] = 0;
@@ -625,6 +641,7 @@ export class Navigation {
   nodes: Vec[] = [];
   neighbors: number[][] = [];
   constructor(public map: ArenaMap) {
+    if(map.id!==2){this.buildLayered();return;}
     const cells = new Map<string, number>();
     for (let x = -map.width / 2 + 2; x <= map.width / 2 - 2; x += 2)
       for (let z = -map.depth / 2 + 2; z <= map.depth / 2 - 2; z += 2) {
@@ -659,6 +676,41 @@ export class Navigation {
     });
   }
 
+  /** Separate ground/terrace nodes; sample full actor clearance along every edge. */
+  private buildLayered() {
+    const map=this.map,cells=new Map<string,number[]>();
+    const nearby=(x:number,z:number)=>map.blocks.filter(b=>Math.abs(x-b.x)<b.w/2+2.5&&Math.abs(z-b.z)<b.d/2+2.5);
+    const clear=(p:Vec,blocks:Block[])=>!blocks.some(b=>overlapsXZ(p,b,.35)&&b.y+b.h/2>p.y+.02&&b.y-b.h/2<p.y+1.85);
+    const surfaces=new Set(['step','platform','pipebridge']);
+    for(let x=-map.width/2+2;x<=map.width/2-2;x+=2)for(let z=-map.depth/2+2;z<=map.depth/2-2;z+=2){
+      const blocks=nearby(x,z),walkable=blocks.filter(b=>surfaces.has(b.kind??''));
+      const centered=walkable.some(b=>Math.abs(x-b.x)<=b.w/2+.001&&Math.abs(z-b.z)<=b.d/2+.001);
+      const heights=[0,...(centered?walkable.filter(b=>overlapsXZ(v(x,0,z),b,.35)).map(b=>b.y+b.h/2):[])];
+      for(const y of new Set(heights))if(clear(v(x,y,z),blocks)){
+        const key=`${x},${z}`;if(!cells.has(key))cells.set(key,[]);
+        cells.get(key)!.push(this.nodes.length);this.nodes.push(v(x,y,z));
+      }
+    }
+    this.neighbors=this.nodes.map(p=>{
+      const out:number[]=[],blocks=nearby(p.x,p.z);
+      for(const dx of [-2,0,2])for(const dz of [-2,0,2]){
+        if(!dx&&!dz)continue;
+        for(const j of cells.get(`${p.x+dx},${p.z+dz}`)??[]){
+          const q=this.nodes[j];let height=p.y,valid=true;
+          // Eight samples catch stair risers, headroom and diagonal wall corners.
+          for(let k=1;k<=8;k++){
+            const point=v(p.x+dx*k/8,height,p.z+dz*k/8);let support=0;
+            for(const b of blocks){const top=b.y+b.h/2;if(top<=height+.431&&overlapsXZ(point,b,.35))support=Math.max(support,top);}
+            if(height-support>.44){valid=false;break;} // No imaginary bridges across the skill gap.
+            point.y=support;if(!clear(point,blocks)){valid=false;break;}height=support;
+          }
+          if(valid&&Math.abs(height-q.y)<.04)out.push(j);
+        }
+      }
+      return out;
+    });
+  }
+
   nearest(p: Vec) {
     let best = 0,
       min = Infinity;
@@ -678,7 +730,7 @@ export class Navigation {
     const cost = new Map([[start, 0]]),
       prev = new Map<number, number>();
     let loops = 0;
-    while (open.size && loops++ < 600) {
+    while (open.size && loops++ < Math.max(600, this.nodes.length)) {
       let cur = -1,
         score = Infinity;
       for (const n of open) {
@@ -814,8 +866,8 @@ export class Match {
   spawn(a: Actor, initial = false) {
     a.spawnId = (a.spawnId ?? 0) + 1;
     a.stanceBlend = a.slideBlend = a.landingCompression = 0;
-    const spawnPoints =
-      this.mode === 1
+    const candidates =
+      this.map.id!==2 ? this.map.spawns : this.mode === 1
         ? [v(-10, 0, -5), v(10, 0, 5), v(-10, 0, 5), v(10, 0, -5)]
         : [
             v(-10, 0, 5),
@@ -824,7 +876,8 @@ export class Match {
             v(10, 0, 5),
             ...this.map.spawns,
           ];
-    let point = spawnPoints[a.id % spawnPoints.length];
+    const spawnPoints = candidates.filter(p=>!this.map.blocks.some(b=>overlapsXZ(p,b,.38)&&b.y-b.h/2<p.y+1.85&&b.y+b.h/2>p.y+.01));
+    let point = spawnPoints[a.id % spawnPoints.length] ?? this.map.spawns[0];
     if (!initial) {
       let best = -Infinity;
       for (const p of spawnPoints) {
@@ -879,6 +932,7 @@ export class Match {
     a.recoilPitch = a.recoilYaw = a.burst = 0;
     a.ai.path = [];
     a.ai.target = -1;
+    a.ai.seenUntil=0;a.ai.seenPos=undefined;
     this.events.push({ type: 'respawn', actor: a.id });
   }
   pendingSpawn = false;
@@ -1232,6 +1286,7 @@ export class Match {
     }
     const target = this.actors[a.ai.target];
     if (target?.alive && hasLOS(eye(a), eye(target), this.map.blocks)) {
+      a.ai.seenPos={...target.pos};a.ai.seenUntil=this.elapsed+8;
       const dx = target.pos.x - a.pos.x,
         dz = target.pos.z - a.pos.z,
         d = Math.hypot(dx, dz);
@@ -1245,6 +1300,11 @@ export class Match {
       a.pitch = Math.atan2(aimY - eye(a).y, d);
       input.right = a.ai.strafe * 0.45;
       input.forward = d > (a.weapon === 2 ? 6 : 14) ? 1 : d < 5 ? -0.5 : 0.15;
+      const stepTo=v(a.pos.x+Math.cos(a.yaw)*a.ai.strafe*.9,a.pos.y+.8,a.pos.z-Math.sin(a.yaw)*a.ai.strafe*.9);
+      if(!hasLOS(v(a.pos.x,a.pos.y+.8,a.pos.z),stepTo,this.map.blocks)){
+        const escape=v(a.pos.x-Math.cos(a.yaw)*a.ai.strafe*.9,a.pos.y+.8,a.pos.z+Math.sin(a.yaw)*a.ai.strafe*.9);
+        if(hasLOS(v(a.pos.x,a.pos.y+.8,a.pos.z),escape,this.map.blocks)){a.ai.strafe*=-1;input.right=a.ai.strafe*.45;}else input.right=0;
+      }
       if (a.ai.reaction <= 0 && Math.abs(delta) < 0.15 && a.cooldown <= 0) {
         const yaw = a.yaw,
           pitch = a.pitch;
@@ -1259,10 +1319,12 @@ export class Match {
       a.ai.path = [];
       a.ai.waypoint = { ...target.pos };
     } else {
+      const remembered=!!a.ai.seenPos&&(a.ai.seenUntil??0)>this.elapsed;
+      if(remembered&&dist(a.ai.waypoint,a.ai.seenPos!)>.1){a.ai.waypoint={...a.ai.seenPos!};a.ai.repath=0;}
       if (a.ai.repath <= 0 || !a.ai.path.length) {
-        if (dist(a.pos, a.ai.waypoint) < 3 || a.ai.repath < -1)
+        if (!remembered&&(dist(a.pos, a.ai.waypoint) < 3 || a.ai.repath < -1))
           a.ai.waypoint =
-            this.map.patrol[8 + Math.floor(this.random() * 4)] ??
+            this.map.patrol[Math.floor(this.random() * this.map.patrol.length)] ??
             this.map.patrol[0];
         a.ai.path = this.nav.path(a.pos, a.ai.waypoint);
         a.ai.repath = 2.5;
@@ -1282,9 +1344,8 @@ export class Match {
           a.pitch *= Math.exp(-8 * dt);
           input.forward = Math.max(0, Math.cos(delta)) * 0.85;
         }
-      } else
-        a.ai.waypoint =
-          this.map.patrol[Math.floor(this.random() * this.map.patrol.length)];
+      } else if(remembered) a.yaw+=dt*2;
+      else a.ai.waypoint=this.map.patrol[Math.floor(this.random()*this.map.patrol.length)];
     }
     a.ai.stuck += dt;
     if (a.ai.stuck > 1) {
