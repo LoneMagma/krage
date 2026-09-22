@@ -1,11 +1,11 @@
-## v0.9.0: deploy frontend and rooms together
-This build requires **protocol 14**. Reload existing tabs after both deployments. `/health` must report protocol 14. Matches remain in server memory; restarting the room process ends them.
+## v1.0.0: deploy frontend and rooms together
+This build requires **protocol 15**. Reload existing tabs after both deployments. `/health` must report protocol 15. Matches remain in server memory; restarting the room process ends them.
 
 For players in India, test a **Singapore room-server service**. The existing service region has not been verified. Render cannot move an existing service between regions: create a replacement, set `KRAGE_ORIGINS`, then rebuild the frontend with that service's `NEXT_PUBLIC_ROOM_URL`. Keep one room instance until room routing exists. See [Render regions](https://render.com/docs/regions).
 
 Code changes reduce stale input/snapshot queues and render work; they cannot remove geographic RTT. Compare RTT/jitter, server step time and frame p95 on the actual players' PCs. Do not promise a ping value from local tests.
 
-Reconnects reserve the same token, player and score for 120 seconds. Retry now restores that session rather than joining a fresh match. Expired sessions or a restarted server cannot restore scores. Test repeated disconnections, tab switches and rematches with the deployed build before declaring v1.
+Reconnects reserve the same token, player and score for 120 seconds. Retry now restores that session rather than joining a fresh match. Expired sessions or a restarted server cannot restore scores. Test repeated disconnections, tab switches and rematches with the deployed build before publishing this release.
 
 ## Render commands (current build)
 Frontend build: `npm ci && npm run build:render`
@@ -23,7 +23,7 @@ Play Online joins Quick Play. Lobby contains Create Lobby and Join Lobby.
 
 1. Deploy `Dockerfile.rooms` on a container host with WebSocket support. Route HTTPS to container port **3002**. Set `KRAGE_ORIGINS=https://YOUR-GAME-DOMAIN` (comma-separated, no trailing slashes). Health check: `/health`.
 2. Set `NEXT_PUBLIC_ROOM_URL=wss://YOUR-ROOM-HOST/play` when building the frontend. Authenticate Wrangler with your Cloudflare account, then run `npm run deploy:web`. This builds and publishes the existing Workers frontend.
-3. Set the room server's `KRAGE_ORIGINS` to the exact deployed frontend origin. For Quick Play, use matching mode/map/time on both devices. For private games, open **LOBBY**, create a lobby and share its code.
+3. Set the room server's `KRAGE_ORIGINS` to the exact deployed frontend origin. Quick Play pools all players into the global rotation; map, mode and time choices apply to custom/practice matches. For private games, open **LOBBY**, create a lobby and share its code.
 
 Use one room-server instance for this small deployment: rooms live in memory and restart with the server. The container does not require a database for matches. Quick Play joins public rooms and fills vacancies with server bots; private room codes remain available. Cosmetics remain device-local. Keep the frontend and room server on the same release.
 
@@ -32,7 +32,7 @@ Use one room-server instance for this small deployment: rooms live in memory and
 Frontend: https://krage-frontend-n5rj.onrender.com
 Room endpoint observed in its deployed bundle: wss://krage-rooms.onrender.com/play
 
-Set room service `KRAGE_ORIGINS=https://krage-frontend-n5rj.onrender.com`. The server reads Render's `PORT` and listens on `0.0.0.0`. Keep one instance until a room directory is added. Redeploy BOTH services for quick play. Probe `/health`, then test two independent browsers joining Quick Play with identical settings. Confirm one shared room, BOT labels replaced by player names, and normal FPS before sharing broadly.
+Set room service `KRAGE_ORIGINS=https://krage-frontend-n5rj.onrender.com`. The server reads Render's `PORT` and listens on `0.0.0.0`. Keep one instance until a room directory is added. Redeploy BOTH services for quick play. Probe `/health`, then test two independent browsers joining Quick Play. Confirm one shared room, BOT labels replaced by player names, and normal FPS before sharing broadly.
 
 ## Protocol 3 update
 Redeploy both the frontend and Node room service for this update; old tabs must reload. Weapon prediction confirmations require protocol 3. Verify two separate devices share a Quick Play room, replace bots, and agree on kills. Compare frame p95, model rebuild counts, RTT/jitter and server step time in Settings diagnostics before claiming a latency or FPS improvement.

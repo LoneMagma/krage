@@ -1,34 +1,10 @@
-/** Hold crouches; release stands. A second press within 300 ms requests one slide. */
+/** Crouch is a hold action. Sliding has its own independent binding. */
 export class CrouchControl {
-  active = false;
-  held = false;
-  lastTap = -Infinity;
-  slideRequested = false;
-  press(now: number) {
-    if (this.held) return;
-    this.held = true;
-    if (now - this.lastTap <= 300) {
-      this.active = false;
-      this.slideRequested = true;
-      this.lastTap = -Infinity;
-    } else {
-      this.active = true;
-      this.lastTap = now;
-    }
-  }
-  release() {
-    this.active = false;
-    this.held = false;
-  }
-  consumeSlide() {
-    const requested = this.slideRequested;
-    this.slideRequested = false;
-    return requested;
-  }
-  reset() {
-    this.active = this.held = this.slideRequested = false;
-    this.lastTap = -Infinity;
-  }
+ active=false;held=false;
+ press(_now:number){this.active=this.held=true;}
+ release(){this.active=this.held=false;}
+ consumeSlide(){return false;}
+ reset(){this.active=this.held=false;}
 }
 export const BINDABLE_KEYS = [
   'ShiftLeft',

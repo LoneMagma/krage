@@ -136,14 +136,14 @@ await test('persistent economy operations are atomic, replay-safe and cannot min
       matches: 1,
       wins: 0,
     };
-    assert.equal(store.settleAuthoritativeMatch('player', receipt).balance, 60);
-    assert.equal(store.settleAuthoritativeMatch('player', receipt).balance, 60);
-    assert.equal(store.buy('player', 'finish-frost').balance, 60);
-    store.settleAuthoritativeMatch('player', { ...receipt, id: 'round-2' });
+    assert.equal(store.settleAuthoritativeMatch('player', receipt).balance, 11);
+    assert.equal(store.settleAuthoritativeMatch('player', receipt).balance, 11);
+    assert.equal(store.buy('player', 'finish-frost').balance, 11);
+    for(let i=2;i<=11;i++)store.settleAuthoritativeMatch('player', { ...receipt, id: 'round-'+i });
     const bought = store.buy('player', 'finish-frost');
-    assert.equal(bought.balance, 0);
+    assert.equal(bought.balance, 1);
     assert.ok(bought.owned.includes('finish-frost'));
-    assert.equal(store.buy('player', 'finish-frost').balance, 0);
+    assert.equal(store.buy('player', 'finish-frost').balance, 1);
     assert.throws(() => store.grantPaid(), /disabled/);
   } finally {
     store.close();
@@ -313,7 +313,7 @@ await test('public rooms fill with server bots and replace them with humans', ()
   assert.equal(r.snapshot(a.token).actors.filter(x=>x.bot).length,3);
 });
 
-await test('two websocket Quick Play clients share humans and bots, different maps separate', { timeout: 10000 }, async () => {
+await test('Quick Play ignores private preferences and pools live players', { timeout: 10000 }, async () => {
   const server = createArenaServer({port:0}); const address = await server.listen(); const sockets=[];
   const connect = async () => { const ws=new WebSocket(`ws://127.0.0.1:${address.port}/play`); sockets.push(ws); await once(ws,'open'); return ws; };
   const waitFor = (ws,type) => new Promise((resolve,reject) => {
@@ -327,10 +327,10 @@ await test('two websocket Quick Play clients share humans and bots, different ma
     const b=await connect(); const bw=waitFor(b,'welcome'); b.send(JSON.stringify({...options,name:'B',primary:2}));const second=await bw;
     assert.equal(first.room,second.room); assert.notEqual(first.id,second.id);
     const snap=await waitFor(a,'snapshot');
-    assert.equal(snap.actors.filter(x=>x.bot).length,2); assert.equal(snap.actors.filter(x=>x.connected).length,2);
-    assert.equal(snap.duration,180);assert.equal(snap.map,1);assert.equal(snap.state,'playing');
+    assert.equal(snap.actors.filter(x=>x.bot).length,4); assert.equal(snap.actors.filter(x=>x.connected).length,2);
+    assert.equal(snap.duration,300);assert.equal(snap.map,0);assert.equal(snap.state,'playing');
     assert.equal(snap.actors.find(x=>x.id===second.id).primary,2);
-    const c=await connect();const cw=waitFor(c,'welcome');c.send(JSON.stringify({...options,map:0,name:'C'}));assert.notEqual((await cw).room,first.room);
+    const c=await connect();const cw=waitFor(c,'welcome');c.send(JSON.stringify({...options,map:0,name:'C'}));assert.equal((await cw).room,first.room);
   } finally { for (const ws of sockets) ws.terminate(); await server.close(); }
 });
 
@@ -504,7 +504,7 @@ await test('four live friends share one match and a returning socket keeps its s
     assert.equal((await welcome).id,returning.id);
     const snap=await snapshot,own=snap.actors.find(a=>a.id===returning.id);
     assert.equal(snap.actors.filter(a=>a.connected&&!a.bot).length,4);
-    assert.deepEqual([own.kills,own.score,own.deaths],[6,720,2]);assert.equal(snap.duration,600);
+    assert.deepEqual([own.kills,own.score,own.deaths],[6,720,2]);assert.equal(snap.duration,300);
   }finally{for(const ws of sockets)ws.terminate();await server.close();}
 });
 
@@ -535,7 +535,7 @@ await test('match and team chat never leak into other rooms or opposing teams', 
 await test('Dune and Skirmish rooms expose their matching shared arena and protocol',()=>{
  for(const map of [0,2]){
   const room=new Room(0,map,undefined,{public:true,capacity:4});const player=room.join('Explorer');
-  const state=room.snapshot(player.token);assert.equal(state.map,map);assert.equal(state.protocol,14);
+  const state=room.snapshot(player.token);assert.equal(state.map,map);assert.equal(state.protocol,15);
   assert.equal(room.match.map.width,map===0?72:60);assert.equal(room.match.map.name,map===0?'DUNE':'CELL I');
   for(const a of room.match.actors)assert.ok(!room.match.map.blocks.some(b=>Math.abs(a.pos.x-b.x)<b.w/2+.33&&Math.abs(a.pos.z-b.z)<b.d/2+.33&&b.y-b.h/2<a.pos.y+1.85&&b.y+b.h/2>a.pos.y+.01));
  }
@@ -543,5 +543,29 @@ await test('Dune and Skirmish rooms expose their matching shared arena and proto
 });
 
 await test('new Snow and CELL II are selectable online with shared geometry',()=>{
- for(const map of [1,3]){const room=new Room(2,map,undefined,{botFill:true});const a=room.join('A'),b=room.join('B');assert.equal(room.snapshot(a.token).map,map);assert.equal(room.snapshot(b.token).protocol,14);assert.equal(room.match.map.name,map===1?'SNOW':'CELL II');}
+ for(const map of [1,3]){const room=new Room(2,map,undefined,{botFill:true});const a=room.join('A'),b=room.join('B');assert.equal(room.snapshot(a.token).map,map);assert.equal(room.snapshot(b.token).protocol,15);assert.equal(room.match.map.name,map===1?'SNOW':'CELL II');}
+});
+
+await test('public rotation preserves sessions and loadouts and skips undersized team modes',()=>{
+ const r=new Room(0,0,undefined,{public:true,capacity:6});const people=Array.from({length:5},(_,i)=>r.join('P'+i,undefined,1000,i%3));
+ const old=r.roundId;r.match.ended=true;r.finishedAt=1000;r.step(9001);
+ assert.notEqual(r.roundId,old);assert.equal(r.mode,3);assert.equal(r.map,1);assert.equal(r.slots.size,5);
+ for(const [i,p] of people.entries()){const s=r.snapshot(p.token);assert.equal(s.state,'playing');assert.equal(s.actors.find(a=>a.id===s.you).name,'P'+i);assert.equal(s.actors.find(a=>a.id===s.you).primary,i%3);assert.equal(s.actors.find(a=>a.id===s.you).kills,0);assert.equal(s.actors.find(a=>a.id===s.you).life,1);}
+ r.disconnect(people[0].token,9002);const resumed=r.join('ignored',people[0].token,9003);assert.equal(resumed.token,people[0].token);
+ const privateRoom=new Room(0,0);privateRoom.join('Host');privateRoom.match.ended=true;assert.equal(privateRoom.rotatePublic(),false);
+});
+await test('small public parties cycle FFA, 2v2 and 3v3 with all bot skills',()=>{
+ const r=new Room(0,0,undefined,{public:true,capacity:6});r.join('A');r.join('B');
+ assert.equal(new Set(r.match.actors.filter(a=>a.bot).map(a=>a.botDifficulty)).size,3);
+ for(const mode of [2,3,0]){r.match.ended=true;r.rotatePublic();assert.equal(r.mode,mode);assert.equal(r.match.actors.length,r.capacity);assert.equal(r.slots.size,2);}
+});
+
+await test('full global room spills into another room without splitting existing players', {timeout:10000}, async()=>{
+ const server=createArenaServer({port:0}),address=await server.listen(),sockets=[],sessions=[];
+ try{for(let i=0;i<7;i++){
+  const ws=new WebSocket(`ws://127.0.0.1:${address.port}/play`);sockets.push(ws);await once(ws,'open');
+  const welcome=new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('welcome timeout')),2000);ws.on('message',raw=>{const m=JSON.parse(raw);if(m.type==='welcome'){clearTimeout(timer);resolve(m);}});});
+  ws.send(JSON.stringify({type:'quick',name:'Q'+i,mode:i%4,map:i%4}));sessions.push(await welcome);
+ }assert.ok(sessions.slice(0,6).every(s=>s.room===sessions[0].room));assert.notEqual(sessions[6].room,sessions[0].room);
+ }finally{for(const ws of sockets)ws.terminate();await server.close();}
 });

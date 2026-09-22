@@ -22,7 +22,7 @@ export function WeaponGlyph({
   const key = useId().replace(/:/g, ''),
     accent = WEAPON_COLORS[id],
     wood = finish === 5 ? ['#25414a','#292d32','#26363f'][id] : finish === 4 ? '#24363b' : finish === 1 ? '#dce7ec' : finish === 2 ? '#e78851' : finish === 3 ? '#ac8cf5' : '#a6643f',
-    steel = finish === 5 ? ['#d7e4e0','#d5ad62','#687e88'][id] : finish === 4 ? '#657c83' : finish === 1 ? '#bacbdc' : finish === 2 ? '#8e614d' : finish === 3 ? '#726494' : '#65778e';
+    steel = finish === 5 ? ['#d7e4e0','#d5ad62','#c3ced2'][id] : finish === 4 ? '#657c83' : finish === 1 ? '#bacbdc' : finish === 2 ? '#8e614d' : finish === 3 ? '#726494' : '#65778e';
   return (
     <svg viewBox="0 0 240 88" aria-hidden="true" className="weapon-glyph">
       <defs>
@@ -115,7 +115,7 @@ export function WeaponGlyph({
           </>
         )}
       </g>
-      {finish===5&&id<3&&<g stroke={['#85f4dd','#f5ce78','#a4bac0'][id]} fill="none"><path d="M82 34H149M88 38H144" strokeWidth="2"/><path d="M109 42l5 4-5 4-5-4Z" strokeWidth="2"/><path d="M157 47l5-6m1 6 5-6m1 6 5-6" strokeWidth="1.5"/></g>}
+      {finish===5&&id<3&&<g stroke={['#85f4dd','#f5ce78','#e7d8b2'][id]} fill="none"><path d="M82 34H149M88 38H144" strokeWidth="2"/><path d="M109 42l5 4-5 4-5-4Z" strokeWidth="2"/><path d="M157 47l5-6m1 6 5-6m1 6 5-6" strokeWidth="1.5"/></g>}
     </svg>
   );
 }

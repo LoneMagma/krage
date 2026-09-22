@@ -53,12 +53,6 @@ import { matchReport } from '@/lib/game/report';
 import { BINDABLE_KEYS, keyLabel } from '@/lib/game/controls';
 
 const modes = ['Free for all', '1 v 1', '2 v 2', '3 v 3'];
-const gunDetails = [
-  'Fast fire. Stay on target.',
-  'Control the burst. Win the lane.',
-  'Two shots. Make them count.',
-  'Close the gap. One hit.',
-];
 const maps = [makeMap(0), makeMap(1), makeMap(2), makeMap(3)];
 function MapDiagram({ id }: { id: number }) {
   const map = maps[id];
@@ -90,7 +84,7 @@ function Scoreboard({ snap, mode }: { snap: Snapshot; mode: number }) {
   return (
     <div className="scoreboard">
       <div className="scoreboard-title">
-        <span>FRAG REPORT</span>
+        <span>SCOREBOARD</span>
         <span>
           {modes[mode]} / {snap.map}
         </span>
@@ -211,7 +205,7 @@ function SettingsPanel({
         Potato lowers resolution and disables debris and ragdolls. Hit detection
         and movement stay identical.
       </p>
-      <fieldset hidden={category!=='MOVEMENT'} className="choice-setting"><legend>Crouch / double-tap slide</legend><GameChoice
+      <fieldset hidden={category!=='MOVEMENT'} className="choice-setting"><legend>Hold crouch</legend><GameChoice
           value={settings.crouchKey}
           aria-label="Crouch key"
           onChange={(value)=> {
@@ -233,7 +227,7 @@ function SettingsPanel({
           ))}
         </GameChoice>
       </fieldset>
-      <fieldset hidden={category!=='MOVEMENT'} className="choice-setting"><legend>Separate slide key</legend><GameChoice
+      <fieldset hidden={category!=='MOVEMENT'} className="choice-setting"><legend>Slide</legend><GameChoice
           value={settings.slideKey}
           aria-label="Slide key"
           onChange={(value)=> update('slideKey', value)}
@@ -539,6 +533,21 @@ export default function Home() {
     setMap(id);
     arena.current?.setMap(id);
   };
+  useEffect(()=>{
+    const key=(e:KeyboardEvent)=>{
+      if(e.repeat||(e.target as HTMLElement)?.closest('input,textarea,[contenteditable=true]'))return;
+      if(modal==='loadout'){
+        const i=['Digit1','Digit2','Digit3'].indexOf(e.code);
+        if(i>=0){e.preventDefault();setWeapon(i);arena.current?.setPrimaryPreview(i);}
+        if(e.code==='Escape'){e.preventDefault();setModal(null);}
+      }
+      if(snap.phase==='ended'){
+        if(e.code==='Tab'){e.preventDefault();setBoard(b=>!b);}
+        if(e.code==='Escape'){e.preventDefault();arena.current?.lobby();}
+        if(e.code==='Enter'&&!snap.network){e.preventDefault();start();}
+      }
+    };window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key);
+  });
   const inGame = snap.phase !== 'menu';
   const activeMode = inGame ? snap.mode : mode;
   const result = matchReport(activeMode, snap.leaderboard, snap.teams);
@@ -648,7 +657,6 @@ export default function Home() {
                       aria-pressed={map === i}
                       onClick={() => selectMap(i)}
                     >
-                      <span>0{i + 1}</span>
                       <strong>{m.name}</strong>
                       <small>
                         {['SETTLEMENT / LINKED FLANKS','HALL / FREIGHT / GALLERY','OPEN / TRAINING','COMPACT / DUELS'][i]}
@@ -684,7 +692,7 @@ export default function Home() {
                   </Button>
                 ))}
               </div>
-              <div className="match-duration"><span>TIME</span><GameChoice aria-label="Match duration" value={duration} onChange={value=>setDuration(+value)}>{[60,180,300,600].map(seconds=><option key={seconds} value={seconds}>{seconds/60} MIN</option>)}</GameChoice></div>
+              <div className="match-duration"><span>PRACTICE TIME</span><GameChoice aria-label="Match duration" value={duration} onChange={value=>setDuration(+value)}>{[60,180,300,600].map(seconds=><option key={seconds} value={seconds}>{seconds/60} MIN</option>)}</GameChoice></div>
               <details className="practice-settings">
                 <summary>Practice settings</summary>
               <div className="bot-options">
@@ -740,6 +748,7 @@ export default function Home() {
                 {snap.network?.status==='connecting' ? 'JOINING…' : ready ? 'PLAY ONLINE' : 'LOADING…'}
                 <ArrowUpRight size={23} />
               </Button>
+              <div className="public-rotation">PUBLIC · FFA / 2v2 / 3v3</div>
               <div className="secondary-play-actions"><Button className="practice-button" disabled={!ready} onClick={()=>setModal('online')}>LOBBY / CUSTOM</Button><Button className="practice-button" disabled={!ready || !!snap.network?.lobby} onClick={start}>PRACTICE</Button></div>
               <label className="lobby-player-name">PLAYER<input aria-label="Your player name" value={playerName} maxLength={16} onChange={e=>savePlayerName(e.target.value)}/></label>
               {snap.network?.status==='failed'&&<output role="alert">{snap.network.message}</output>}
@@ -756,7 +765,7 @@ export default function Home() {
           <footer className="lobby-footer">
             <span>
               <MousePointer2 size={14} />
-              <a href="https://github.com/lonemagma" target="_blank" rel="noreferrer">v0.9</a>
+              <a href="https://github.com/lonemagma" target="_blank" rel="noreferrer">v1.0</a>
             </span>
 
             <span className="project-credit"><strong>MADE IN INDIA</strong><span>A <a href="https://pacify.site" target="_blank" rel="noreferrer">pacify</a> project</span></span>
@@ -972,7 +981,7 @@ export default function Home() {
             <div className="damage-direction" aria-hidden="true" />
             {snap.dragAim && snap.phase === 'playing' && !snap.benchmark && (
               <div className="drag-aim-hint">
-                DRAG TO AIM · CLICK TO FIRE · ESC PAUSES
+                CLICK TO CAPTURE MOUSE
               </div>
             )}
             {snap.benchmark && !snap.benchmark.complete && (
@@ -989,16 +998,19 @@ export default function Home() {
                 SPACE <small>JUMP</small>
               </span>
               <span>
-                {keyLabel(settings.crouchKey)} <small>HOLD CROUCH / 2× SLIDE</small>
+                {keyLabel(settings.crouchKey)} <small>CROUCH</small>
               </span>
               <span>
                 RMB <small>AIM</small>
               </span>
               <span>
+                {keyLabel(settings.slideKey)} <small>SLIDE</small>
+              </span><span>
                 TAB <small>SCORES</small>
               </span>
             </div>
           </div>
+          {!!snap.intro&&snap.phase==='playing'&&<div className="match-intro" key={snap.network?.room+snap.map+snap.mode}><small>{snap.network?'ROOM '+snap.network.room:'PRACTICE'}</small><strong>{snap.map}</strong><span>{modes[activeMode]}</span></div>}
           {snap.phase === 'spawning' && !snap.benchmark && (
             <div className="spawn-overlay">
               <section className="spawn-panel">
@@ -1021,7 +1033,7 @@ export default function Home() {
                 )}
                 <progress className="respawn-progress" aria-label="Respawn ready" max={2} value={2-Math.min(2,snap.respawn)}/>
                 <h2>
-                  BACK IN THE FIGHT{' '}
+                  RESPAWN{' '}
                   <small className="spawn-key-hint">1 / 2 / 3 · SPACE / ENTER</small>
                 </h2>
                 <div className="spawn-choices">
@@ -1044,7 +1056,7 @@ export default function Home() {
                         }
                       />
                       <strong>{g.short}</strong>
-                      <span>{g.mag} ROUNDS</span>
+                      <kbd>{i+1}</kbd>
                     </Button>
                   ))}
                 </div>
@@ -1057,16 +1069,11 @@ export default function Home() {
                   onClick={() => arena.current?.deploy()}
                 >
                   {snap.respawn > 0
-                    ? `DEPLOY IN ${Math.ceil(snap.respawn)}`
-                    : 'DEPLOY'}
+                    ? `RESPAWN · ${Math.ceil(snap.respawn)}`
+                    : <>RESPAWN <kbd>SPACE</kbd></>}
                   <ArrowUpRight size={22} />
                 </Button>
-                <div className="spawn-meta">
-                  <span>
-                    {snap.score} FRAGS / {snap.deaths} DEATHS
-                  </span>
-                  <span>MATCH CONTINUES</span>
-                </div>
+
               </section>
             </div>
           )}
@@ -1086,7 +1093,7 @@ export default function Home() {
                   {snap.benchmark?.complete
                     ? 'Benchmark complete'
                     : snap.network
-                      ? 'Ready when you are'
+                      ? 'PAUSED'
                       : 'Match paused'}
                 </h2>
                 {snap.benchmark?.complete && (
@@ -1189,93 +1196,17 @@ export default function Home() {
             </div>
           )}
           {snap.phase === 'ended' && (
-            <div className="end-overlay">
-              <section className={'end-panel outcome-' + result.outcome}>
-                <div className="result-header">
-                  <KrageLogo compact />
-                  <span className="eyebrow">MATCH COMPLETE / {snap.map}</span>
-                  <span>{modes[activeMode]}</span>
-                </div>
-                <div className="result-hero">
-                  <div>
-                    <span className="eyebrow">
-                      {result.outcome === 'victory'
-                        ? 'ARENA SECURED'
-                        : result.outcome === 'draw'
-                          ? 'LEVEL ON FRAGS'
-                          : 'NEXT ROUND IS YOURS'}
-                    </span>
-                    <h2>
-                      {result.outcome.toUpperCase()}
-                      <span>.</span>
-                    </h2>
-
-                  </div>
-                  <div className="result-score">
-                    <strong>
-                      {result.own}
-                      <span>:</span>
-                      {result.rival}
-                    </strong>
-                    <small>
-                      {activeMode >= 2 ? 'YOUR TEAM / RIVALS' : 'YOU / TOP RIVAL'}
-                    </small>
-                  </div>
-                </div>
-                <div className="result-summary">
-                  <span>#{result.rank} PLAYER RANK</span>
-                  <span>{result.kd.toFixed(2)} K/D</span>
-                  <span>
-                    {Math.floor((snap.elapsed) / 60)}:
-                    {String(Math.floor((snap.elapsed) % 60)).padStart(
-                      2,
-                      '0',
-                    )}{' '}
-                    PLAYED
-                  </span>
-                </div>
-                <div className="match-stats">
-                  <div>
-                    <strong>{snap.score}</strong>
-                    <span>FRAGS</span>
-                  </div>
-                  <div>
-                    <strong>{snap.deaths}</strong>
-                    <span>DEATHS</span>
-                  </div>
-                  <div>
-                    <strong>
-                      {snap.shots
-                        ? Math.round((snap.hits / snap.shots) * 100)
-                        : 0}
-                      %
-                    </strong>
-                    <span>SHOT ACCURACY</span>
-                  </div>
-                  <div>
-                    <strong>{snap.headshots}</strong>
-                    <span>HEADSHOT FRAGS</span>
-                  </div>
-                </div>
-                <div className="result-progression"><strong>+{lastAward} KR</strong><button onClick={()=>{arena.current?.lobby();setModal('challenges');}}>{claimable>0?`${claimable} REWARDS READY`:'CHALLENGES'} ↗</button></div>
-                <details className="result-board"><summary>SCOREBOARD</summary><Scoreboard snap={snap} mode={activeMode}/></details>
-                {snap.network && <Button className="deploy-button" disabled={snap.network.status!=='connected'||(!snap.network.public&&snap.network.host!==snap.network.you)} onClick={()=>arena.current?.playAgain()}>{snap.network.public?'PLAY AGAIN':snap.network.host===snap.network.you?'RETURN PARTY TO LOBBY':'WAITING FOR HOST'}</Button>}
-                {snap.network?.message && <output>{snap.network.message}</output>}
-                {!snap.network && <Button
-                  className="deploy-button"
-                  onClick={start}
-                >
-                  RUN IT BACK
-                  <RotateCcw size={20} />
-                </Button>}
-                <Button
-                  className="secondary-button"
-                  onClick={() => arena.current?.lobby()}
-                >
-                  {snap.network && !snap.network.public ? 'LEAVE PARTY' : 'LOBBY'}
-                </Button>
-              </section>
-            </div>
+            <div className="end-overlay"><section className={'end-panel outcome-'+result.outcome}>
+              <div className="result-header"><span>{snap.map}</span><span>{modes[activeMode]}</span></div>
+              <div className="result-hero"><h2>{result.outcome.toUpperCase()}</h2><strong>{result.own}<span> : </span>{result.rival}</strong></div>
+              {board?<Scoreboard snap={snap} mode={activeMode}/>:<div className="match-stats"><div><strong>{snap.score}</strong><span>FRAGS</span></div><div><strong>{snap.deaths}</strong><span>DEATHS</span></div><div><strong>+{lastAward}</strong><span>KR</span></div></div>}
+              {snap.network?.public&&snap.nextRound&&<div className="next-round"><span>NEXT · {maps[snap.nextRound.map]?.name} · {modes[snap.nextRound.mode]}</span><strong>{snap.nextRound.seconds}s</strong></div>}
+              <div className="result-actions">
+                {!snap.network?<Button className="deploy-button" onClick={start}>PLAY AGAIN <kbd>ENTER</kbd></Button>:!snap.network.public&&<Button className="deploy-button" disabled={snap.network.status!=='connected'||snap.network.host!==snap.network.you} onClick={()=>arena.current?.playAgain()}>{snap.network.host===snap.network.you?'LOBBY':'WAITING FOR HOST'}</Button>}
+                <Button className="secondary-button" onClick={()=>setBoard(!board)}>SCORES <kbd>TAB</kbd></Button>
+                <Button className="secondary-button" onClick={()=>arena.current?.lobby()}>EXIT <kbd>ESC</kbd></Button>
+              </div>
+            </section></div>
           )}
           {touch && snap.phase === 'playing' && (
             <div className="touch-controls">
@@ -1415,8 +1346,8 @@ export default function Home() {
                   }}
                 >
                   <div className="loadout-card-top">
-                    <span>0{i + 1}</span>
-                    <span>{weapon === i ? 'EQUIPPED' : 'AVAILABLE'}</span>
+                    <kbd>{i+1}</kbd>
+                    <span>{weapon === i ? 'SELECTED' : ''}</span>
                   </div>
                   <WeaponGlyph
                     id={i}
@@ -1425,17 +1356,7 @@ export default function Home() {
                     }
                   />
                   <h3>{g.short}</h3>
-                  <p>{gunDetails[i]}</p>
-                  <div className="weapon-stat">
-                    <span>{i === 3 ? 'LETHAL' : 'BODY DAMAGE'}</span>
-                    <strong>
-                      {i === 3 ? 'ONE HIT' : i === 2 ? '16 × 10' : g.damage}
-                    </strong>
-                  </div>
-                  <div className="weapon-stat">
-                    <span>{i === 3 ? 'MOBILITY' : 'MAGAZINE'}</span>
-                    <strong>{i === 3 ? '+15%' : g.mag}</strong>
-                  </div>
+
                 </Button>
               ))}
             </div>

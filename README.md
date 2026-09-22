@@ -1,8 +1,8 @@
-# kRAGE v0.9.0 · Four arenas
+# kRAGE v1.0.0 · Four arenas
 
 Browser arena FPS with public Quick Play, private friend rooms and practice bots. Three primaries, one blade, four modes and four arenas. Built with Three.js, TypeScript, React and Vinext. Characters use simple articulated blocks; weapons use lightweight angular Three.js meshes. Audio combines the original v0.6 gunfire with edited supplied effects.
 
-This pre-v1 build requires frontend and room server protocol 13. See [release notes](docs/V0.9.md) and [Render deployment instructions](docs/DEPLOY.md).
+This v1.0 build requires frontend and room server protocol 15. See [developer handoff](docs/DEVELOPMENT.md) and [Render deployment instructions](docs/DEPLOY.md).
 
 ## Play
 
@@ -15,8 +15,8 @@ Choose Free for all, 1v1, 2v2 or 3v3, an arena, a primary and bot difficulty. FF
 | WASD / mouse       | Move / look                                         |
 | Left / right mouse | Fire / aim                                          |
 | Space              | Jump; release and press for the next jump           |
-| Shift              | Hold: crouch; double-tap: slide while moving  |
-| C                  | Separate slide shortcut; both bindings configurable |
+| Shift              | Hold crouch; release to stand  |
+| C                  | Slide; independently rebindable |
 | R                  | Reload                                              |
 | 1 / 2              | Your primary / blade                                |
 | Q or wheel         | Toggle primary and blade                            |

@@ -50,6 +50,8 @@ import { AudioSystem } from './audio';
 import { registerGameTools } from './webmcp';
 export type Phase = 'menu' | 'playing' | 'spawning' | 'paused' | 'ended';
 export type Snapshot = {
+  intro?: number;
+  nextRound?: {mode:number;map:number;seconds:number}|null;
   phase: Phase;
   mode: Mode;
   network: ConnectionInfo | null;
@@ -211,6 +213,10 @@ export class Arena {
       },
     );
     this.roomClient.connect();
+    if(options.quickPlay&&!this.touchMode){
+      const request=this.capture.begin();
+      try{this.renderer.domElement.requestPointerLock()?.catch(()=>{this.capture.settle(request);});}catch{this.capture.settle(request);}
+    }
   }
   disconnectRoom() {
     this.capture.cancel();
@@ -222,11 +228,12 @@ export class Arena {
   }
   receiveRoom(snapshot: RoomSnapshot) {
     const previousPhase=this.phase;
+    this.nextRound=snapshot.nextRound;
     if (snapshot.staging) {
       if(this.network){this.network=null;this.resetEffects();this.keys.clear();this.mouseDown=this.ads=false;}
       this.phase = 'menu'; if(previousPhase!==this.phase)this.emit(); return;
     }
-    if (!this.network) {
+    if (!this.network || (snapshot.roundId&&this.roundId!==`room:${snapshot.roundId}:${snapshot.you}`)) {
       this.network = new NetworkState(snapshot);
       this.roundId=snapshot.roundId?`room:${snapshot.roundId}:${snapshot.you}`:'';
       this.completedRound=null;
@@ -240,9 +247,13 @@ export class Arena {
       this.scene.add(this.mapGroup);
       this.loadModels();
       this.applyTheme();
-      this.phase = 'paused';
+      this.phase = 'playing';
+      this.introUntil=performance.now()+3600;
+      this.dragAim=!this.touchMode&&document.pointerLockElement!==this.renderer.domElement;
+      this.accumulator=0;this.last=performance.now();
       this.benchmark = null;
       this.input = emptyInput();
+      this.mouseDown=this.ads=false;this.crouchControl.reset();this.slideSoundPlayed=false;
       this.keys.clear();
       this.previous.copy(this.match.player.pos);
       this.camera.position.copy(eye(this.match.player));
@@ -307,6 +318,8 @@ export class Arena {
   weaponFinishes: number[] = [0, 0, 0];
   lastFragTime = -Infinity;
   comboCount = 0;
+  introUntil=0;
+  nextRound:Snapshot['nextRound']=null;
   roundId = '';
   completedRound: string | null = null;
   onMatchComplete: (receipt: MatchReceipt) => void = () => {};
@@ -450,15 +463,17 @@ export class Arena {
     const rim = new T.DirectionalLight('#8bd8eb', 2);
     rim.position.set(3, 2, -2);
     this.lobbyScene.add(rim);
-    const ground = new T.Mesh(new T.CircleGeometry(1.2, 48), new T.MeshBasicMaterial({color:'#101820',transparent:true,opacity:0.3,depthWrite:false}));
-    ground.rotation.x=-Math.PI/2; ground.position.y=-0.025; ground.scale.y=0.65;
+    const ground = new T.Mesh(new T.CylinderGeometry(.60,.64,.045,48),new T.MeshStandardMaterial({color:'#29434b',metalness:.35,roughness:.65}));
+    ground.position.y=-.05;
+    const rimBase=new T.Mesh(new T.RingGeometry(.605,.62,48),new T.MeshBasicMaterial({color:'#adc9c5',transparent:true,opacity:.7,side:T.DoubleSide}));
+    rimBase.rotation.x=-Math.PI/2;rimBase.position.y=-.02;this.lobbyScene.add(rimBase);
     this.lobbyScene.add(ground);
     this.lobbyScene.add(this.lobbyAvatar.group);
     this.lobbyAvatar.group.rotation.y = Math.PI + 0.3;
     this.lobbyAvatar.ring.visible = false;
     this.lobbyAvatar.weapon.visible = true;
     this.lobbyCamera.position.set(0, 1.2, 3.6);
-    this.lobbyCamera.lookAt(0, 0.92, 0);
+    this.lobbyCamera.lookAt(0, 0.85, 0);
     try {
       this.lastBenchmark = JSON.parse(
         localStorage.getItem('krage-last-benchmark') || 'null',
@@ -474,6 +489,7 @@ export class Arena {
     });
     this.listen(host, 'mousedown', ((e: MouseEvent) => {
       if (this.phase === 'playing') {
+        if(this.dragAim&&!this.touchMode){const request=this.capture.begin();try{this.renderer.domElement.requestPointerLock()?.catch(()=>this.capture.settle(request));}catch{this.capture.settle(request);}}
         this.dragX = e.clientX;
         this.dragY = e.clientY;
         if (e.button === 0) {
@@ -659,6 +675,7 @@ export class Arena {
     this.resetEffects();
     this.lastDeath = null;
     this.roundId = crypto.randomUUID();
+    this.introUntil=performance.now()+3000;this.nextRound=null;
     this.botFootsteps.clear();
     this.match = new Match(mode, map, bots, difficulty, seed);
     this.match.player.primary = weapon;
@@ -723,6 +740,7 @@ export class Arena {
   }
   captureError(request: number) {
     if(document.pointerLockElement===this.renderer.domElement || !this.capture.settle(request))return;
+    if(this.roomClient){this.dragAim=true;this.captureFailed=false;this.onError('');this.emit();return;}
     this.captureFailed=true;this.pause();
     this.onError('Mouse capture failed. Retry Resume or use drag aim.');
   }
@@ -800,7 +818,7 @@ export class Arena {
     this.emit();
   }
   lockChanged = () => {
-    if(document.pointerLockElement===this.renderer.domElement){const requested=this.capture.settle(this.capture.generation);if(!requested&&this.phase!=='playing'){document.exitPointerLock();return;}this.captureFailed=false;if(requested&&this.phase==='paused')this.phase=this.match.pendingSpawn?'spawning':'playing';this.emit();return;}
+    if(document.pointerLockElement===this.renderer.domElement){const requested=this.capture.settle(this.capture.generation);if(!requested&&this.phase!=='playing'){document.exitPointerLock();return;}this.captureFailed=false;this.dragAim=false;if(requested&&this.phase==='paused')this.phase=this.match.pendingSpawn?'spawning':'playing';this.emit();return;}
     if (
       document.pointerLockElement !== this.renderer.domElement &&
       !this.touchMode &&
@@ -812,7 +830,7 @@ export class Arena {
   };
   keyDown = (e: KeyboardEvent) => {
     const target=e.target as HTMLElement | null;
-    if(e.defaultPrevented||target?.isContentEditable||target?.closest('input,textarea,select,button,[role="dialog"]'))return;
+    if(e.defaultPrevented||target?.isContentEditable||target?.closest('input,textarea,select,[role="dialog"]'))return;
     const code = boundKey(e.code, this.settings.bindings);
     if (
       code === 'Escape' &&
@@ -862,7 +880,7 @@ export class Arena {
     if (crouchKey === this.settings.crouchKey) {
       e.preventDefault();
       this.crouchControl.press(performance.now());
-      this.slidePulse ||= this.crouchControl.consumeSlide();
+
     }
     if (code === this.settings.slideKey) e.preventDefault();
     if (e.repeat) return;
@@ -1177,7 +1195,7 @@ export class Arena {
       this.gun = this.viewWeapons[equip.weapon];
       this.gunScene.add(this.gun);
       this.gun.add(this.flash);
-      this.flash.position.z = equip.weapon === 0 ? -0.73 : -0.98;
+      this.flash.position.z = equip.weapon === 0 ? -0.73 : equip.weapon === 2 ? -0.72 : -0.98;
     }
     this.recoil = Math.max(0, this.recoil - dt * 2.8);
     this.gunKick = T.MathUtils.damp(this.gunKick, 0, 18, dt);
@@ -1200,7 +1218,7 @@ export class Arena {
     this.gun.position.set(
       T.MathUtils.lerp(0.28, 0, this.adsLerp) + bob - this.swayX,
       -0.28 - Math.abs(bob) * 0.65 - this.landing + this.swayY - reload * 0.25,
-      (weaponView.weapon===2 ? -.64 : -.4) + this.gunKick * .18,
+      (weaponView.weapon===2 ? -0.58 : -0.4) + this.gunKick * .18,
     );
     this.gun.rotation.set(
       this.gunKick * 0.16 - reload * 0.6,
@@ -1210,7 +1228,7 @@ export class Arena {
     // Raise the sights to the center of the view in ADS.
     this.gun.position.y = T.MathUtils.lerp(
       this.gun.position.y,
-      weaponView.weapon===2 ? -.20 : -0.184,
+      weaponView.weapon===2 ? -0.14 : -0.184,
       this.adsLerp * (1 - equip.lower),
     );
     this.gun.position.y -= equip.lower * 0.62;
@@ -1250,11 +1268,13 @@ export class Arena {
         this.gun.rotation.x+=swing*0.22;
       } else {
         const side=weaponView.edgeSide || 1;
-        this.gun.position.x+=side*swing*0.29;
-        this.gun.position.y+=swing*0.06;
-        this.gun.rotation.z+=side*swing*1.05;
-        this.gun.rotation.y+=side*swing*0.75;
-        this.gun.position.z-=swing*0.16;
+        // Two diagonal sweeps translate the hand across the view, not around a pivot.
+        const sweep=Math.sin(t*Math.PI),cross=Math.sin(t*Math.PI*2);
+        this.gun.position.x+=side*cross*.26-sweep*.12;
+        this.gun.position.y+=side*cross*.11+sweep*.045;
+        this.gun.rotation.z+=side*cross*.5;
+        this.gun.rotation.y+=side*cross*.45;
+        this.gun.position.z-=sweep*.23;
       }
     }
     this.hitFlash = Math.max(0, this.hitFlash - dt);
@@ -1828,6 +1848,8 @@ export class Arena {
     const weaponView = this.network?.feedback.state ?? p;
     this.snap = {
       phase: this.phase,
+      intro:Math.max(0,(this.introUntil-performance.now())/1000),
+      nextRound:this.nextRound,
       mode: this.match.mode,
       network: this.connection ? { ...this.connection } : null,
       hp: Math.ceil(p.hp),

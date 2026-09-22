@@ -14,7 +14,7 @@ export function createArenaServer({
         'Content-Type': 'application/json',
         'Cache-Control': 'no-store',
       });
-      res.end(JSON.stringify({ ok: true, protocol: 14, rooms: rooms.size }));
+      res.end(JSON.stringify({ ok: true, protocol: 15, rooms: rooms.size }));
     } else {
       res.writeHead(404);
       res.end();
@@ -102,14 +102,15 @@ export function createArenaServer({
           if (peer.joined) throw new Error('Already joined');
           let room;
           if (m.type === 'quick') {
-            const duration = m.duration ?? 300;
-            const capacity = m.mode === 0 ? (m.capacity ?? 8) : [8,2,4,6][m.mode];
-            room = [...rooms.values()].find(r => r.public && r.mode === m.mode && r.map === m.map && r.match.duration === duration && r.capacity === capacity && !r.match.ended && r.match.time > 15 && r.slots.size < r.capacity);
+            // One global queue: fill existing rooms before allocating another.
+            room = [...rooms.values()].filter(r=>r.public&&!r.match.ended&&r.match.time>15&&r.slots.size<r.capacity).sort((a,b)=>b.slots.size-a.slots.size)[0];
             if (!room) {
               if (rooms.size >= 32) throw new Error('Room limit');
-              room = new Room(m.mode, m.map, undefined, { duration, capacity, public: true });
-              while (rooms.has(room.code)) room = new Room(m.mode, m.map, undefined, { duration, capacity, public: true });
-              rooms.set(room.code, room);
+              const rotation=[...rooms.values()].filter(r=>r.public).length;
+              const mode=[0,2,3][rotation%3],map=rotation%2;
+              room=new Room(mode,map,undefined,{duration:300,capacity:6,fragLimit:30,public:true,difficulty:'normal'});
+              while(rooms.has(room.code))room=new Room(mode,map,undefined,{duration:300,capacity:6,fragLimit:30,public:true,difficulty:'normal'});
+              rooms.set(room.code,room);
             }
           } else if (m.type === 'create') {
             if (rooms.size >= 32) throw new Error('Room limit');
@@ -124,7 +125,7 @@ export function createArenaServer({
           peer.joined = true;
           send(ws, {
             type: 'welcome',
-            protocol: 14,
+            protocol: 15,
             room: room.code,
             ...session,
             tickRate: 120,

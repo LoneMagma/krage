@@ -32,7 +32,7 @@ await test('rendered center ray agrees with hitscan above, below and around the 
       );
     }
 });
-await test('hold crouches, release stands, double-tap requests exactly one slide', () => {
+await test('hold crouches and repeated taps never request a slide', () => {
   const c = new CrouchControl();
   c.press(1000);
   assert.equal(c.active, true);
@@ -41,8 +41,8 @@ await test('hold crouches, release stands, double-tap requests exactly one slide
   c.release();
   assert.equal(c.active, false);
   c.press(1190);
-  assert.equal(c.active, false);
-  assert.equal(c.consumeSlide(), true);
+  assert.equal(c.active, true);
+  assert.equal(c.consumeSlide(), false);
   assert.equal(c.consumeSlide(), false);
   c.release();
   c.press(1600);
@@ -54,7 +54,7 @@ await test('hold crouches, release stands, double-tap requests exactly one slide
   assert.equal(c.active, false);
   assert.equal(c.held, false);
 });
-await test('double-tap slide works after first tap has slowed the player into crouch', () => {
+await test('independent slide input works at crouch movement speed', () => {
   const m = new Match(0, 0, 0),
     input = emptyInput(),
     c = new CrouchControl();
@@ -69,12 +69,12 @@ await test('double-tap slide works after first tap has slowed the player into cr
   c.release();
   c.press(1200);
   input.crouch = c.active;
-  input.slide = c.consumeSlide();
+  input.slide = true;
   m.step(1 / 120, input);
   assert.ok(m.player.slide > 0);
   assert.ok(Math.hypot(m.player.vel.x, m.player.vel.z) > 7 && Math.hypot(m.player.vel.x, m.player.vel.z) < 8.8);
 });
-await test('standing double-tap cannot launch a stationary player', () => {
+await test('slide cannot launch a stationary player', () => {
   const m = new Match(0, 0, 0),
     input = emptyInput();
   input.slide = true;
@@ -289,14 +289,14 @@ await test('practice rewards, purchases and claims are idempotent and UTC schedu
     wins: 1,
   };
   let p = recordMatch(base, receipt, now);
-  assert.equal(p.balance, 278);
+  assert.equal(p.balance, 215);
   assert.deepEqual(recordMatch(p, receipt, now), p);
   assert.deepEqual(
     recordMatch(p, { ...receipt, id: 'bench', eligible: false }, now),
     p,
   );
   p = purchase(p, 'finish-frost');
-  assert.equal(p.balance, 158);
+  assert.equal(p.balance, 95);
   assert.deepEqual(purchase(p, 'finish-frost'), p);
   assert.equal(equipCosmetic(p, 'finish-frost').finish, 'finish-frost');
   assert.equal(equipCosmetic(p, 'op-spectre').operator, 'op-spectre');
@@ -584,7 +584,7 @@ await test('KR challenge sets award bonuses once, refresh on UTC boundaries and 
  const {newProfile,challenges,claimChallenge,refreshProfile,DAY,CATALOG,purchase,recordMatch}=await import('../lib/game/progression.js');
  const now=Date.UTC(2026,8,14,12);let p=newProfile(now);
  assert.deepEqual(purchase(p,'skin-echo-carbon'),p,'starter credits alone cannot unlock an elite skin');
- p=recordMatch(p,{id:'earned',eligible:true,seconds:60,kills:10,headshots:3,meleeKills:2,matches:1,wins:1},now);assert.equal(p.balance,253);
+ p=recordMatch(p,{id:'earned',eligible:true,seconds:60,kills:10,headshots:3,meleeKills:2,matches:1,wins:1},now);assert.equal(p.balance,212);
  for(const key of ['kills','headshots','meleeKills','matches','wins'] as const)p.daily[key]=p.weekly[key]=100;
  const initial=p.balance,list=challenges(p);
  for(const c of list)p=claimChallenge(p,c.id,now);

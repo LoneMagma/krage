@@ -36,18 +36,18 @@ export function makeSnow():ArenaMap{
 }
 /** Small indoor Snow successor: retains the raised central fight and crouch route. */
 export function makeCellII():ArenaMap{
- const blocks:Block[]=[];const add=(x:number,y:number,z:number,w:number,h:number,d:number,kind='panel',color='#596878')=>blocks.push({x,y,z,w,h,d,kind,color});
+ const blocks:Block[]=[];const add=(x:number,y:number,z:number,w:number,h:number,d:number,kind='panel',color='#8da6bb')=>blocks.push({x,y,z,w,h,d,kind,color});
  for(const z of [-13,13])add(0,2.75,z,33,5.5,1,'boundary');for(const x of [-16,16])add(x,2.75,0,1,5.5,26,'boundary');
 
  add(0,1.05,0,6,2.1,5,'platform','#536a83');
  for(let i=0;i<7;i++)add(-8+(i+.5)*.7,(i+1)*.15,0,.7,(i+1)*.3,3,'step','#80929e');
  add(6.5,1.05,0,3,2.1,4,'platform','#586a83');
- for(const [x,z] of [[-10,-7],[10,7]])add(x,1.7,z,5,3.4,3,'cargo','#9a686c');
+ for(const [x,z] of [[-10,-7],[10,7]])add(x,1.7,z,5,3.4,3,'cargo','#586eac');
  for(const [x,z] of [[8,-6],[-8,7]])add(x,.7,z,3,1.4,2,'crate','#70858c');
- add(0,2.1,8,3,1.5,2,'bridge','#826579');for(const x of [-2.5,2.5])add(x,1.4,8,2,2.8,2);
+ add(0,2.1,8,3,1.5,2,'bridge','#ba9170');for(const x of [-2.5,2.5])add(x,1.4,8,2,2.8,2);
  const spawns=[[-13,-10],[13,10],[13,-10],[-13,10],[0,-10],[-13,2],[13,-2],[0,11]].map(([x,z])=>({x,y:0,z}));
  return{id:3,name:'CELL II',width:32,depth:26,blocks,spawns,patrol:[...spawns,{x:0,y:2.1,z:0},{x:9,y:0,z:0}]};
 }
 export function encloseCellI(map:ArenaMap):ArenaMap{
- return{...map,id:2,name:'CELL I',blocks:map.blocks.map(b=>({...b,color:b.kind==='crate'?'#b88b58':b.kind==='step'?'#88999d':b.kind==='platform'?'#386c70':'#465963',...(b.kind==='wall'&&(Math.abs(b.x)>29||Math.abs(b.z)>24)?{y:2.75,h:5.5}:{} )}))};
+ return{...map,id:2,name:'CELL I',blocks:map.blocks.map(b=>({...b,color:b.kind==='crate'?'#b88b58':b.kind==='step'?'#88999d':b.kind==='platform'?'#518d80':'#98afa5',...(b.kind==='wall'&&(Math.abs(b.x)>29||Math.abs(b.z)>24)?{y:2.75,h:5.5}:{} )}))};
 }

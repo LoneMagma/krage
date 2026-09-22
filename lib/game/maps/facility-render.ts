@@ -22,7 +22,7 @@ export function buildFacility(map:ArenaMap,sky?:T.Object3D){
  };
  const box=(x:number,y:number,z:number,w:number,h:number,d:number,c:string,s:keyof typeof tiles='metal',glow=false)=>add(new T.BoxGeometry(w,h,d),x,y,z,c,s,undefined,glow);
  const floor=(x:number,z:number,w:number,d:number,c:string,s:keyof typeof tiles='rubber')=>add(new T.PlaneGeometry(w,d),x,.012,z,c,s,new T.Euler(-Math.PI/2,0,0));
- box(0,-.2,0,indoor?map.width:190,.4,indoor?map.depth:190,indoor?'#3b4850':'#ccdce2',indoor?'rubber':'snow');
+ box(0,-.2,0,indoor?map.width:190,.4,indoor?map.depth:190,indoor?(small?'#bdc7d1':'#c8c4ae'):'#deebf1',indoor?'metal':'snow');
  if(!indoor){floor(-6,-6,23,23,'#667b84');floor(-8,23,19,7,'#596d79');floor(19,5,11,42,'#9aadb4');}
  for(const b of map.blocks){
   box(b.x,b.y,b.z,b.w,b.h,b.d,b.color,b.kind==='rock'?'snow':'metal',b.kind==='ceiling');

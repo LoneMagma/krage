@@ -669,7 +669,7 @@ await test('EDGE checks target position and cover at contact, not at button pres
 await test('right-click starts stab without left-click and slashes alternate',()=>{
   const m=new Match(0,0,0);m.map.blocks=[];const a=m.player;a.weapon=3;a.equip=0;a.cooldown=0;
   const input=emptyInput();input.ads=true;m.step(1/120,input);assert.equal(a.edgeAttack,'stab');assert.equal(a.shots,1);
-  input.ads=false;step(m,0.5,input);input.fire=true;m.step(1/120,input);const side=a.edgeSide;assert.equal(a.edgeAttack,'slash');
+  input.ads=false;step(m,0.5,input);assert.equal(a.edgeAttack,'stab');assert.ok(a.cooldown>0);step(m,.13,input);input.fire=true;m.step(1/120,input);const side=a.edgeSide;assert.equal(a.edgeAttack,'slash');
   step(m,0.31,input);assert.equal(a.edgeSide,-side!);
 });
 
@@ -693,7 +693,7 @@ await test('respawns avoid occupied and recently fatal positions',()=>{
  for(let n=0;n<25;n++)m.spawn(a);assert.ok(m.recentSpawns.length<=16);
 });
 await test('MICA remains pellet based with stronger useful range, EDGE bonus is reduced',async()=>{
- const {GUNS}=await import('../lib/game/core.js');assert.equal(GUNS[2].damage,16);assert.equal(GUNS[2].range,38);assert.equal(GUNS[2].pellets,10);assert.ok(GUNS[3].speed<=1.06);
+ const {GUNS}=await import('../lib/game/core.js');assert.equal(GUNS[2].damage,17);assert.equal(GUNS[2].range,42);assert.equal(GUNS[2].pellets,10);assert.ok(GUNS[3].speed<=1.06);
  const {m,a,b}=duel();m.map.blocks=[];a.weapon=a.primary=2;a.ammo[2]=2;a.pitch=0;b.pos=v(-5,0,-18);m.random=()=>0;
  m.shoot(a);assert.equal(b.alive,false);
 });
@@ -783,4 +783,14 @@ await test('v0.9 airborne WASD reverses direction without adding speed and jump 
  assert.ok(a.vel.x<-.5,'air direction must respond to WASD before landing');
  a.pos=v();a.vel=v(0,0,-8);a.grounded=true;a.slide=.3;a.jumpHeld=false;input.right=0;input.forward=1;input.jump=true;
  moveActor(a,input,1/120,m.map);assert.ok(a.vel.y>8);assert.equal(a.slide,0);assert.ok(Math.hypot(a.vel.x,a.vel.z)>7.7);
+});
+
+await test('release jump buffers an independent slide through landing without a cooldown gap',()=>{
+ const m=new Match(0,0,0),a=m.player,input=emptyInput();a.pos=v(-26,0,8);a.yaw=0;input.forward=1;
+ for(let i=0;i<60;i++)m.step(1/120,input);
+ input.slide=true;m.step(1/120,input);assert.ok(a.slide>0);
+ input.slide=false;input.jump=true;m.step(1/120,input);input.jump=false;assert.ok(a.vel.y>8.4);
+ let peak=0,landed=false;
+ for(let i=0;i<160;i++){peak=Math.max(peak,a.pos.y);input.slide=a.vel.y<0&&a.pos.y<.5;m.step(1/120,input);if(a.grounded){landed=true;m.step(1/120,input);assert.ok(a.slide>0);break;}}
+ assert.ok(landed);assert.ok(peak>1.2&&peak<1.5);
 });

@@ -52,7 +52,7 @@ export const GUNS = [
     damage: 19,
     head: 1.65,
     interval: 0.078,
-    reload: 1.65,
+    reload: 1.5,
     spread: 0.012,
     recoil: 0.014,
     range: 65,
@@ -66,7 +66,7 @@ export const GUNS = [
     damage: 32,
     head: 1.9,
     interval: 0.12,
-    reload: 2.1,
+    reload: 1.9,
     spread: 0.004,
     recoil: 0.024,
     range: 95,
@@ -77,13 +77,13 @@ export const GUNS = [
     name: 'MICA / DOUBLE BARREL',
     short: 'MICA',
     mag: 2,
-    damage: 16,
+    damage: 17,
     head: 1.2,
     interval: 0.34,
-    reload: 2.25,
-    spread: 0.068,
+    reload: 2.05,
+    spread: 0.059,
     recoil: 0.062,
-    range: 38,
+    range: 42,
     pellets: 10,
     speed: 0.97,
   },
@@ -275,7 +275,7 @@ export const emptyInput = (): Input => ({
 });
 export const EDGE_ATTACKS = {
   slash: { duration: 0.30, contact: 0.09, range: 1.95, alignment: 0.58 },
-  stab: { duration: 0.48, contact: 0.15, range: 2.65, alignment: 0.82 },
+  stab: { duration: 0.62, contact: 0.15, range: 2.65, alignment: 0.82 },
 } as const;
 export type EdgeAttack = keyof typeof EDGE_ATTACKS;
 export function beginEdge(a: Actor, attack: EdgeAttack) {
@@ -284,6 +284,8 @@ export function beginEdge(a: Actor, attack: EdgeAttack) {
   a.cooldown=a.fired=EDGE_ATTACKS[attack].duration;
 }
 export type Actor = {
+  botDifficulty?: Settings['difficulty'];
+  slideBuffer?: number;
   edgeAttack?: EdgeAttack;
   edgeSide?: number;
   edgeWindup?: number;
@@ -465,13 +467,14 @@ export function moveActor(a: Actor, input: Input, dt: number, map: ArenaMap) {
     input.jump && !a.jumpHeld ? 0.15 : Math.max(0, a.jumpBuffer - dt);
   a.jumpHeld = input.jump;
   a.coyote = a.grounded ? 0.08 : Math.max(0, a.coyote - dt);
+  a.slideBuffer=input.slide&&!a.slideHeld ? .18:Math.max(0,(a.slideBuffer??0)-dt);
   if (
-    input.slide &&
-    !a.slideHeld &&
+    a.slideBuffer > 0 &&
     a.slideCooldown <= 0 &&
     a.grounded &&
     Math.hypot(a.vel.x, a.vel.z) > (a.crouched ? 2.5 : 4)
   ) {
+    a.slideBuffer=0;
     a.slide = 0.55;
     a.slideCooldown = 1.3;
     const speed = Math.hypot(a.vel.x, a.vel.z);
@@ -547,9 +550,10 @@ export function moveActor(a: Actor, input: Input, dt: number, map: ArenaMap) {
     a.vel.z *= 10.2 / horizontal;
   }
   if (a.jumpBuffer > 0 && a.coyote > 0) {
-    a.vel.y = 8.4;
+    a.vel.y = 8.8;
     a.grounded = false;
     a.slide = 0;
+    a.slideCooldown = 0;
     a.jumpBuffer = 0;
     a.coyote = 0;
   }
@@ -914,6 +918,7 @@ export class Match {
     a.equip = 0;
     a.viewHeight = 1.67;
     a.jumpHeld = false;
+    a.slideBuffer = 0;
     a.slideHeld = false;
     a.jumpBuffer = 0;
     a.coyote = 0;
@@ -1226,7 +1231,8 @@ export class Match {
   }
   botInput(a: Actor, dt: number) {
     const input = emptyInput();
-    if (this.difficulty === 'dummy') return input;
+    const skill=a.botDifficulty??this.difficulty;
+    if (skill === 'dummy') return input;
     a.ai.think -= dt;
     a.ai.reaction -= dt;
     a.ai.repath -= dt;
@@ -1255,7 +1261,7 @@ export class Match {
         turn: 9,
         range: 52,
       },
-    }[this.difficulty];
+    }[skill];
     if (a.ai.think <= 0) {
       a.ai.think = 0.14 + this.random() * 0.08;
       let target = -1,

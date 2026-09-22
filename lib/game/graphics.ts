@@ -640,7 +640,7 @@ export function makeWeapon(index: number, firstPerson = true, finish = 0) {
   const armor=box; // Crisp block forms, without bevel tessellation on every component.
   const g = new T.Group();
   const dark = finish === 5 ? ['#d7e4e0','#151b24','#141d25'][index]??'#242938' : finish === 4 ? '#18272c' : finish === 1 ? '#3f5e7b' : finish === 2 ? '#172331' : finish === 3 ? '#261e39' : '#233032',
-    metal = finish === 5 ? ['#41666c','#d5ad62','#687e88'][index]??'#8898a0' : finish === 4 ? '#748489' : finish === 1 ? '#bacbdc' : finish === 2 ? '#8e614d' : finish === 3 ? '#726494' : '#687b90',
+    metal = finish === 5 ? ['#41666c','#d5ad62','#c3ced2'][index]??'#8898a0' : finish === 4 ? '#748489' : finish === 1 ? '#bacbdc' : finish === 2 ? '#8e614d' : finish === 3 ? '#726494' : '#687b90',
     wood = finish === 5 ? ['#25414a','#292d32','#26363f'][index]??'#343c49' : finish === 4 ? '#2b3e43' : finish === 1 ? '#dce7ec' : finish === 2 ? '#e78851' : finish === 3 ? '#ac8cf5' : '#a6643f';
   if (index === 3) {
     armor(g, 0.01, 0, 0.05, 0.075, 0.09, 0.27, dark);
@@ -739,9 +739,11 @@ export function makeWeapon(index: number, firstPerson = true, finish = 0) {
       );
       tip.rotation.x = Math.PI / 2;
     }
+    if(index!==2){
     armor(g, 0, 0.107, 0.08, 0.08, 0.04, 0.09, dark);
     armor(g, -0.035, 0.147, 0.1, 0.015, 0.055, 0.025, metal);
     armor(g, 0.035, 0.147, 0.1, 0.015, 0.055, 0.025, metal);
+    }
     if(index!==2){
     armor(g, 0, 0.085, -0.56, 0.035, 0.09, 0.05, metal);
     armor(g, 0, 0.146, -0.56, 0.013, 0.065, 0.03, dark);
@@ -753,10 +755,10 @@ export function makeWeapon(index: number, firstPerson = true, finish = 0) {
   }
   if (index !== 3) {
     // Receiver rail, a dark muzzle bore and serial plate add readable depth.
-    armor(g, 0, 0.083, -0.035, 0.07, 0.012, 0.25, '#7c8ea1');
+    armor(g, 0, index===2?.04:.083, -0.035, 0.07, 0.012, 0.25, '#7c8ea1');
     armor(g, 0.069, -0.024, 0.12, 0.008, 0.028, 0.07, '#c5d3df');
     for (let z = -0.13; z <= 0.06; z += 0.038)
-      armor(g, 0, 0.091, z, 0.073, 0.009, 0.01, '#263549');
+      armor(g, 0, index===2?.045:.091, z, 0.073, 0.009, 0.01, '#263549');
     for (const x of index === 2 ? [-0.055, 0.055] : [0]) {
       const bore = cylinder(
         g,
@@ -807,7 +809,7 @@ export function makeWeapon(index: number, firstPerson = true, finish = 0) {
       armor(g,-.078,.032,.07,.035,.023,.06,metal);
     }
     if (index === 2) {
-      armor(g,0,.081,.085,.025,.028,.105,metal);
+      armor(g,0,.045,.085,.025,.025,.105,metal);
       for(const side of [-1,1]) {
         armor(g,side*.065,.081,.105,.019,.035,.047,dark).rotation.x=-.25;
         armor(g,side*.085,.006,.06,.014,.09,.18,metal);
@@ -853,7 +855,7 @@ export function makeWeapon(index: number, firstPerson = true, finish = 0) {
       armor(g,side*0.096,0,0,0.018,0.115,0.22,metal);
       for(let i=0;i<3;i++)armor(g,side*0.108,0.025-i*0.025,-0.03+i*0.025,0.006,0.006,0.055,'#bdac7f');
     }
-    armor(g,0,0.076,0.075,0.018,0.026,0.12,metal).rotation.y=0.25;
+    armor(g,0,0.045,0.075,0.018,0.026,0.12,metal).rotation.y=0.25;
   }
   if(finish===4&&index<3){
     const accent=['#85d9cf','#d8b68a','#b4a0dc'][index];
@@ -863,7 +865,7 @@ export function makeWeapon(index: number, firstPerson = true, finish = 0) {
     }
   }
   if(finish===5&&index<3){
-    const accent=['#85f4dd','#f5ce78','#a4bac0'][index];
+    const accent=['#85f4dd','#f5ce78','#e7d8b2'][index];
     for(const side of [-1,1]){
       armor(g,side*.077,.054,-.045,.008,.012,.33,accent);
       for(let n=0;n<5;n++){const inlay=armor(g,side*.078,.025-n*.008,-.13+n*.054,.009,.012,.031,accent);inlay.rotation.x=.5;}

@@ -196,7 +196,7 @@ function credit(p: Profile, id: string, amount: number, reason: string) {
   };
 }
 export function matchReward(receipt:Pick<MatchReceipt,'kills'|'headshots'|'wins'>){
- return 20+Math.min(40,Math.max(0,Math.floor(receipt.kills||0))*2)+Math.min(10,Math.max(0,Math.floor(receipt.headshots||0)))+(receipt.wins>0?10:0);
+ return 5+Math.min(6,Math.floor(Math.max(0,receipt.kills||0)/3))+(receipt.wins>0?4:0);
 }
 export function recordMatch(
   profile: Profile,

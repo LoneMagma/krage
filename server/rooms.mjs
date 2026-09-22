@@ -76,6 +76,7 @@ export class Room {
   }
   fillBot(actor) {
     actor.bot = true;
+    actor.botDifficulty=this.public?['casual','normal','hard'][actor.id%3]:this.difficulty;
     actor.name = ['Alpha','Beta','Gamma','Delta','Epsilon','Zeta','Eta','Theta'][actor.id];
     actor.operator = this.mode >= 2 ? actor.team : actor.id % 2;
     actor.primary = actor.id % 3;
@@ -166,6 +167,30 @@ export class Room {
       m.remoteInputs.set(slot.id,emptyInput());m.spawn(m.actors[slot.id],true);
       if(!slot.connected)m.actors[slot.id].alive=false;
     }
+    return true;
+  }
+  nextPublicSettings(){
+    const modes=[0,2,3],start=modes.indexOf(this.mode);
+    let mode=modes[(start+1)%modes.length];
+    if(mode===2&&this.slots.size>4)mode=3;
+    return {mode,map:(this.map+1)%2};
+  }
+  rotatePublic(now=Date.now()){
+    if(!this.public||!this.match.ended)return false;
+    const {mode,map}=this.nextPublicSettings(),previous=this.match;
+    const saved=[...this.slots].map(([token,slot])=>({token,slot,actor:previous.actors[slot.id]}));
+    this.mode=mode;this.map=map;this.capacity=mode===2?4:6;
+    const next=new Match(mode,map,this.capacity-1,'normal');
+    next.manualRespawns=true;next.remoteInputs=new Map();next.rewindPose=previous.rewindPose;
+    next.duration=next.time=300;next.fragLimit=30;this.match=next;
+    this.roundId=randomBytes(12).toString('hex');this.finishedAt=0;this.eventLog=[];this.lagHistory=new LagHistory();
+    for(const actor of next.actors)this.fillBot(actor);
+    saved.forEach(({slot,actor},id)=>{
+      slot.id=id;slot.life++;slot.seq=slot.ack=-1;slot.queue=[];slot.current=null;slot.remaining=0;slot.lastInput=now;
+      const a=next.actors[id];a.bot=false;a.name=actor.name;a.primary=actor.primary;a.operator=mode>=2?a.team:actor.operator;
+      next.spawn(a,true);if(!slot.connected)a.alive=false;
+      next.remoteInputs.set(id,emptyInput());
+    });
     return true;
   }
   startMatch(token) {
@@ -288,6 +313,7 @@ export class Room {
     if (this.eventLog.length > 256)
       this.eventLog.splice(0, this.eventLog.length - 256);
     if (connected > 0) this.lastActive = now;
+    if(this.public&&connected>0&&this.match.ended&&now-this.finishedAt>=8000)this.rotatePublic(now);
   }
   snapshot(token) {
     const slot = this.slots.get(token),
@@ -319,7 +345,8 @@ export class Room {
     return {
       type: 'snapshot',
       roundId:this.roundId,
-      protocol: 14,
+      nextRound:this.public&&this.match.ended?{...this.nextPublicSettings(),seconds:Math.max(0,Math.ceil((this.finishedAt+8000-Date.now())/1000))}:null,
+      protocol: 15,
       staging: this.staging && !this.started,
       host: this.slots.get(this.hostToken)?.id ?? null,
       fragLimit: this.match.fragLimit,
