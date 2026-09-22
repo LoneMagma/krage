@@ -293,6 +293,7 @@ export default function Home() {
     [snap, setSnap] = useState<Snapshot>({ ...EMPTY_SNAPSHOT }),
     [feed, setFeed] = useState<Feed[]>([]),
     [board, setBoard] = useState(false),
+    [inGameChat, setInGameChat] = useState(false),
     [frags, setFrags] = useState<{id:number;message:string}[]>([]),
     [touch, setTouch] = useState(false),
     [pauseSettings, setPauseSettings] = useState(false);
@@ -400,6 +401,7 @@ export default function Home() {
           instance.onFeed = setFeed;
           instance.onError = setError;
           instance.onScoreboard = setBoard;
+          instance.onChatOpen = setInGameChat;
           instance.onFrag = (message) => {
             const notice={id:++fragSequence.current,message};
             setFrags(previous=>[...previous.slice(-2),notice]);
@@ -765,7 +767,7 @@ export default function Home() {
           <footer className="lobby-footer">
             <span>
               <MousePointer2 size={14} />
-              <a href="https://github.com/lonemagma" target="_blank" rel="noreferrer">v1.0</a>
+              <a href="https://github.com/lonemagma" target="_blank" rel="noreferrer">v1.1</a>
             </span>
 
             <span className="project-credit"><strong>MADE IN INDIA</strong><span>A <a href="https://pacify.site" target="_blank" rel="noreferrer">pacify</a> project</span></span>
@@ -1279,7 +1281,7 @@ export default function Home() {
           </button>
         </div>
       )}
-      <ArenaChat name={playerName} room={chatRoom} visible={!inGame||snap.phase==='paused'} team={mode>=2}/><LobbySection open={modal !== null && modal !== 'online'} playing={inGame} kind={modal ?? 'settings'} title={modal === 'loadout' ? 'LOADOUT' : (modal ?? '').toUpperCase()} onClose={()=>setModal(null)}>
+      <ArenaChat name={playerName} room={chatRoom} visible={!inGame||snap.phase==='paused'||inGameChat} team={mode>=2} forceOpen={inGameChat} onForceClose={()=>arena.current?.closeChat()} defaultChannel={chatRoom?(mode>=2?'team':'match'):undefined}/><LobbySection open={modal !== null && modal !== 'online'} playing={inGame} kind={modal ?? 'settings'} title={modal === 'loadout' ? 'LOADOUT' : (modal ?? '').toUpperCase()} onClose={()=>setModal(null)}>
           {(modal === 'settings' || modal === 'controls') && <div className="section-tabs"><button aria-pressed={modal==='settings'} onClick={()=>setModal('settings')}>PREFERENCES</button><button aria-pressed={modal==='controls'} onClick={()=>setModal('controls')}>KEY BINDINGS</button></div>}
           {modal === 'settings' && (
             <>

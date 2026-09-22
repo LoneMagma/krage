@@ -364,6 +364,7 @@ export class Arena {
   gunKick = 0;
   recoil = 0;
   time = 0;
+  chatOpen = false;
   lastHud = 0;
   fpsTime = 0;
   fpsFrames = 0;
@@ -389,6 +390,7 @@ export class Arena {
   onError: (s: string) => void = () => {};
   onScoreboard: (b: boolean) => void = () => {};
   onFrag: (message: string) => void = () => {};
+  onChatOpen: (open: boolean) => void = () => {};
   cleanup: (() => void)[] = [];
   previous = new T.Vector3();
   cameraRoll = 0;
@@ -488,8 +490,12 @@ export class Arena {
       this.captureError(this.capture.generation);
     });
     this.listen(host, 'mousedown', ((e: MouseEvent) => {
-      if (this.phase === 'playing') {
+      if (this.phase === 'playing' && !this.chatOpen) {
         if(this.dragAim&&!this.touchMode){const request=this.capture.begin();try{this.renderer.domElement.requestPointerLock()?.catch(()=>this.capture.settle(request));}catch{this.capture.settle(request);}}
+        // Escape drops fullscreen the same way it drops pointer lock;
+        // clicking back into an active match should restore both, the
+        // same way pointer lock is already re-requested just above.
+        if(!this.touchMode&&!document.fullscreenElement)void document.documentElement.requestFullscreen?.().catch(()=>{});
         this.dragX = e.clientX;
         this.dragY = e.clientY;
         if (e.button === 0) {
@@ -505,7 +511,7 @@ export class Arena {
     }) as EventListener);
     this.listen(host, 'contextmenu', (e) => e.preventDefault());
     this.listen(host, 'wheel', ((e: WheelEvent) => {
-      if (this.phase !== 'playing') return;
+      if (this.phase !== 'playing' || this.chatOpen) return;
       e.preventDefault();
       this.input.weapon =
         this.match.player.weapon === 3 ? this.match.player.primary : 3;
@@ -514,6 +520,16 @@ export class Arena {
     this.listen(document, 'visibilitychange', () => {
       if (document.hidden) this.pause();
     });
+    // Browsers refuse to let a page block its own close/quit shortcuts
+    // (Ctrl+W, Cmd+Q, etc.) outright — that veto is intentional, so users
+    // always have a way out of a page. The best available mitigation is
+    // the native "leave site?" confirmation, shown only while a match is
+    // actually in progress so it never nags anyone at the menu or lobby.
+    this.listen(window, 'beforeunload', ((e: BeforeUnloadEvent) => {
+      if (this.phase !== 'playing' && this.phase !== 'spawning') return;
+      e.preventDefault();
+      e.returnValue = '';
+    }) as EventListener);
     this.listen(this.renderer.domElement, 'webglcontextlost', (e) => {
       e.preventDefault();
       this.pause();
@@ -759,6 +775,10 @@ export class Arena {
     this.input = emptyInput();
     this.last = performance.now();
     this.accumulator = 0;
+    // Order matters: requesting fullscreen consumes the click/Enter's
+    // transient user-activation token, so requestPointerLock() must fire
+    // FIRST in the same gesture or it silently fails (spec: a single
+    // activation can drive both, but only if pointer lock goes first).
     if (!this.touchMode && !this.dragAim && this.phase === 'playing' && document.pointerLockElement!==this.renderer.domElement) {
       const request=this.capture.begin();
       setTimeout(()=>this.captureError(request),2500);
@@ -767,6 +787,7 @@ export class Arena {
         if(p&&typeof p.catch==='function')p.catch(()=>this.captureError(request));
       }catch{this.captureError(request);}
     }
+    if (!this.touchMode && !document.fullscreenElement) void document.documentElement.requestFullscreen?.().catch(()=>{});
     this.emit();
   }
   pause() {
@@ -786,6 +807,32 @@ export class Arena {
     this.onScoreboard(false);
     if (document.pointerLockElement === this.renderer.domElement)
       document.exitPointerLock();
+    this.emit();
+  }
+  openChat() {
+    if (this.phase !== 'playing' && this.phase !== 'spawning') return;
+    if (this.chatOpen) return;
+    this.chatOpen = true;
+    // Chat overlays live play without pausing the match or dropping pointer
+    // lock -- focus can move to the chat input while locked (moving focus
+    // between elements of the active document doesn't exit pointer lock),
+    // so the player types "blind" the same way real shooters handle it.
+    // Clear held movement/fire state so nothing stays stuck once keys stop
+    // reaching the game (mirrors the same clearing pause() does).
+    this.keys.clear();
+    this.crouchControl.reset();
+    this.slidePulse = false;
+    this.mouseDown = false;
+    this.fireQueued = this.jumpQueued = false;
+    this.ads = false;
+    this.input = emptyInput();
+    this.onChatOpen(true);
+    this.emit();
+  }
+  closeChat() {
+    if (!this.chatOpen) return;
+    this.chatOpen = false;
+    this.onChatOpen(false);
     this.emit();
   }
   rejoinRoom() {
@@ -829,8 +876,28 @@ export class Arena {
       this.pause();
   };
   keyDown = (e: KeyboardEvent) => {
+    // Escape must close chat even while the chat <input> has focus, so this
+    // one check runs before the general input/textarea guard below (which
+    // would otherwise swallow every keystroke reaching a focused field).
+    // The chat input's own handler no longer manages Escape itself, to
+    // avoid depending on preventDefault()/stopPropagation() timing between
+    // React's synthetic dispatch and this native document listener.
+    if (e.code === 'Escape' && this.chatOpen) {
+      e.preventDefault();
+      this.closeChat();
+      return;
+    }
     const target=e.target as HTMLElement | null;
     if(e.defaultPrevented||target?.isContentEditable||target?.closest('input,textarea,select,[role="dialog"]'))return;
+    // Browsers won't let a page intercept their own close/quit shortcuts
+    // (Ctrl/Cmd+W, Ctrl/Cmd+Q, Alt+F4) — that block can't be lifted from
+    // script. These other browser shortcuts CAN be caught and are disruptive
+    // mid-match (save/print/find dialogs, reload), so suppress them here.
+    if ((e.ctrlKey || e.metaKey) && ['KeyS', 'KeyP', 'KeyF', 'KeyR'].includes(e.code)) {
+      e.preventDefault();
+      return;
+    }
+    if (e.code === 'F5') { e.preventDefault(); return; }
     const code = boundKey(e.code, this.settings.bindings);
     if (
       code === 'Escape' &&
@@ -856,6 +923,16 @@ export class Arena {
       return;
     }
     if (this.phase !== 'playing') return;
+    if ((code === 'Enter' || code === 'KeyT') && !e.repeat) {
+      e.preventDefault();
+      this.openChat();
+      return;
+    }
+    // Belt-and-suspenders: focus normally lands on the chat input (and the
+    // isContentEditable/input guard above then catches everything) within
+    // the same tick openChat() runs, but until React commits and focus
+    // actually moves, gameplay keys must not slip through in between.
+    if (this.chatOpen) { e.preventDefault(); return; }
     if (
       [
         'Space',
@@ -894,6 +971,7 @@ export class Arena {
         this.match.player.weapon === 3 ? this.match.player.primary : 3;
   };
   keyUp = (e: KeyboardEvent) => {
+    if (this.chatOpen) return;
     const code = boundKey(e.code, this.settings.bindings);
     this.keys.delete(code);
     const crouchKey =
@@ -909,7 +987,7 @@ export class Arena {
     }
   };
   mouseMove = (e: MouseEvent) => {
-    if (this.phase !== 'playing' || !this.match.player.alive) return;
+    if (this.phase !== 'playing' || this.chatOpen || !this.match.player.alive) return;
     if (this.dragAim) {
       if (this.ads || this.mouseDown)
         this.look(e.clientX - this.dragX, e.clientY - this.dragY);
@@ -1218,12 +1296,16 @@ export class Arena {
     this.gun.position.set(
       T.MathUtils.lerp(0.28, 0, this.adsLerp) + bob - this.swayX,
       -0.28 - Math.abs(bob) * 0.65 - this.landing + this.swayY - reload * 0.25,
-      (weaponView.weapon===2 ? -0.58 : -0.4) + this.gunKick * .18,
+      (weaponView.weapon===2 ? -0.58 : -.4) + this.gunKick * .18,
     );
+    // The reload dip's rotation is tuned for hip-fire distance; scaled down
+    // during ADS (where the gun already sits close to camera-center) so the
+    // receiver doesn't sweep across the near view and block the screen.
+    const reloadTiltScale = 1 - this.adsLerp * 0.75;
     this.gun.rotation.set(
-      this.gunKick * 0.16 - reload * 0.6,
+      this.gunKick * 0.16 - reload * 0.6 * reloadTiltScale,
       -this.swayX * 0.4 + this.gunKick * (weaponView.weapon===0?0.018:weaponView.weapon===1?-0.028:0.008),
-      -reload * 0.7 + (-(p.slideBlend ?? 0) * 0.12) + bob * 0.5,
+      -reload * 0.7 * reloadTiltScale + (-(p.slideBlend ?? 0) * 0.12) + bob * 0.5,
     );
     // Raise the sights to the center of the view in ADS.
     this.gun.position.y = T.MathUtils.lerp(
