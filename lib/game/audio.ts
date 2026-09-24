@@ -30,7 +30,7 @@ export class AudioSystem {
   loadSamples() {
     if (!this.ctx || this.sampleLoad) return this.sampleLoad;
     const ctx = this.ctx;
-    const effects=['edge-slash','edge-stab','edge-hit','headshot','kill','slide','victory','defeat','reward','step-0','step-1','step-2','land','hit','click',...['echo','kilo','mica'].flatMap(w=>['open','feed','close'].map(p=>`${w}-reload-${p}`))];
+    const effects=['edge-slash','edge-stab','edge-hit','headshot','confirm','slide','victory','defeat','reward','step-0','step-1','step-2','land','hit','click',...['echo','kilo','mica'].flatMap(w=>['open','feed','close'].map(p=>`${w}-reload-${p}`))];
     const decode=async(name:string)=>{
       const response=await fetch(`/audio/v07/${name}.wav`,{signal:this.sampleAbort.signal});
       if(!response.ok)throw new Error(`Audio: ${response.status}`);
@@ -210,10 +210,9 @@ export class AudioSystem {
     } else { this.tone(260,0.05,0.085,'triangle',130); this.burst(0.025,0.035,850); }
   }
   kill(combo = 1) {
-    if(this.effect('kill',0.7,0,Math.max(.86,1-(combo-1)*.025)))return;
-    if(combo>1)this.tone(165,0.14,0.035,'triangle',82,0,0.12);
-    this.tone(130, 0.16, 0.16, 'triangle', 65);
-    this.tone(195, 0.20, 0.09, 'sine', 98, 0, 0.065);
+    if(this.effect('confirm',.56,0,Math.max(.94,1-(combo-1)*.01),2400))return;
+    this.tone(220,.12,.075,'sine',95);
+    this.tone(210,.09,.025,'sine',150,0,.035);
   }
   reloadPhase(phase: string, weapon = 1) {
     if(this.effect(`${['echo','kilo','mica'][weapon]}-reload-${phase}`,0.65))return;

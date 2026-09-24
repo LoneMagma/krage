@@ -1,6 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import {
   newProfile,
+  refreshProfile,
   recordMatch,
   purchase,
   equipCosmetic,
@@ -34,7 +35,7 @@ export class EconomyStore {
   mutate(id, fn) {
     this.db.exec('BEGIN IMMEDIATE');
     try {
-      const next = fn(this.read(id));
+      const next = fn(refreshProfile(this.read(id)));
       this.db
         .prepare('UPDATE profiles SET earned=?,state=? WHERE id=?')
         .run(next.balance, JSON.stringify(next), id);

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LobbySection } from '@/components/game/lobby-section';
+import { MapDiagram } from '@/components/game/map-diagram';
 import {
   DEFAULT_SETTINGS,
   GUNS,
@@ -39,6 +40,7 @@ import { Challenges } from '@/components/game/challenges';
 import { Locker } from '@/components/game/locker';
 import {
   CATALOG,
+  OPERATORS,
   claimableCount,
   newProfile,
   loadProfile,
@@ -48,38 +50,12 @@ import {
 } from '@/lib/game/progression';
 import { KeyBindings } from '@/components/game/key-bindings';
 import { weaponFinish } from '@/lib/game/progression';
-import { KrageLogo, WeaponGlyph } from '@/components/game/identity';
+import { KrageLogo, WeaponGlyph, QualityPreview, CrosshairPreview } from '@/components/game/identity';
 import { matchReport } from '@/lib/game/report';
 import { BINDABLE_KEYS, keyLabel } from '@/lib/game/controls';
 
 const modes = ['Free for all', '1 v 1', '2 v 2', '3 v 3'];
 const maps = [makeMap(0), makeMap(1), makeMap(2), makeMap(3)];
-function MapDiagram({ id }: { id: number }) {
-  const map = maps[id];
-  return (
-    <svg
-      className={'map-diagram diagram-' + id}
-      viewBox={`0 0 ${map.width} ${map.depth}`}
-      aria-label={`${map.name} layout`}
-    >
-      {map.blocks
-        .filter((b) => b.kind !== 'step' && b.kind !== 'detail-collision' && b.kind !== 'ceiling')
-        .map((b, i) => (
-          <rect
-            key={i}
-            x={b.x + map.width / 2 - b.w / 2}
-            y={b.z + map.depth / 2 - b.d / 2}
-            width={b.w}
-            height={b.d}
-            fill={b.color}
-            opacity={['roof','canopy','lintel','platform','pipebridge'].includes(b.kind??'') ? .24 : 1}
-            stroke={id !== 1 ? '#d5ae77' : '#b9e2f2'}
-            strokeWidth=".2"
-          />
-        ))}
-    </svg>
-  );
-}
 function Scoreboard({ snap, mode }: { snap: Snapshot; mode: number }) {
   return (
     <div className="scoreboard">
@@ -192,13 +168,14 @@ function SettingsPanel({
       </fieldset>
       <fieldset hidden={category!=='VIEW'} className="choice-setting"><legend>Graphics</legend><GameChoice
           value={settings.quality}
+          className="quality-choice"
           onChange={(value)=>
             update('quality', value as Settings['quality'])
           }
         >
-          <option value="potato">Potato</option>
-          <option value="balanced">Balanced</option>
-          <option value="high">High</option>
+          <option value="potato"><QualityPreview level={0}/><span>Potato</span></option>
+          <option value="balanced"><QualityPreview level={1}/><span>Balanced</span></option>
+          <option value="high"><QualityPreview level={2}/><span>High</span></option>
         </GameChoice>
       </fieldset>
       <p className="setting-note">
@@ -246,12 +223,13 @@ function SettingsPanel({
       </p>
       <fieldset hidden={category!=='VIEW'} className="choice-setting"><legend>Crosshair</legend><GameChoice
           value={settings.crosshair}
+          className="crosshair-choice"
           onChange={(value)=> update('crosshair', value)}
         >
-          <option value="#eaffdf">Mint white</option>
-          <option value="#7bffff">Cyan</option>
-          <option value="#f9fa6d">Lime</option>
-          <option value="#ff78c5">Pink</option>
+          <option value="#eaffdf"><CrosshairPreview color="#eaffdf"/><span>Mint white</span></option>
+          <option value="#7bffff"><CrosshairPreview color="#7bffff"/><span>Cyan</span></option>
+          <option value="#f9fa6d"><CrosshairPreview color="#f9fa6d"/><span>Lime</span></option>
+          <option value="#ff78c5"><CrosshairPreview color="#ff78c5"/><span>Pink</span></option>
         </GameChoice>
       </fieldset>
       <label hidden={category!=='MOVEMENT'} className="check-setting">
@@ -472,7 +450,7 @@ export default function Home() {
       arena.current?.setCosmetics(
         CATALOG.find((i) => i.id === profile.operator)?.variant ?? 0,
         CATALOG.find((i) => i.id === profile.finish)?.variant ?? 0,
-        [0, 1, 2].map((id) => weaponFinish(profile, id)),
+        [0, 1, 2, 3].map((id) => weaponFinish(profile, id)),
       );
   }, [profile, ready]);
   useEffect(() => {
@@ -669,7 +647,7 @@ export default function Home() {
               </section>
               <div className="hero-actions">
                 <div className="character-toggle" aria-label="Character">
-                  <button aria-label="Previous character" onClick={()=>setProfile(p=>({...p,operator:['op-scout','op-warden','op-spectre'][(['op-scout','op-warden','op-spectre'].indexOf(p.operator)+2)%3]}))}>‹</button><strong>{profile.operator==='op-scout'?'ROOK':profile.operator==='op-warden'?'VERA':'BLAKE'}</strong><button aria-label="Next character" onClick={()=>setProfile(p=>({...p,operator:['op-scout','op-warden','op-spectre'][(['op-scout','op-warden','op-spectre'].indexOf(p.operator)+1)%3]}))}>›</button>
+                  <button aria-label="Previous character" onClick={()=>setProfile(p=>({...p,operator:OPERATORS[(OPERATORS.findIndex(o=>o.id===p.operator)+OPERATORS.length-1)%OPERATORS.length].id}))}>‹</button><strong>{OPERATORS.find(o=>o.id===profile.operator)?.name.toUpperCase()}</strong><button aria-label="Next character" onClick={()=>setProfile(p=>({...p,operator:OPERATORS[(OPERATORS.findIndex(o=>o.id===p.operator)+1)%OPERATORS.length].id}))}>›</button>
                 </div>
                 <button className="hero-loadout" aria-haspopup="dialog" onClick={() => setModal('loadout')}>LOADOUT <span>{GUNS[weapon].short}</span></button>
               </div>
@@ -745,7 +723,7 @@ export default function Home() {
               <Button
                 className="deploy-button"
                 disabled={!ready || snap.network?.status==='connecting' || !!snap.network?.lobby}
-                onClick={() => { enterFullscreen(); setModal(null); arena.current?.joinRoom({url:defaultRoomURL(),name:playerName,mode,map,primary:weapon,operator:profile.operator==='op-warden'?1:profile.operator==='op-spectre'?2:0,duration,quickPlay:true}); }}
+                onClick={() => { enterFullscreen(); setModal(null); arena.current?.joinRoom({url:defaultRoomURL(),name:playerName,mode,map,primary:weapon,operator:OPERATORS.find(o=>o.id===profile.operator)?.variant??0,duration,weaponFinishes:[0,1,2,3].map(w=>weaponFinish(profile,w)),quickPlay:true}); }}
               >
                 {snap.network?.status==='connecting' ? 'JOINING…' : ready ? 'PLAY ONLINE' : 'LOADING…'}
                 <ArrowUpRight size={23} />
@@ -758,16 +736,16 @@ export default function Home() {
           </section>
           {modal === 'online' && <aside className="friend-lobby-panel" aria-label="Custom lobby">
             <header><h2>LOBBY</h2><button aria-label="Close lobby panel" onClick={()=>setModal(null)}>×</button></header>
-            <RoomPanel mode={mode} map={map} primary={weapon} operator={profile.operator==='op-warden'?1:profile.operator==='op-spectre'?2:0} name={playerName} onName={savePlayerName} ready={ready} info={snap.network}
+            <RoomPanel weaponFinishes={[0,1,2,3].map(w=>weaponFinish(profile,w))} mode={mode} map={map} primary={weapon} operator={OPERATORS.find(o=>o.id===profile.operator)?.variant??0} name={playerName} onName={savePlayerName} ready={ready} info={snap.network}
               onConnect={options=>arena.current?.joinRoom(options)}
               onChange={change=>arena.current?.roomClient?.lobby(change)}
-              onStart={()=>arena.current?.roomClient?.startMatch()}
+              onKick={id=>arena.current?.roomClient?.kick(id)} onStart={()=>arena.current?.roomClient?.startMatch()}
               onLeave={()=>{arena.current?.disconnectRoom();setModal(null);}} />
           </aside>}
           <footer className="lobby-footer">
             <span>
               <MousePointer2 size={14} />
-              <a href="https://github.com/lonemagma" target="_blank" rel="noreferrer">v1.1</a>
+              <a href="https://github.com/lonemagma" target="_blank" rel="noreferrer">v1.4.0</a>
             </span>
 
             <span className="project-credit"><strong>MADE IN INDIA</strong><span>A <a href="https://pacify.site" target="_blank" rel="noreferrer">pacify</a> project</span></span>
@@ -809,7 +787,7 @@ export default function Home() {
             )}
             <div className="match-clock">
               <div className="mode-heading">
-                {modes[activeMode]} <span>FIRST TO 20</span>
+                {modes[activeMode]} <span>FIRST TO {snap.fragLimit}</span>
               </div>
               <div className="clock-row">
                 <span className="score-blue">
@@ -888,7 +866,12 @@ export default function Home() {
               <i />
               <b />
             </div>
-            <div className="hit-marker">×</div>
+            <div className="hit-marker" aria-hidden="true">
+              <svg viewBox="-20 -20 40 40" fill="none">
+                <path className="hit-outline" d="M-15-15-8-8M15-15 8-8M-15 15-8 8M15 15 8 8" />
+                <path d="M-15-15-8-8M15-15 8-8M-15 15-8 8M15 15 8 8" />
+              </svg>
+            </div>
             {frags.length>0 && snap.alive && <div className="frag-stack" aria-live="polite">{frags.map((notice,i)=><div className="frag-notice" key={notice.id} style={{animationDelay:`${i*45}ms`}}><strong>{notice.message.replace(/ \+\d+$/, '')}</strong><b>{notice.message.match(/\+\d+$/)?.[0]}</b></div>)}</div>}
             {snap.shield > 0 && snap.alive && (
               <div className="spawn-notice">
@@ -1281,7 +1264,7 @@ export default function Home() {
           </button>
         </div>
       )}
-      <ArenaChat name={playerName} room={chatRoom} visible={!inGame||snap.phase==='paused'||inGameChat} team={mode>=2} forceOpen={inGameChat} onForceClose={()=>arena.current?.closeChat()} defaultChannel={chatRoom?(mode>=2?'team':'match'):undefined}/><LobbySection open={modal !== null && modal !== 'online'} playing={inGame} kind={modal ?? 'settings'} title={modal === 'loadout' ? 'LOADOUT' : (modal ?? '').toUpperCase()} onClose={()=>setModal(null)}>
+      <ArenaChat name={playerName} room={chatRoom} visible boxVisible={!inGame||snap.phase==='paused'||inGameChat} team={mode>=2} forceOpen={inGameChat} onForceClose={()=>arena.current?.closeChat()} defaultChannel={chatRoom?(mode>=2?'team':'match'):undefined}/><LobbySection open={modal !== null && modal !== 'online'} playing={inGame} kind={modal ?? 'settings'} title={modal === 'loadout' ? 'LOADOUT' : (modal ?? '').toUpperCase()} onClose={()=>setModal(null)}>
           {(modal === 'settings' || modal === 'controls') && <div className="section-tabs"><button aria-pressed={modal==='settings'} onClick={()=>setModal('settings')}>PREFERENCES</button><button aria-pressed={modal==='controls'} onClick={()=>setModal('controls')}>KEY BINDINGS</button></div>}
           {modal === 'settings' && (
             <>

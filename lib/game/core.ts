@@ -49,9 +49,9 @@ export const GUNS = [
     name: 'ECHO / SMG',
     short: 'ECHO',
     mag: 35,
-    damage: 19,
-    head: 1.65,
-    interval: 0.078,
+    damage: 20,
+    head: 1.75,
+    interval: 0.084,
     reload: 1.5,
     spread: 0.012,
     recoil: 0.014,
@@ -64,7 +64,7 @@ export const GUNS = [
     short: 'KILO',
     mag: 25,
     damage: 32,
-    head: 1.9,
+    head: 2.0,
     interval: 0.12,
     reload: 1.9,
     spread: 0.004,
@@ -78,13 +78,13 @@ export const GUNS = [
     short: 'MICA',
     mag: 2,
     damage: 17,
-    head: 1.2,
+    head: 1.3,
     interval: 0.34,
     reload: 2.05,
     spread: 0.059,
     recoil: 0.062,
     range: 42,
-    pellets: 10,
+    pellets: 12,
     speed: 0.97,
   },
   {
@@ -274,8 +274,8 @@ export const emptyInput = (): Input => ({
   weapon: -1,
 });
 export const EDGE_ATTACKS = {
-  slash: { duration: 0.30, contact: 0.09, range: 1.95, alignment: 0.58 },
-  stab: { duration: 0.62, contact: 0.15, range: 2.65, alignment: 0.82 },
+  slash: { duration: 0.42, contact: 0.16, range: 1.95, alignment: 0.58 },
+  stab: { duration: 0.84, contact: 0.22, range: 2.65, alignment: 0.82 },
 } as const;
 export type EdgeAttack = keyof typeof EDGE_ATTACKS;
 export function beginEdge(a: Actor, attack: EdgeAttack) {
@@ -290,6 +290,7 @@ export type Actor = {
   edgeSide?: number;
   edgeWindup?: number;
   operator?: number;
+  weaponFinishes?: number[];
   spawnId?: number;
   stanceBlend?: number;
   slideBlend?: number;
@@ -337,6 +338,16 @@ export type Actor = {
   hits: number;
   bot: boolean;
   ai: {
+    patrolCursor?: number;
+    actionAt?: number;
+    traverseAt?: number;
+    role?: 'assault' | 'flanker' | 'anchor';
+    aimYaw?: number;
+    aimPitch?: number;
+    burstShots?: number;
+    burstPause?: number;
+    tacticUntil?: number;
+    tacticCooldown?: number;
     seenUntil?:number;
     seenPos?:Vec;
     think: number;
@@ -845,6 +856,7 @@ export class Match {
         hits: 0,
         bot: i > 0,
         ai: {
+          role: (['assault','flanker','anchor'] as const)[i % 3],
           think: 0,
           target: -1,
           path: [],
@@ -938,6 +950,7 @@ export class Match {
     a.ai.path = [];
     a.ai.target = -1;
     a.ai.seenUntil=0;a.ai.seenPos=undefined;
+    a.ai.aimYaw=0;a.ai.aimPitch=0;a.ai.burstShots=0;a.ai.burstPause=0;a.ai.tacticUntil=0;a.ai.tacticCooldown=0;a.ai.actionAt=this.elapsed+1;a.ai.traverseAt=this.elapsed+2;
     this.events.push({ type: 'respawn', actor: a.id });
   }
   pendingSpawn = false;
@@ -1104,6 +1117,7 @@ export class Match {
       this.events.push({type:'shot',actor:a.id,weapon:3,attack:a.edgeAttack,pos:origin,end:origin,surface:'miss'});
       return;
     }
+    const pushed = new Set<number>();
     for (let p = 0; p < gun.pellets; p++) {
       const spread = shotSpread(a, this.playerAds);
       // Uniform disk, rather than square pellet corners.
@@ -1162,6 +1176,11 @@ export class Match {
             : a.weapon === 0
               ? clamp(1 - (distance - 12) / 85, 0.65, 1)
               : 1;
+        if(a.weapon===2&&distance<10&&!pushed.has(hit.id)){
+          const force=2*(1-distance/20),horizontal=Math.hypot(d.x,d.z);
+          if(horizontal>.01){hit.vel.x+=d.x/horizontal*force;hit.vel.z+=d.z/horizontal*force;}
+          pushed.add(hit.id);
+        }
         this.damage(hit, a, gun.damage * (head ? gun.head : 1) * falloff, head);
         gotHit = true;
       }
@@ -1229,6 +1248,12 @@ export class Match {
       if (this.ended) break;
     }
   }
+  patrolPoint(a:Actor){
+    // Sweep authored patrol locations instead of repeatedly choosing the same corner.
+    const cursor=a.ai.patrolCursor??Math.max(0,a.id-1);
+    a.ai.patrolCursor=(cursor+1)%this.map.patrol.length;
+    return {...this.map.patrol[cursor%this.map.patrol.length]};
+  }
   botInput(a: Actor, dt: number) {
     const input = emptyInput();
     const skill=a.botDifficulty??this.difficulty;
@@ -1236,12 +1261,15 @@ export class Match {
     a.ai.think -= dt;
     a.ai.reaction -= dt;
     a.ai.repath -= dt;
+    a.ai.burstPause=Math.max(0,(a.ai.burstPause??0)-dt);
+    a.ai.tacticCooldown=Math.max(0,(a.ai.tacticCooldown??0)-dt);
+    const role=a.ai.role??'assault';
     const difficulty = {
       casual: {
         reaction: 1.15,
         error: 0.12,
         rate: 0.28,
-        speed: 0.52,
+        speed: 0.72,
         turn: 4,
         range: 28,
       },
@@ -1249,7 +1277,7 @@ export class Match {
         reaction: 0.7,
         error: 0.065,
         rate: 0.45,
-        speed: 0.68,
+        speed: 0.82,
         turn: 6,
         range: 38,
       },
@@ -1257,13 +1285,17 @@ export class Match {
         reaction: 0.4,
         error: 0.033,
         rate: 0.7,
-        speed: 0.85,
+        speed: 0.9,
         turn: 9,
         range: 52,
       },
     }[skill];
     if (a.ai.think <= 0) {
-      a.ai.think = 0.14 + this.random() * 0.08;
+      a.ai.think = 0.18 + this.random() * 0.08;
+      // Persistent tracking error, not a perfect aim followed by random shot spread.
+      a.ai.aimYaw=(this.random()-.5)*difficulty.error*2;
+      a.ai.aimPitch=(this.random()-.5)*difficulty.error;
+
       let target = -1,
         best = Infinity;
       for (const e of this.actors) {
@@ -1284,54 +1316,80 @@ export class Match {
           target = e.id;
         }
       }
+      // A brief peek behind cover should not restart the entire reaction delay.
+      if(target===-1 && (a.ai.seenUntil??0)>this.elapsed+7.4 && this.actors[a.ai.target]?.alive)target=a.ai.target;
       if (target !== a.ai.target) {
         a.ai.target = target;
-        a.ai.reaction = difficulty.reaction;
+        a.ai.reaction = difficulty.reaction + this.random()*.18;
       }
       if (this.random() < 0.14) a.ai.strafe *= -1;
     }
     const target = this.actors[a.ai.target];
-    if (target?.alive && hasLOS(eye(a), eye(target), this.map.blocks)) {
+    const visible=target?.alive && hasLOS(eye(a),eye(target),this.map.blocks);
+    if(visible){
+      a.ai.seenPos={...target.pos};a.ai.seenUntil=this.elapsed+8;
+      const retreat=a.reload>0||a.hp<32;
+      if((retreat||(role==='flanker'&&dist(a.pos,target.pos)>12&&a.ai.reaction>.35)) && (a.ai.tacticCooldown??0)<=0){
+        // Decisions use only the visible opponent and authored navigation points.
+        let best:Vec|undefined,bestScore=-Infinity;
+        const threat=eye(target),away=v(a.pos.x-target.pos.x,0,a.pos.z-target.pos.z);
+        for(const p of this.map.patrol){
+          const distance=dist(a.pos,p);if(distance<3||distance>16)continue;
+          const concealed=!hasLOS(v(p.x,p.y+1.4,p.z),threat,this.map.blocks);
+          if(retreat&&!concealed)continue;
+          const cross=Math.abs(away.x*(p.z-a.pos.z)-away.z*(p.x-a.pos.x))/Math.max(1,dist(a.pos,target.pos));
+          const score=(concealed?8:0)+(retreat?dist(p,target.pos)*.25:cross*.9)-distance*.4;
+          if(score>bestScore){best=p;bestScore=score;}
+        }
+        if(best){const path=this.nav.path(a.pos,best);if(path.length){a.ai.waypoint={...best};a.ai.path=path;a.ai.repath=2.5;a.ai.tacticUntil=this.elapsed+2.4;}}
+        a.ai.tacticCooldown=retreat?4:6;
+      }
+    }
+    const tactical=(a.ai.tacticUntil??0)>this.elapsed && dist(a.pos,a.ai.waypoint)>1.2;
+    if (visible && !tactical) {
       a.ai.seenPos={...target.pos};a.ai.seenUntil=this.elapsed+8;
       const dx = target.pos.x - a.pos.x,
         dz = target.pos.z - a.pos.z,
         d = Math.hypot(dx, dz);
       const aimY = target.pos.y + bodyHeight(target) - 0.55;
-      const targetYaw = Math.atan2(-dx, -dz);
+      const targetYaw = Math.atan2(-dx, -dz)+(a.ai.aimYaw??0);
       const delta =
         ((((targetYaw - a.yaw + Math.PI) % (2 * Math.PI)) + 2 * Math.PI) %
           (2 * Math.PI)) -
         Math.PI;
-      a.yaw += delta * Math.min(1, dt * difficulty.turn);
-      a.pitch = Math.atan2(aimY - eye(a).y, d);
-      input.right = a.ai.strafe * 0.45;
-      input.forward = d > (a.weapon === 2 ? 6 : 14) ? 1 : d < 5 ? -0.5 : 0.15;
+      const tracking=1-Math.exp(-dt*difficulty.turn);
+      a.yaw += clamp(delta*tracking,-dt*difficulty.turn,dt*difficulty.turn);
+      const wantedPitch=Math.atan2(aimY-eye(a).y,d)+(a.ai.aimPitch??0);
+      a.pitch+=clamp((wantedPitch-a.pitch)*tracking,-dt*difficulty.turn*.55,dt*difficulty.turn*.55);
+      const strafeBeat=Math.sin(this.elapsed*1.4+a.id*2)>.15;
+      input.right=strafeBeat?a.ai.strafe*.28:0;
+      const preferred=a.weapon===2?8:role==='anchor'?21:role==='flanker'?12:15;
+      input.forward=d>preferred?1:d<4?-.4:role==='anchor'?.3:.65;
+      input.right*=role==='flanker'?1.35:role==='anchor'?.55:1;
       const stepTo=v(a.pos.x+Math.cos(a.yaw)*a.ai.strafe*.9,a.pos.y+.8,a.pos.z-Math.sin(a.yaw)*a.ai.strafe*.9);
       if(!hasLOS(v(a.pos.x,a.pos.y+.8,a.pos.z),stepTo,this.map.blocks)){
         const escape=v(a.pos.x-Math.cos(a.yaw)*a.ai.strafe*.9,a.pos.y+.8,a.pos.z+Math.sin(a.yaw)*a.ai.strafe*.9);
         if(hasLOS(v(a.pos.x,a.pos.y+.8,a.pos.z),escape,this.map.blocks)){a.ai.strafe*=-1;input.right=a.ai.strafe*.45;}else input.right=0;
       }
-      if (a.ai.reaction <= 0 && Math.abs(delta) < 0.15 && a.cooldown <= 0) {
-        const yaw = a.yaw,
-          pitch = a.pitch;
-        a.yaw += (this.random() - 0.5) * difficulty.error * 2;
-        a.pitch += (this.random() - 0.5) * difficulty.error;
+      if (a.ai.reaction<=0 && (a.ai.burstPause??0)<=0 && Math.abs(delta)<.15 && Math.abs(wantedPitch-a.pitch)<.12 && a.cooldown<=0) {
+        const shots=a.shots;
         this.shoot(a);
-        a.yaw = yaw;
-        a.pitch = pitch;
-        if (a.cooldown > 0) a.cooldown /= difficulty.rate;
+        if(a.shots>shots){
+          a.ai.burstShots=(a.ai.burstShots??0)+1;
+          if(a.cooldown>0)a.cooldown/=difficulty.rate;
+          const length=a.weapon===2?1:skill==='hard'?5:skill==='normal'?4:3;
+          if(a.ai.burstShots>=length){a.ai.burstShots=0;a.ai.burstPause=(skill==='hard'?.26:skill==='normal'?.4:.6)+this.random()*.18;}
+        }
       }
-      if (this.random() < dt * 0.035 && a.grounded) input.jump = true;
       a.ai.path = [];
       a.ai.waypoint = { ...target.pos };
     } else {
-      const remembered=!!a.ai.seenPos&&(a.ai.seenUntil??0)>this.elapsed;
+      const remembered=!tactical&&!!a.ai.seenPos&&(a.ai.seenUntil??0)>this.elapsed;
       if(remembered&&dist(a.ai.waypoint,a.ai.seenPos!)>.1){a.ai.waypoint={...a.ai.seenPos!};a.ai.repath=0;}
       if (a.ai.repath <= 0 || !a.ai.path.length) {
-        if (!remembered&&(dist(a.pos, a.ai.waypoint) < 3 || a.ai.repath < -1))
+        if (!tactical&&!remembered&&(dist(a.pos, a.ai.waypoint) < 3 || a.ai.repath < -1))
           a.ai.waypoint =
-            this.map.patrol[Math.floor(this.random() * this.map.patrol.length)] ??
-            this.map.patrol[0];
+            this.patrolPoint(a);
         a.ai.path = this.nav.path(a.pos, a.ai.waypoint);
         a.ai.repath = 2.5;
       }
@@ -1351,15 +1409,32 @@ export class Match {
           input.forward = Math.max(0, Math.cos(delta)) * 0.85;
         }
       } else if(remembered) a.yaw+=dt*2;
-      else a.ai.waypoint=this.map.patrol[Math.floor(this.random()*this.map.patrol.length)];
+      else a.ai.waypoint=this.patrolPoint(a);
+    }
+    // One inexpensive traversal decision per second; no random pogo jumping.
+    if(a.grounded && this.elapsed>=(a.ai.actionAt??0)){
+      a.ai.actionAt=this.elapsed+1;
+      const facing=v(-Math.sin(a.yaw),0,-Math.cos(a.yaw));
+      const low=v(a.pos.x,a.pos.y+.5,a.pos.z),high=v(a.pos.x,a.pos.y+1.45,a.pos.z);
+      const ahead=(p:Vec,length:number)=>v(p.x+facing.x*length,p.y,p.z+facing.z*length);
+      const lowBlocked=!hasLOS(low,ahead(low,1.1),this.map.blocks);
+      const headClear=hasLOS(high,ahead(high,1.1),this.map.blocks);
+      if(this.elapsed>=(a.ai.traverseAt??0)){
+        const speed=Math.hypot(a.vel.x,a.vel.z),underFire=this.elapsed-a.lastDamage<2;
+        if(input.forward>.4 && ((lowBlocked&&headClear)||(visible&&underFire&&this.random()<.22))){
+          input.jump=true;a.ai.traverseAt=this.elapsed+6+this.random()*3;
+        }else if(input.forward>.5&&speed>4.05&&a.slideCooldown<=0&&hasLOS(low,ahead(low,3),this.map.blocks)&&(underFire||(visible&&this.random()<.35))){
+          input.slide=true;a.ai.traverseAt=this.elapsed+7+this.random()*3;
+        }
+      }
     }
     a.ai.stuck += dt;
     if (a.ai.stuck > 1) {
       if (dist(a.pos, a.ai.lastPos) < 0.3) {
         a.ai.waypoint =
-          this.map.patrol[Math.floor(this.random() * this.map.patrol.length)];
+          this.patrolPoint(a);
         a.ai.repath = 0;
-        input.jump = true;
+        if(this.elapsed>=(a.ai.traverseAt??0)){input.jump=true;a.ai.traverseAt=this.elapsed+6;}
       }
       a.ai.lastPos = { ...a.pos };
       a.ai.stuck = 0;
@@ -1422,7 +1497,7 @@ export function advanceGunTimers(a: Actor, dt: number) {
       a.equip = Math.max(0, a.equip - dt);
       a.fired = Math.max(0, a.fired - dt);
       // Recover only the recoil contribution; leave the player's mouse input intact.
-      if (a.fired === 0 && a.cooldown === 0 && !a.bot) {
+      if (a.fired === 0 && a.cooldown === 0) {
         const recovery = 1 - Math.exp(-10 * dt);
         a.pitch = clamp(a.pitch - a.recoilPitch * recovery, -1.48, 1.48);
         a.yaw -= a.recoilYaw * recovery;
@@ -1440,7 +1515,7 @@ export function advanceGunTimers(a: Actor, dt: number) {
 }
 
 export function applyGunRecoil(a: Actor, ads: boolean) {
-  if (a.bot || a.weapon === 3) return;
+  if (a.weapon === 3) return;
   const gun = GUNS[a.weapon];
   const stance=a.slide>0?1.25:a.crouched?0.7:1;
   const patterns=[[0.15,0.3,0.45,0.4,0.1,-0.25,-0.5,-0.35],[0.2,0.4,0.7,0.4,-0.35,-0.65,-0.5,0.15],[0.45,-0.45]];

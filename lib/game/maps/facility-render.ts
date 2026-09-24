@@ -10,29 +10,46 @@ export function buildFacility(map:ArenaMap,sky?:T.Object3D){
   let hash=Math.imul(x+y*128+13,1597334677);hash=Math.imul(hash^(hash>>>16),2246822507);const noise=((hash^(hash>>>13))>>>0)%11;let c=235+noise;
   if(surface==='snow')c=231+noise+Math.sin(x*Math.PI/64)*Math.cos(y*Math.PI/64)*5;
   if(surface==='metal')c=(x%64<2||y%64<2)?158:229+noise;
+  if(surface==='concrete'){const seam=x%64<1||y%64<1;c=seam?204:227+noise+Math.sin(x*Math.PI/32)*Math.cos(y*Math.PI/32)*3;}
+  if(surface==='wood')c=222+noise+Math.sin(x*Math.PI/4+Math.sin(y*Math.PI/64)) *5-(x%32<2?19:0);
+  if(surface==='brick')c=(y%32<2||(x+(Math.floor(y/32)%2)*32)%64<2)?179:225+noise;
+  if(surface==='frost'){const joint=x%64<2||y%64<2;const edge=Math.min(x%64,63-x%64,y%64,63-y%64);c=joint?165:edge<7?244:220+noise; c+=Math.sin((x+y)*.14)*3;}
   if(surface==='rubber')c=((x+y)%12<2)?199:228+noise;
   data.set([c,c,c,255],(x+y*128)*4);
  }const t=new T.DataTexture(data,128,128);t.name=surface;t.wrapS=t.wrapT=T.RepeatWrapping;t.generateMipmaps=true;t.minFilter=T.LinearMipmapLinearFilter;t.magFilter=T.LinearFilter;t.anisotropy=4;t.colorSpace=T.SRGBColorSpace;t.needsUpdate=true;textures.push(t);return t;};
- const tiles={snow:tex('snow'),metal:tex('metal'),rubber:tex('rubber')};
+ const tiles={snow:tex('snow'),metal:tex('metal'),rubber:tex('rubber'),concrete:tex('concrete'),brick:tex('brick'),frost:tex('frost'),wood:tex('wood')};
  const material=(color:string,surface:keyof typeof tiles,glow=false)=>{const key=color+surface+glow;let m=cache.get(key);if(!m){m=glow?new T.MeshBasicMaterial({color}):new T.MeshLambertMaterial({color,map:tiles[surface]});cache.set(key,m);materials.push(m);}return m;};
+ let distant=false;
  const add=(g:T.BufferGeometry,x:number,y:number,z:number,c:string,s:keyof typeof tiles='metal',r?:T.Euler,glow=false)=>{
+  if(distant){x*=1.2;z*=1.2;y-=1;}
   const geo=g.index?g.toNonIndexed():g;if(geo!==g)g.dispose();if(r)geo.applyMatrix4(new T.Matrix4().makeRotationFromEuler(r));geo.translate(x,y,z);
   const p=geo.getAttribute('position'),n=geo.getAttribute('normal'),uv=geo.getAttribute('uv');for(let i=0;i<p.count;i++)uv?.setXY(i,(Math.abs(n.getX(i))>.5?p.getZ(i):p.getX(i))*.4,(Math.abs(n.getY(i))>.5?p.getZ(i):p.getY(i))*.4);
   const m=material(c,s,glow);if(!buckets.has(m))buckets.set(m,[]);buckets.get(m)!.push(geo);
  };
  const box=(x:number,y:number,z:number,w:number,h:number,d:number,c:string,s:keyof typeof tiles='metal',glow=false)=>add(new T.BoxGeometry(w,h,d),x,y,z,c,s,undefined,glow);
- const floor=(x:number,z:number,w:number,d:number,c:string,s:keyof typeof tiles='rubber')=>add(new T.PlaneGeometry(w,d),x,.012,z,c,s,new T.Euler(-Math.PI/2,0,0));
- box(0,-.2,0,indoor?map.width:190,.4,indoor?map.depth:190,indoor?(small?'#bdc7d1':'#c8c4ae'):'#deebf1',indoor?'metal':'snow');
- if(!indoor){floor(-6,-6,23,23,'#667b84');floor(-8,23,19,7,'#596d79');floor(19,5,11,42,'#9aadb4');}
+ const floor=(x:number,z:number,w:number,d:number,c:string,s:keyof typeof tiles='rubber',height=.012)=>add(new T.PlaneGeometry(w,d),x,height,z,c,s,new T.Euler(-Math.PI/2,0,0));
+ box(0,-.2,0,indoor?map.width:190,.4,indoor?map.depth:190,indoor?(small?'#bdc7d1':'#c8c4ae'):'#deebf1',indoor?'concrete':'snow');
+ if(!indoor){floor(-6,-6,23.3,23.3,'#a6b0ae','concrete');floor(-8,23,19,7,'#596d79');floor(19,5,11,42,'#9aadb4');}
  for(const b of map.blocks){
-  box(b.x,b.y,b.z,b.w,b.h,b.d,b.color,b.kind==='rock'?'snow':'metal',b.kind==='ceiling');
+  const wall=['panel','boundary','building','wall'].includes(b.kind??'');
+  box(b.x,b.y,b.z,b.w,b.h,b.d,b.color,b.kind==='rock'?'snow':b.kind==='crate'?'wood':wall?(indoor?(small?'concrete':'brick'):'frost'):'metal',b.kind==='ceiling');
   if(['panel','boundary','building','wall'].includes(b.kind??'')){
    // Painted lower band and flush panel joints, no false walkable ledges.
-   const band=indoor?(small?'#986a80':'#3a9191'):'#cd8052';
-   if(!indoor&&b.h>3)box(b.x,b.y+b.h*.24,b.z,b.w+.01,b.h*.36,b.d+.01,'#b4c5ce');
+   const band=indoor?(small?'#547f9c':'#5b9989'):'#cd8052';
+   if(!indoor&&b.h>3)box(b.x,b.y+b.h*.24,b.z,b.w+.01,b.h*.36,b.d+.01,'#c5d9df','frost');
+   if(!indoor&&b.h>3)box(b.x,b.y+b.h/2-.045,b.z,b.w+.025,.09,b.d+.025,'#eef3ed','snow');
+   if(indoor&&b.h>3)box(b.x,b.y+b.h/2-.18,b.z,b.w+.015,.12,b.d+.015,small?'#bdd6e4':'#dbd4b9');
    if(b.h>2)box(b.x,b.y-b.h/2+.8,b.z,b.w+.016,.5,b.d+.016,band);
    if(b.w>4)for(let x=b.x-b.w/2+2;x<b.x+b.w/2;x+=4)box(x,b.y,b.z,.025,b.h,b.d+.02,'#344c5d');
    if(b.d>4)for(let z=b.z-b.d/2+2;z<b.z+b.d/2;z+=4)box(b.x,b.y,z,b.w+.02,b.h,.025,'#344c5d');
+  }
+  const hallWall=!indoor&&b.kind==='panel'&&b.x>=-18&&b.x<=6&&b.z>=-18&&b.z<=6;
+  if(hallWall){
+   const alongX=b.w>b.d,sign=Math.sign(-6-(alongX?b.z:b.x));
+   const x=alongX?b.x:b.x+sign*(b.w/2+.014),z=alongX?b.z+sign*(b.d/2+.014):b.z;
+   box(x,2.2,z,alongX?b.w:.022,4.4,alongX?.022:b.d,'#9faeae','concrete');
+   box(x+(alongX?0:sign*.014),.4,z+(alongX?sign*.014:0),alongX?b.w:.025,.8,alongX?.025:b.d,'#526774');
+   box(x+(alongX?0:sign*.014),1.15,z+(alongX?sign*.014:0),alongX?b.w:.025,.12,alongX?.025:b.d,'#cd8052');
   }
   if(b.kind==='cargo'||b.kind==='crate'){
    for(let x=b.x-b.w/2+.3;x<b.x+b.w/2;x+=.65)box(x,b.y,b.z,.055,b.h,b.d+.025,'#455966');
@@ -44,12 +61,17 @@ export function buildFacility(map:ArenaMap,sky?:T.Object3D){
   if(b.kind==='turbine'){for(let x=b.x-2;x<=b.x+2;x+=2)box(x,1.5,b.z+3.015,1.4,2,.025,'#193344');for(let y=.8;y<2.6;y+=.35)box(b.x,y,b.z+3.033,5,.045,.016,'#74a5aa');}
  }
  if(indoor){
-  for(const side of [-1,1])for(let z=-map.depth/2+5;z<map.depth/2;z+=10)box(side*(map.width/2-.51),3.9,z,.025,.2,2,small?'#e0c9ed':'#bce8e1','metal',true);
-  for(const x of [-map.width/2+3,map.width/2-3])floor(x,0,.1,map.depth-3,small?'#b78da5':'#58b5af');
+  for(const side of [-1,1])for(let z=-map.depth/2+5;z<map.depth/2;z+=10)box(side*(map.width/2-.51),3.9,z,.025,.2,2,small?'#c7e4fa':'#bce8e1','metal',true);
+  for(const x of [-map.width/2+3,map.width/2-3])floor(x,0,.1,map.depth-3,small?'#85b0cb':'#58b5af');
  }else{
+  // Flush threshold mats and painted approach marks never change collision height.
+  for(const z of [-17.1,5.1]){floor(-6,z,4.8,1.4,'#526774','rubber',.018);floor(-6,z,4.6,.08,'#d7ba7c','metal',.022);}
+  for(const x of [-17.1,5.1]){floor(x,-6,1.4,4.8,'#526774','rubber',.018);floor(x,-6,.08,4.6,'#d7ba7c','metal',.022);}
+  for(const x of [-10.1,-1.9])floor(x,1.9,.075,4.5,'#d7ba7c','metal',.018);
   // Warm readable hangar and tunnel fixtures; inexpensive emissive strips.
   for(const x of [-13,1])box(x,7.58,-6,.35,.035,18,'#d6f0ef','metal',true);
   box(-8,3.57,23,16,.035,.3,'#f2cca0','metal',true);
+  distant=true;
   // Mountain amphitheatre and glacier shelves stay outside the playable boundary.
   for(let i=0;i<18;i++){
    const a=i*Math.PI*2/18,r=67+i%3*8,h=19+i%5*5,x=Math.sin(a)*r,z=Math.cos(a)*r,width=18+i%4*4;

@@ -1,3 +1,4 @@
+import { hitConfirmation } from './weapon-feedback';
 import { cameraMotion } from './motion';
 import { NetworkState, type RoomSnapshot } from './network-state';
 import {
@@ -6,7 +7,7 @@ import {
   type RoomOptions,
 } from './room-client';
 import { FrameStats, type FrameReport } from './performance';
-import { weaponPose, equipPose } from './animation';
+import { weaponPose, equipPose, edgePose } from './animation';
 import { CaptureGuard, respawnShortcut, CrouchControl, boundKey } from './controls';
 import { syncView } from './view';
 import * as T from 'three';
@@ -14,7 +15,6 @@ import {
   Match,
   DEFAULT_SETTINGS,
   GUNS,
-  EDGE_ATTACKS,
   shotSpread,
   emptyInput,
   eye,
@@ -62,6 +62,7 @@ export type Snapshot = {
   reload: number;
   equip: number;
   lastDeath: null | { killer: string; weapon: number; head: boolean };
+  fragLimit: number;
   time: number;
   elapsed: number;
   score: number;
@@ -122,6 +123,7 @@ export const EMPTY_SNAPSHOT: Snapshot = {
   equip: 0,
   lastDeath: null,
   time: 300,
+  fragLimit: 20,
   elapsed: 0,
   score: 0,
   deaths: 0,
@@ -201,6 +203,7 @@ export class Arena {
       options,
       (snapshot) => this.receiveRoom(snapshot),
       (info) => {
+        if(info.removed&&this.network){this.lobby();this.onError(info.message);return;}
         const previous=this.connection;
         this.connection = info;
         if (info.status !== 'connected' && this.network) {
@@ -315,7 +318,7 @@ export class Arena {
   lobbyRotation = 0;
   rotateLobby(delta:number){this.lobbyRotation+=delta;}
   finishVariant = 0;
-  weaponFinishes: number[] = [0, 0, 0];
+  weaponFinishes: number[] = [0, 0, 0, 0];
   lastFragTime = -Infinity;
   comboCount = 0;
   introUntil=0;
@@ -379,6 +382,7 @@ export class Arena {
   hud?: HTMLElement;
   minimap: HTMLCanvasElement | null = null;
   hitFlash = 0;
+  hitDuration = 0.16;
   damageFlash = 0;
   killFlash = 0;
   crossSpread = 0;
@@ -528,7 +532,6 @@ export class Arena {
     this.listen(window, 'beforeunload', ((e: BeforeUnloadEvent) => {
       if (this.phase !== 'playing' && this.phase !== 'spawning') return;
       e.preventDefault();
-      e.returnValue = '';
     }) as EventListener);
     this.listen(this.renderer.domElement, 'webglcontextlost', (e) => {
       e.preventDefault();
@@ -612,7 +615,7 @@ export class Arena {
     this.sun.shadow.camera.bottom = this.match.map.id===0 ? -38 : -30;
     this.sun.shadow.camera.updateProjectionMatrix();
   }
-  setCosmetics(operator: number, finish: number, weaponFinishes = [finish, finish, finish]) {
+  setCosmetics(operator: number, finish: number, weaponFinishes = [finish, finish, finish, finish]) {
     if (this.operatorVariant === operator && this.finishVariant === finish && this.weaponFinishes.join() === weaponFinishes.join())
       return;
     this.operatorVariant = operator;
@@ -1341,24 +1344,11 @@ export class Arena {
     this.flash.scale.set(weaponView.weapon===2?1.65:weaponView.weapon===0?0.7:1,weaponView.weapon===2?0.8:weaponView.weapon===0?0.7:1.25,1);
     if(weaponView.weapon===3){this.gun.rotation.z=0;this.gun.rotation.y-=.06;this.gun.position.x+=.045;this.gun.position.y+=.015;}
     if (weaponView.weapon === 3 && weaponView.fired > 0) {
-      const attack=weaponView.edgeAttack ?? 'slash', spec=EDGE_ATTACKS[attack];
-      const t=clamp(1-weaponView.fired/spec.duration,0,1);
-      const contact=spec.contact/spec.duration;
-      const swing=t<contact ? Math.sin(t/contact*Math.PI/2) : Math.pow(1-(t-contact)/(1-contact),2);
-      if (attack === 'stab') {
-        this.gun.position.z-=swing*0.48; this.gun.position.x-=swing*0.08;
-        this.gun.rotation.x+=swing*0.22;
-      } else {
-        const side=weaponView.edgeSide || 1;
-        // Two diagonal sweeps translate the hand across the view, not around a pivot.
-        const sweep=Math.sin(t*Math.PI),cross=Math.sin(t*Math.PI*2);
-        this.gun.position.x+=side*cross*.26-sweep*.12;
-        this.gun.position.y+=side*cross*.11+sweep*.045;
-        this.gun.rotation.z+=side*cross*.5;
-        this.gun.rotation.y+=side*cross*.45;
-        this.gun.position.z-=sweep*.23;
-      }
+      const swing=edgePose(weaponView);
+      this.gun.position.x+=swing.x;this.gun.position.y+=swing.y;this.gun.position.z+=swing.z;
+      this.gun.rotation.x+=swing.pitch;this.gun.rotation.y+=swing.yaw;this.gun.rotation.z+=swing.roll;
     }
+
     this.hitFlash = Math.max(0, this.hitFlash - dt);
     this.damageFlash = Math.max(0, this.damageFlash - dt * 1.6);
     this.killFlash = Math.max(0, this.killFlash - dt);
@@ -1374,6 +1364,7 @@ export class Arena {
         '--hit',
         String(Math.min(1, this.hitFlash * 10)),
       );
+      this.hud.style.setProperty('--hit-kick', String(Math.max(0, (this.hitFlash - this.hitDuration + .07) / .07)));
       const spread = shotSpread(weaponView, this.input.ads);
       const radius = Math.tan(spread) / Math.tan(this.camera.fov * Math.PI / 360) * this.host.clientHeight / 2;
       this.hud.style.setProperty('--shotgun-radius', `${Math.max(10, radius)}px`);
@@ -1438,6 +1429,11 @@ export class Arena {
   }
   processEvents() {
     const events = this.match.events.splice(0);
+    const confirmation = hitConfirmation(events);
+    if (confirmation) {
+      this.hitFlash = this.hitDuration = confirmation.duration;
+      this.hud?.style.setProperty('--hit-color', confirmation.color);
+    }
     let ownShot = false, ownHitSound = false;
     const played = new Set<number>();
     const impacted = new Set<number>();
@@ -1497,12 +1493,7 @@ export class Arena {
       }
       if (e.type === 'hit') {
         if (e.actor === 0) {
-          this.hitFlash = e.head ? 0.22 : 0.15;
-          this.hud?.style.setProperty(
-            '--hit-color',
-            e.head ? '#ffca76' : '#e8f1dc',
-          );
-          if(!ownHitSound){this.audio.hit(events.some(hit=>hit.type==='hit'&&hit.actor===0&&hit.head));ownHitSound=true;}
+          if(!ownHitSound&&!events.some(k=>k.type==='kill'&&k.actor===0&&k.target===e.target&&!e.head)){this.audio.hit(events.some(hit=>hit.type==='hit'&&hit.actor===0&&hit.head));ownHitSound=true;}
         }
         if (e.target === 0) {
           const attacker = this.match.actors[e.actor];
@@ -1538,7 +1529,7 @@ export class Arena {
           const now = this.match.elapsed;
           this.comboCount = now >= this.lastFragTime && now - this.lastFragTime <= 4 ? this.comboCount + 1 : 1;
           this.lastFragTime = now;
-          if(e.weapon===3)this.audio.edgeKill();else this.audio.kill(this.comboCount);
+          this.audio.kill(this.comboCount);
           const combo = this.comboCount >= 4 ? `${this.comboCount}× MULTIKILL` : this.comboCount === 3 ? '3× COMBO' : this.comboCount === 2 ? '2× COMBO' : '';
           const title = combo || (e.head ? 'HEADSHOT' : e.weapon === 3 ? (e.attack === 'stab' ? 'SKEWERED' : 'CUTTHROAT') : killer.streak >= 5 ? 'UNSTOPPABLE' : killer.streak >= 3 ? 'ON FIRE' : 'ELIMINATED');
           this.onFrag(`${title}${combo && e.head ? ' · HEADSHOT' : ''} +${e.head ? 150 : 100}`);
@@ -1942,6 +1933,7 @@ export class Arena {
       equip: weaponView.equip,
       lastDeath: this.lastDeath,
       time: this.match.time,
+      fragLimit: this.match.fragLimit,
       elapsed: this.match.elapsed,
       score: p.kills,
       deaths: p.deaths,

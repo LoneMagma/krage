@@ -8,7 +8,7 @@ import {
   type Input,
   type GameEvent,
 } from './core.js';
-export const ROOM_PROTOCOL = 15;
+export const ROOM_PROTOCOL = 18;
 export type WireActor = Omit<Actor, 'ai'> & {
   life: number;
   connected: boolean;

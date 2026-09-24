@@ -1,3 +1,4 @@
+import { ROOM_PROTOCOL } from '../.server-build/network-state.js';
 import { createServer } from 'node:http';
 import { WebSocketServer } from 'ws';
 import { Room } from './rooms.mjs';
@@ -8,13 +9,14 @@ export function createArenaServer({
 } = {}) {
   const rooms = new Map(),
     peers = new Map();
+  let pendingAuth = 0;
   const http = createServer((req, res) => {
     if (req.url === '/health') {
       res.writeHead(200, {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-store',
       });
-      res.end(JSON.stringify({ ok: true, protocol: 15, rooms: rooms.size }));
+      res.end(JSON.stringify({ ok: true, protocol: ROOM_PROTOCOL, rooms: rooms.size }));
     } else {
       res.writeHead(404);
       res.end();
@@ -59,14 +61,14 @@ export function createArenaServer({
       joined: false,
       alive: true,
       eventSent: 0,
-      chatName: null, chatAt: 0,
+      chatName: null, chatAt: 0, joining: false, directoryAt: 0, authAt: 0,
     };
     peers.set(ws, peer);
     ws.on('pong', () => {
       peer.alive = true;
     });
     ws.on('error', () => {});
-    ws.on('message', (raw) => {
+    ws.on('message', async (raw) => {
       let action = '';
       try {
         const now = Date.now();
@@ -81,7 +83,11 @@ export function createArenaServer({
         if (!m || typeof m !== 'object' || Array.isArray(m))
           throw new Error('Invalid message');
         action = typeof m.type==='string'?m.type:'';
-        if(m.type==='chat-hello'){
+        if(m.type==='rooms'){
+          if(now-peer.directoryAt<1500) return;
+          peer.directoryAt=now;
+          send(ws,{type:'rooms',protocol:ROOM_PROTOCOL,rooms:[...rooms.values()].map(r=>r.listing()).filter(Boolean)});
+        }else if(m.type==='chat-hello'){
           peer.chatName=String(m.name??'Player').split('').filter(c=>c.charCodeAt(0)>=32&&c!=='<'&&c!=='>').join('').trim().slice(0,16)||'Player';
           send(ws,{type:'chat-ready'});
         }else if(m.type==='chat'){
@@ -99,7 +105,11 @@ export function createArenaServer({
             if(m.channel==='global'?!!p.chatName:p.room===peer.room&&recipient&&(m.channel!=='team'||p.room.match.actors[recipient.id].team===actor.team))send(other,message);
           }
         }else if (m.type === 'create'  || m.type === 'join' || m.type === 'quick') {
-          if (peer.joined) throw new Error('Already joined');
+          if (peer.joined || peer.joining) throw new Error('Already joining a room');
+          if(now-peer.authAt<1500) throw new Error('Please wait before trying again');
+          if(pendingAuth>=8) throw new Error('Server busy. Try again shortly');
+          peer.authAt=now; peer.joining=true; pendingAuth++;
+          try {
           let room;
           if (m.type === 'quick') {
             // One global queue: fill existing rooms before allocating another.
@@ -114,18 +124,23 @@ export function createArenaServer({
             }
           } else if (m.type === 'create') {
             if (rooms.size >= 32) throw new Error('Room limit');
-            room = new Room(m.mode, m.map, undefined, { duration: m.duration, capacity: m.capacity, fragLimit: m.fragLimit, botFill: m.botFill, difficulty: m.difficulty, staging: true });
-            while (rooms.has(room.code)) room = new Room(m.mode, m.map, undefined, { duration: m.duration, capacity: m.capacity, fragLimit: m.fragLimit, botFill: m.botFill, difficulty: m.difficulty, staging: true });
+            room = new Room(m.mode, m.map, undefined, { duration: m.duration, capacity: m.capacity, fragLimit: m.fragLimit, botFill: m.botFill, difficulty: m.difficulty, listed: m.listed, staging: true });
+            while (rooms.has(room.code)) room = new Room(m.mode, m.map, undefined, { duration: m.duration, capacity: m.capacity, fragLimit: m.fragLimit, botFill: m.botFill, difficulty: m.difficulty, listed: m.listed, staging: true });
+            await room.setPassword(m.password);
+            if(ws.readyState!==1)return;
+            if(rooms.size>=32)throw new Error('Room limit');
             rooms.set(room.code, room);
           } else room = rooms.get(String(m.room ?? '').toUpperCase());
           if (!room) throw new Error('Room unavailable');
-          const session = room.join(m.name, m.token, Date.now(), m.primary, m.operator);
+          if(m.type==='join' && !m.token && !await room.checkPassword(m.password)) throw new Error('Incorrect lobby password');
+          if(ws.readyState!==1)return;
+          const session = room.join(m.name, m.token, Date.now(), m.primary, m.operator, m.weaponFinishes);
           peer.room = room;
           peer.token = session.token;
           peer.joined = true;
           send(ws, {
             type: 'welcome',
-            protocol: 15,
+            protocol: ROOM_PROTOCOL,
             room: room.code,
             ...session,
             tickRate: 120,
@@ -133,12 +148,20 @@ export function createArenaServer({
           });
           send(ws, room.snapshot(peer.token));
           peer.eventSent = room.eventHead;
+          } finally {peer.joining=false;pendingAuth--;}
         } else if (m.type === 'input') peer.room?.input(peer.token, m);
         else if (m.type === 'deploy')
           send(ws, {
             type: 'deployment',
             accepted: peer.room?.deploy(peer.token, m.primary) ?? false,
           });
+        else if (m.type === 'kick') {
+          if(!peer.room)throw new Error('Join a lobby first');
+          const removed=peer.room.kick(peer.token,m.id);
+          for(const [other,p] of peers)if(p.room===peer.room&&p.token===removed){
+            send(other,{type:'kicked',message:'Removed by host'});p.room=null;p.token=null;other.close(4003,'Removed by host');
+          }
+        }
         else if (m.type === 'lobby') peer.room?.lobbyChange(peer.token, m);
         else if (m.type === 'rematch') peer.room?.rematch(peer.token);
         else if (m.type === 'start') peer.room?.startMatch(peer.token);
@@ -146,7 +169,7 @@ export function createArenaServer({
         else throw new Error('Unknown message');
       } catch (error) {
         send(ws, {
-          type: action.startsWith('chat')?'chat-error':['lobby','start','rematch'].includes(action) ? 'lobby-error' : 'error',
+          type: action.startsWith('chat')?'chat-error':['lobby','start','rematch','kick'].includes(action) ? 'lobby-error' : 'error',
           message: error instanceof Error ? error.message : 'Invalid request',
         });
       }

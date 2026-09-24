@@ -834,11 +834,18 @@ select option {
   position: absolute;
   left: 50%;
   top: 50%;
-  transform: translate(-50%, -53%);
-  font-size: 36px;
-  font-weight: 200;
-  color: #ffd59c;
-  opacity: var(--hit);
+  width: 40px;
+  height: 40px;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(calc(1 + var(--hit-kick, 0) * .18));
+  color: var(--hit-color, #f4fbff);
+  opacity: var(--hit, 0);
+}
+.hit-marker svg { width: 100%; height: 100%; overflow: visible; }
+.hit-marker path { stroke: currentColor; stroke-width: 2.4; stroke-linecap: square; }
+.hit-marker .hit-outline { stroke: #101820; stroke-width: 5; opacity: .85; }
+@media (prefers-reduced-motion: reduce) {
+  .hit-marker { transform: translate(-50%, -50%); }
 }
 .frag-notice {
   position: absolute;

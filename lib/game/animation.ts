@@ -1,4 +1,4 @@
-import { GUNS, EQUIP_SECONDS, clamp, type Actor } from './core.js';
+import { EDGE_ATTACKS, GUNS, EQUIP_SECONDS, clamp, type Actor } from './core.js';
 export type MotionState = 'dead' | 'slide' | 'air' | 'crouch' | 'run' | 'idle';
 export function motionState(a: Actor): MotionState {
   if (!a.alive) return 'dead';
@@ -42,4 +42,19 @@ export function equipPose(
     weapon: progress < 0.5 ? a.previousWeapon : a.weapon,
     lower: t * t * (3 - 2 * t),
   };
+}
+
+export function edgePose(a: Pick<Actor,'weapon'|'fired'|'edgeAttack'|'edgeSide'>) {
+ const zero={x:0,y:0,z:0,roll:0,yaw:0,pitch:0};
+ if(a.weapon!==3||a.fired<=0)return zero;
+ const attack=a.edgeAttack??'slash',spec=EDGE_ATTACKS[attack],t=clamp(1-a.fired/spec.duration,0,1);
+ if(attack==='stab'){
+  const contact=spec.contact/spec.duration;
+  const thrust=ramp(t,0,contact)*(1-ramp(t,contact,.78));
+  if(thrust===0)return zero;
+  return {...zero,x:-thrust*.06,z:-thrust*.43,pitch:thrust*.22};
+ }
+ const side=a.edgeSide||1,cut=ramp(t,.16,.60),weight=ramp(t,0,.16)*(1-ramp(t,.60,1));
+ return {x:side*(.27-.54*cut)*weight,y:(.13-.29*cut)*weight,z:0,
+  roll:side*(.65-1.3*cut)*weight,yaw:side*(.16-.32*cut)*weight,pitch:.08*weight};
 }

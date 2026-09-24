@@ -33,7 +33,9 @@ export function buildDuneEnvironment(map:ArenaMap,sky:T.Object3D){
  };
  const tiles=new Map(['sand','plaster','stone','wood','metal','cloth','paving'].map(k=>[k,texture(k)]));
  const mat=(color:string,surface='plaster')=>{const key=color+surface;let m=surfaces.get(key);if(!m){m=new T.MeshLambertMaterial({color,map:tiles.get(surface),vertexColors:true});surfaces.set(key,m);materials.push(m);}return m;};
+ let distant=false;
  const add=(geometry:T.BufferGeometry,x:number,y:number,z:number,color:string,surface='plaster',rotation?:T.Euler)=>{
+  if(distant){x*=1.23;z*=1.23;y-=1;}
   const g=geometry.index?geometry.toNonIndexed():geometry; if(g!==geometry)geometry.dispose();
   if(rotation)g.applyMatrix4(new T.Matrix4().makeRotationFromEuler(rotation));g.translate(x,y,z);
   const position=g.getAttribute('position'),normal=g.getAttribute('normal'),uv=g.getAttribute('uv'),colors=[];
@@ -130,6 +132,7 @@ export function buildDuneEnvironment(map:ArenaMap,sky:T.Object3D){
   box(x,h-.3,z,1.8,.12,1.8,'#857957','wood');
  }
  sign('PUMP 07',-4,3.8,-19.57,4.7);sign('MARKET',-26,3.3,6.34,3.6);sign('SERVICE',-6,2.7,19.73,3.6);sign('YARD',9,2.4,25.53,3);
+ distant=true;
  // Exterior dunes, distant village silhouettes and mesas extend the horizon.
  for(let i=0;i<22;i++){
   const a=i*Math.PI*2/22,x=Math.sin(a)*(61+i%3*5),z=Math.cos(a)*(58+i%4*4);

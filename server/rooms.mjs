@@ -1,5 +1,8 @@
+import { ROOM_PROTOCOL } from '../.server-build/network-state.js';
 import { LagHistory } from './lag-history.mjs';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
+import { promisify } from 'node:util';
+const deriveKey = promisify(scrypt);
 import { Match, emptyInput } from '../.server-build/core.js';
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 export function sanitizeInput(message) {
@@ -50,6 +53,9 @@ export class Room {
     this.difficulty = difficulty;
     this.capacity = capacity;
     this.public = options.public === true;
+    this.listed = options.listed !== false;
+    this.passwordHash = null;
+    this.passwordSalt = null;
     this.match = new Match(mode, map, capacity - 1, this.botFill ? difficulty : 'dummy');
     this.match.fragLimit = fragLimit;
     this.match.time = this.match.duration = duration;
@@ -74,8 +80,41 @@ export class Room {
       if (this.botFill) this.fillBot(a);
     }
   }
+  async setPassword(value = '') {
+    if (typeof value !== 'string' || value.length > 64) throw new Error('Password must be at most 64 characters');
+    if (!value) return;
+    this.passwordSalt = randomBytes(16);
+    this.passwordHash = await deriveKey(value, this.passwordSalt, 32);
+  }
+  async checkPassword(value = '') {
+    if (!this.passwordHash) return true;
+    if (typeof value !== 'string' || value.length > 64) return false;
+    return timingSafeEqual(this.passwordHash, await deriveKey(value, this.passwordSalt, 32));
+  }
+  listing() {
+    const connected = [...this.slots.values()].filter(s => s.connected);
+    if (this.public || !this.listed || !connected.length) return null;
+    const host = this.slots.get(this.hostToken);
+    return {room:this.code, name:host ? this.match.actors[host.id].name : 'LOBBY',
+      map:this.map, mode:this.mode, humans:connected.length, capacity:this.capacity,
+      available:this.capacity-this.slots.size, locked:!!this.passwordHash,
+      state:this.match.ended?'ended':this.started?'playing':'waiting',
+      duration:this.match.duration, fragLimit:this.match.fragLimit};
+  }
+  kick(token, id) {
+    if (this.public || token !== this.hostToken || !this.slots.get(token)?.connected) throw new Error('Only the host can remove players');
+    const target = [...this.slots].find(([,s]) => s.id === id);
+    if (!target || target[0] === token) throw new Error('Choose another player');
+    this.slots.delete(target[0]);
+    this.match.remoteInputs.delete(id);
+    const actor = this.match.actors[id];
+    actor.alive = false; actor.respawn = Infinity;
+    if (this.botFill) this.fillBot(actor);
+    return target[0];
+  }
   fillBot(actor) {
     actor.bot = true;
+    actor.weaponFinishes=[0,0,0,0];
     actor.botDifficulty=this.public?['casual','normal','hard'][actor.id%3]:this.difficulty;
     actor.name = ['Alpha','Beta','Gamma','Delta','Epsilon','Zeta','Eta','Theta'][actor.id];
     actor.operator = this.mode >= 2 ? actor.team : actor.id % 2;
@@ -84,7 +123,7 @@ export class Room {
     this.match.remoteInputs.delete(actor.id);
     this.match.spawn(actor, true);
   }
-  join(name, token, now = Date.now(), primary = 1, operator = 0) {
+  join(name, token, now = Date.now(), primary = 1, operator = 0, weaponFinishes = []) {
     if (token) {
       const slot = this.slots.get(token);
       if (!slot || now - slot.lastSeen > 120000 || slot.connected)
@@ -121,7 +160,8 @@ export class Room {
       a.meleeKills =
         0;
     a.primary = [0, 1, 2].includes(primary) ? primary : 1;
-    a.operator = this.mode >= 2 ? a.team : [0,1,2].includes(operator) ? operator : 0;
+    a.operator = this.mode >= 2 ? a.team : [0,1,2,3,4].includes(operator) ? operator : 0;
+    a.weaponFinishes=Array.from({length:4},(_,i)=>Array.isArray(weaponFinishes)&&Number.isInteger(weaponFinishes[i])&&weaponFinishes[i]>=0&&weaponFinishes[i]<=6?weaponFinishes[i]:0);
     this.match.spawn(a, true);
     this.match.remoteInputs.set(a.id, emptyInput());
     if (!this.hostToken) this.hostToken = token;
@@ -146,7 +186,7 @@ export class Room {
     if (!slot?.connected || !this.staging || this.started) throw new Error('Lobby is not editable');
     const a = this.match.actors[slot.id];
     if (change.primary !== undefined && ![0,1,2].includes(change.primary)) throw new Error('Invalid weapon');
-    if (change.operator !== undefined && ![0,1,2].includes(change.operator)) throw new Error('Invalid character');
+    if (change.operator !== undefined && ![0,1,2,3,4].includes(change.operator)) throw new Error('Invalid character');
     if (change.primary !== undefined || change.operator !== undefined) {
       if (change.primary !== undefined) a.primary = a.weapon = change.primary;
       if (change.operator !== undefined) a.operator = this.mode >= 2 ? a.team : change.operator;
@@ -187,7 +227,7 @@ export class Room {
     for(const actor of next.actors)this.fillBot(actor);
     saved.forEach(({slot,actor},id)=>{
       slot.id=id;slot.life++;slot.seq=slot.ack=-1;slot.queue=[];slot.current=null;slot.remaining=0;slot.lastInput=now;
-      const a=next.actors[id];a.bot=false;a.name=actor.name;a.primary=actor.primary;a.operator=mode>=2?a.team:actor.operator;
+      const a=next.actors[id];a.bot=false;a.name=actor.name;a.primary=actor.primary;a.weaponFinishes=actor.weaponFinishes?.slice();a.operator=mode>=2?a.team:actor.operator;
       next.spawn(a,true);if(!slot.connected)a.alive=false;
       next.remoteInputs.set(id,emptyInput());
     });
@@ -346,7 +386,7 @@ export class Room {
       type: 'snapshot',
       roundId:this.roundId,
       nextRound:this.public&&this.match.ended?{...this.nextPublicSettings(),seconds:Math.max(0,Math.ceil((this.finishedAt+8000-Date.now())/1000))}:null,
-      protocol: 15,
+      protocol: ROOM_PROTOCOL,
       staging: this.staging && !this.started,
       host: this.slots.get(this.hostToken)?.id ?? null,
       fragLimit: this.match.fragLimit,

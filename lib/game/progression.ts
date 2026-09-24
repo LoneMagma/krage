@@ -7,12 +7,19 @@ export type MatchReceipt = Counts & {
   eligible: boolean;
 };
 export const CATALOG = [
-  { id: 'skin-echo-corona', kind: 'finish', name: 'ECHO / Glacier', note: 'PRESTIGE', cost: 2800, variant: 5, color: '#85f4dd', weapon: 0 },
-  { id: 'skin-kilo-regent', kind: 'finish', name: 'KILO / Regent', note: 'PRESTIGE', cost: 3200, variant: 5, color: '#e1b55e', weapon: 1 },
-  { id: 'skin-mica-nebula', kind: 'finish', name: 'MICA / Nebula', note: 'PRESTIGE', cost: 3600, variant: 5, color: '#8399a3', weapon: 2 },
-  { id: 'skin-echo-carbon', kind: 'finish', name: 'ECHO / Circuit', note: '', cost: 750, variant: 4, color: '#85d9cf', weapon: 0 },
-  { id: 'skin-kilo-carbon', kind: 'finish', name: 'KILO / Blackout', note: '', cost: 900, variant: 4, color: '#d8b68a', weapon: 1 },
-  { id: 'skin-mica-carbon', kind: 'finish', name: 'MICA / Nightfall', note: '', cost: 1000, variant: 4, color: '#b4a0dc', weapon: 2 },
+  { id:'op-sable',kind:'operator',name:'Sable',note:'Desert scout',cost:0,variant:3,color:'#b66b47' },
+  { id:'op-flint',kind:'operator',name:'Flint',note:'Alpine utility kit',cost:0,variant:4,color:'#deb958' },
+  { id:'skin-echo-signal',kind:'finish',name:'ECHO / Signal',note:'SPECIAL',cost:850,variant:6,color:'#6bcec1',weapon:0 },
+  { id:'skin-kilo-ivory',kind:'finish',name:'KILO / Ivory',note:'SPECIAL',cost:1000,variant:6,color:'#ded6be',weapon:1 },
+  { id:'skin-mica-tundra',kind:'finish',name:'MICA / Tundra',note:'SPECIAL',cost:1100,variant:6,color:'#a8cbd0',weapon:2 },
+  { id:'skin-edge-slate',kind:'finish',name:'EDGE / Slate',note:'STANDARD',cost:600,variant:4,color:'#659c9b',weapon:3 },
+  { id:'skin-edge-hook',kind:'finish',name:'EDGE / Talon',note:'KARAMBIT',cost:2000,variant:6,color:'#d9b166',weapon:3 },
+  { id: 'skin-echo-corona', kind: 'finish', name: 'ECHO / Glacier', note: 'PRESTIGE', cost: 1800, variant: 5, color: '#85f4dd', weapon: 0 },
+  { id: 'skin-kilo-regent', kind: 'finish', name: 'KILO / Regent', note: 'PRESTIGE', cost: 2100, variant: 5, color: '#e1b55e', weapon: 1 },
+  { id: 'skin-mica-nebula', kind: 'finish', name: 'MICA / Nebula', note: 'PRESTIGE', cost: 2400, variant: 5, color: '#8399a3', weapon: 2 },
+  { id: 'skin-echo-carbon', kind: 'finish', name: 'ECHO / Circuit', note: 'STANDARD', cost: 500, variant: 4, color: '#85d9cf', weapon: 0 },
+  { id: 'skin-kilo-carbon', kind: 'finish', name: 'KILO / Blackout', note: 'STANDARD', cost: 650, variant: 4, color: '#d8b68a', weapon: 1 },
+  { id: 'skin-mica-carbon', kind: 'finish', name: 'MICA / Nightfall', note: 'STANDARD', cost: 700, variant: 4, color: '#b4a0dc', weapon: 2 },
   {
     id: 'op-scout',
     kind: 'operator',
@@ -68,6 +75,7 @@ export const CATALOG = [
     color: '#f78a50',
   },
 ] as const;
+export const OPERATORS = CATALOG.filter(item=>item.kind==='operator').sort((a,b)=>a.variant-b.variant);
 const ZERO = (): Counts => ({
   kills: 0,
   headshots: 0,
@@ -77,6 +85,7 @@ const ZERO = (): Counts => ({
 });
 export type Profile = {
   version: 1;
+  priceAdjustments?: string[];
   balance: number;
   owned: string[];
   operator: string;
@@ -99,8 +108,9 @@ export const periods = (now: number) => ({
 export function newProfile(now = Date.now()): Profile {
   return {
     version: 1,
+    priceAdjustments: [],
     balance: 200,
-    owned: ['op-scout', 'op-warden', 'op-spectre', 'finish-factory'],
+    owned: [...OPERATORS.map(o=>o.id), 'finish-factory'],
     operator: 'op-scout',
     finish: 'finish-factory',
     ...periods(now),
@@ -114,7 +124,7 @@ export function newProfile(now = Date.now()): Profile {
 }
 export function refreshProfile(profile: Profile, now = Date.now()): Profile {
   const { day, week } = periods(now),
-    p = { ...profile, owned: Array.from(new Set([...profile.owned,'op-scout','op-warden','op-spectre'])) };
+    p = { ...profile, owned: Array.from(new Set([...profile.owned,...OPERATORS.map(o=>o.id)])) };
   if (day > p.day) {
     p.day = day;
     p.daily = ZERO();
@@ -129,6 +139,15 @@ export function refreshProfile(profile: Profile, now = Date.now()): Profile {
     const receipt=`retired:${id}`;
     if(!p.ledger.some(e=>e.id===receipt)){p.balance+=cost;p.ledger=[{id:receipt,amount:cost,reason:'Retired finish refund'},...p.ledger];}
     p.owned=p.owned.filter(owned=>owned!==id);
+  }
+  const oldPrices:Record<string,number>={'skin-echo-carbon':750,'skin-kilo-carbon':900,'skin-mica-carbon':1000,'skin-echo-signal':1250,'skin-kilo-ivory':1450,'skin-mica-tundra':1600,'skin-edge-hook':2400,'skin-echo-corona':2800,'skin-kilo-regent':3200,'skin-mica-nebula':3600};
+  p.priceAdjustments=[...(p.priceAdjustments??[])];
+  for(const item of CATALOG){
+    if(!(item.id in oldPrices)||!p.owned.includes(item.id)||p.priceAdjustments.includes(item.id))continue;
+    const paid=p.ledger.find(e=>e.id===`purchase:${item.id}`);
+    const difference=paid?Math.max(0,Math.min(-paid.amount,oldPrices[item.id])-item.cost):0;
+    if(difference){p.balance+=difference;p.ledger=[{id:`price140:${item.id}`,amount:difference,reason:'Skin price adjustment'},...p.ledger].slice(0,200);}
+    p.priceAdjustments.push(item.id);
   }
   p.weaponFinishes=p.weaponFinishes?.map(id=>id in retired?'finish-factory':id);
   if(p.finish in retired)p.finish='finish-factory';
@@ -289,6 +308,7 @@ export function loadProfile(value: string | null, now = Date.now()): Profile {
       !Array.isArray(p.receipts) ||
       !Array.isArray(p.ledger) ||
       !Array.isArray(p.claimed) ||
+      (p.priceAdjustments!==undefined&&(!Array.isArray(p.priceAdjustments)||!p.priceAdjustments.every((id:unknown)=>typeof id==='string'))) ||
       ![...p.owned, ...p.receipts, ...p.claimed].every(
         (id) => typeof id === 'string',
       ) ||
@@ -331,9 +351,9 @@ export function weaponFinish(profile: Profile, weapon: number) {
 
 /** Equip only an owned finish belonging to this primary. Factory is always available. */
 export function equipWeaponFinish(profile: Profile, weapon: number, id: string): Profile {
-  if(![0,1,2].includes(weapon))return profile;
+  if(![0,1,2,3].includes(weapon))return profile;
   if(id!=='finish-factory'&&!CATALOG.some(item=>item.id===id&&'weapon' in item&&item.weapon===weapon&&profile.owned.includes(id)))return profile;
-  const weaponFinishes=Array.from({length:3},(_,i)=>profile.weaponFinishes?.[i]??'finish-factory');
+  const weaponFinishes=Array.from({length:4},(_,i)=>profile.weaponFinishes?.[i]??'finish-factory');
   weaponFinishes[weapon]=id;
   return {...profile,weaponFinishes};
 }

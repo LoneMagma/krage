@@ -14,6 +14,10 @@ export function makeSnow():ArenaMap{
  }
  add(-6,7.85,-6,25,.5,25,'roof','#b1c4cf');
  add(-6,1.5,-6,6,3,6,'turbine','#3d596a');
+ // Two corner storage cases, clear of all four doorways and the gallery stairs.
+ add(-15,.65,3,2.4,1.3,2,'crate','#a78a62');
+ add(3.5,.5,3.5,1.8,1,1.8,'crate','#a78a62');
+ for(const z of [-12,0])add(-6,7.46,z,23.3,.28,.3,'beam','#526774');
  // Gallery along the back wall: two stair access points and an open lower route.
  add(-6,2.86,-13,19,.28,5,'platform','#6f8793');
  for(const x of [-14,2])for(let i=0;i<10;i++)add(x,(i+1)*.15,-2-(i+.5)*.85,3,(i+1)*.3,.85,'step','#82969f');

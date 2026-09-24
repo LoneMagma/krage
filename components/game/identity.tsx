@@ -6,7 +6,7 @@ export function KrageLogo({ compact = false }: { compact?: boolean }) {
   return (
     <span className="krage-logo" aria-label="kRAGE">
       <Image unoptimized src="/krage-logo.png" width="52" height="52" alt="" />
-      {!compact && <span className="brand-name">kRAGE</span>}
+      {!compact && <span className="brand-name">KRAGE</span>}
     </span>
   );
 }
@@ -21,8 +21,8 @@ export function WeaponGlyph({
 }) {
   const key = useId().replace(/:/g, ''),
     accent = WEAPON_COLORS[id],
-    wood = finish === 5 ? ['#25414a','#292d32','#26363f'][id] : finish === 4 ? '#24363b' : finish === 1 ? '#dce7ec' : finish === 2 ? '#e78851' : finish === 3 ? '#ac8cf5' : '#a6643f',
-    steel = finish === 5 ? ['#d7e4e0','#d5ad62','#c3ced2'][id] : finish === 4 ? '#657c83' : finish === 1 ? '#bacbdc' : finish === 2 ? '#8e614d' : finish === 3 ? '#726494' : '#65778e';
+    wood = finish === 6 ? ['#273239','#394748','#c5d1ca','#39434a'][id] : finish === 5 ? ['#25414a','#292d32','#26363f'][id] : finish === 4 ? '#24363b' : finish === 1 ? '#dce7ec' : finish === 2 ? '#e78851' : finish === 3 ? '#ac8cf5' : '#a6643f',
+    steel = finish === 6 ? ['#acbeba','#ded6be','#adcbd0','#d9b166'][id] : finish === 5 ? ['#d7e4e0','#d5ad62','#c3ced2'][id] : finish === 4 ? '#657c83' : finish === 1 ? '#bacbdc' : finish === 2 ? '#8e614d' : finish === 3 ? '#726494' : '#65778e';
   return (
     <svg viewBox="0 0 240 88" aria-hidden="true" className="weapon-glyph">
       <defs>
@@ -32,16 +32,23 @@ export function WeaponGlyph({
           <stop offset="1" stopColor="#293a50" />
         </linearGradient>
       </defs>
-      {finish===4&&<path d="M92 39H154M97 43H145" stroke={accent} strokeWidth="3"/>}
+      {finish===4&&id<3&&<path d="M92 39H154M97 43H145" stroke={accent} strokeWidth="3"/>}
       <path d="M18 78H222" stroke="#a4bacb" opacity="0.15"/>
       <g stroke="#101b2c" strokeWidth="1.5" strokeLinejoin="round">
-        {id === 3 ? (
+        {id === 3 && finish===6 ? (
+          <><circle cx="31" cy="43" r="17" fill="none" stroke="#d9b166" strokeWidth="7"/>
+          <path fill="#293a42" d="M49 30 117 34 115 57 47 53z"/>
+          <path fill="#d9b166" d="M114 33C174 1 220 31 219 73C204 49 173 39 115 57z"/>
+          <path d="M132 36Q178 17 207 45" fill="none" stroke="#fff0c2"/>
+          <path d="M63 34v17m16-16v17m16-16v17" stroke="#718287" strokeWidth="4"/></>
+        ) : id === 3 ? (
           <>
-            <path fill="#b8c9dc" d="m93 36 113-8 25 10-26 13H93z" />
+            <path fill={finish===4?'#647e89':'#b8c9dc'} d="m93 36 113-8 25 10-26 13H93z" />
             <path fill="#e9f3ff" stroke="none" d="m103 38 118 1-21 7h-97z" />
-            <path fill="#314459" d="M14 34h72v20H14zM85 24h10v39H85z" />
+            <path fill={finish===4?'#263c45':'#314459'} d="M14 34h72v20H14zM85 24h10v39H85z" />
+            {finish===4&&<path d="M105 35 194 32" stroke="#9bbfc0" strokeWidth="2"/>}
             {[24, 36, 48, 60, 72].map((x) => (
-              <path key={x} d={`M${x} 36v15`} stroke="#a9b9cd" />
+              <path key={x} d={`M${x} 36v15`} stroke={finish===4?'#659c9b':'#a9b9cd'} />
             ))}
           </>
         ) : (
@@ -122,3 +129,10 @@ export function WeaponGlyph({
 
 /** A stamped K inside an open credit token. */
 export function KrCredit(){return <svg className="kr-credit" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2 28 9v14l-12 7L4 23V9Z" fill="none" stroke="currentColor" strokeWidth="2"/><path d="M10 9h4v6l6-6h5l-8 8 8 7h-6l-5-5v5h-4Z" fill="currentColor"/><path d="M26 5v5M23 7.5h6" stroke="currentColor" strokeWidth="1.5"/></svg>;}
+
+export function QualityPreview({level}:{level:0|1|2}){
+ return <svg className="quality-scene" viewBox="0 0 92 48" aria-hidden="true"><rect width="92" height="48" rx="6" fill={level===0?'#243b47':level===1?'#466d79':'#6c94a0'}/><path d="M0 34 24 16 42 31 68 13 92 31V48H0z" fill="#8b9e99"/><path d="M0 40 30 30 54 39 92 28V48H0z" fill="#677a6f"/><path d="m36 25 14-6 15 6v17H36z" fill="#d2b789"/><path d="M50 19v23h15V25z" fill="#8b765f"/>{level>0&&<><path d="M65 42 85 35 70 30 60 34z" fill="#23323c" opacity=".45"/><path d="M41 32h5v6h-5zm14-4h5v5h-5z" fill="#384a51"/></>}{level===2&&<><circle cx="73" cy="10" r="4" fill="#f3dab0"/><path d="m12 12 8-2 10 2m8-5 12-1 7 2" stroke="#d4e4df" strokeWidth="3"/><path d="M38 39h10m6-2h8M38 29h10" stroke="#ead4b0" strokeWidth="1.4"/></>}</svg>;
+}
+export function CrosshairPreview({color}:{color:string}){
+ return <svg className="aim-preview" viewBox="0 0 70 48" aria-hidden="true"><rect width="70" height="48" rx="6" fill="#14232e"/><path d="m0 40 25-12 45 12M35 28V6" stroke="#34505b" strokeWidth="1"/><g stroke="#071017" strokeWidth="5"><path d="M35 12v7m0 10v7M22 24h7m12 0h7"/></g><g stroke={color} strokeWidth="2"><path d="M35 12v7m0 10v7M22 24h7m12 0h7"/></g><circle cx="35" cy="24" r="1.4" fill={color}/></svg>;
+}

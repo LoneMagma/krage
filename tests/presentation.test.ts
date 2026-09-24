@@ -318,7 +318,7 @@ await test('practice rewards, purchases and claims are idempotent and UTC schedu
 });
 
 await test('operator variants preserve joint positions and articulated part topology', () => {
-  const models = [0, 1, 2].map((variant) => avatar('#ff5c78', variant));
+  const models = [0, 1, 2, 3, 4].map((variant) => avatar('#ff5c78', variant));
   for (const model of models) {
     assert.deepEqual(
       model.joints.map((p) => p.toArray()),
@@ -546,7 +546,7 @@ await test('premium finishes require ownership and Factory restores only the sel
  const {newProfile,purchase,equipWeaponFinish,weaponFinish,loadProfile}=await import('../lib/game/progression.js');
  let p={...newProfile(),balance:1500};
  assert.deepEqual(equipWeaponFinish(p,0,'skin-echo-carbon'),p);
- p=purchase(p,'skin-echo-carbon');assert.equal(p.balance,750);
+ p=purchase(p,'skin-echo-carbon');assert.equal(p.balance,1000);
  assert.deepEqual(purchase(p,'skin-echo-carbon'),p);
  assert.deepEqual(equipWeaponFinish(p,1,'skin-echo-carbon'),p);
  p=equipWeaponFinish(p,0,'skin-echo-carbon');
@@ -559,7 +559,7 @@ await test('premium finishes require ownership and Factory restores only the sel
 await test('lobby carry poses preserve arm lengths across all models and all primaries', async () => {
  const {poseLobbyAvatar}=await import('../lib/game/graphics.js');
  const {RIG_POINTS}=await import('../lib/game/graphics.js');
- for(const variant of [0,1,2])for(const weapon of [0,1,2]){
+ for(const variant of [0,1,2,3,4])for(const weapon of [0,1,2]){
   const model=avatar('#aabbcc',variant),m=new Match(0,0,weapon);
   for(const time of [0,1,5]){
    animateAvatar(model,m.player,time,.016);poseLobbyAvatar(model,time);
@@ -571,14 +571,14 @@ await test('lobby carry poses preserve arm lengths across all models and all pri
   disposeObject(model.group);
  }
 });
-await test('all three block character meshes are finite, distinct and within the lightweight budget',()=>{
- const counts=[];
- for(const variant of [0,1,2]){
+await test('all five block character meshes have distinct geometry within the lightweight budget',()=>{
+ const counts=[],shapes=[];
+ for(const variant of [0,1,2,3,4]){
   const model=avatar('#ff8855',variant);let triangles=0;
   for(const part of model.parts)part.traverse(o=>{if(o instanceof Mesh){const p=o.geometry.getAttribute('position');for(let i=0;i<p.count;i++)assert.ok(Number.isFinite(p.getX(i))&&Number.isFinite(p.getY(i))&&Number.isFinite(p.getZ(i)));triangles+=(o.geometry.index?.count??p.count)/3;}});
-  assert.ok(triangles>200&&triangles<900);counts.push(triangles);disposeObject(model.group);
+  assert.ok(triangles>200&&triangles<900);counts.push(triangles);const shape:number[]=[];for(const part of model.parts)part.traverse(o=>{if(o instanceof Mesh)shape.push(...o.geometry.getAttribute('position').array);});shapes.push(JSON.stringify(shape));disposeObject(model.group);
  }
- assert.equal(new Set(counts).size,3);
+ assert.equal(new Set(shapes).size,5);
 });
 await test('KR challenge sets award bonuses once, refresh on UTC boundaries and retain savings',async()=>{
  const {newProfile,challenges,claimChallenge,refreshProfile,DAY,CATALOG,purchase,recordMatch}=await import('../lib/game/progression.js');
@@ -591,7 +591,7 @@ await test('KR challenge sets award bonuses once, refresh on UTC boundaries and 
  assert.equal(p.balance,initial+list.reduce((n,c)=>n+c.reward,0)+200);
  for(const c of list)assert.deepEqual(claimChallenge(p,c.id,now),p);
  const next=refreshProfile(p,now+7*DAY);assert.equal(next.balance,p.balance);assert.equal(next.daily.kills,0);assert.equal(next.weekly.kills,0);
- for(const weapon of [0,1,2]){const skins=CATALOG.filter(i=>'weapon'in i&&i.weapon===weapon).sort((a,b)=>a.cost-b.cost);assert.equal(skins.length,2);assert.ok(skins[0].cost<skins[1].cost);assert.equal(skins[1].variant,5);}
+ for(const weapon of [0,1,2]){const skins=CATALOG.filter(i=>'weapon'in i&&i.weapon===weapon).sort((a,b)=>a.cost-b.cost);assert.equal(skins.length,3);assert.ok(skins[0].cost<skins[1].cost);assert.equal(skins.at(-1)?.variant,5);}
 });
 
 await test('Dune static scenery stays within a small draw and geometry budget',async()=>{
@@ -613,11 +613,11 @@ await test('Snow and open cells stay within geometry budgets',async()=>{
 
 await test('v0.9 block rigs stand upright at rest and weapon meshes stay inexpensive',async()=>{
  const {poseLobbyAvatar}=await import('../lib/game/graphics.js');
- for(const variant of [0,1,2]){const m=new Match(0,0,0),model=avatar('#bbccdd',variant);m.player.vel=v();m.player.grounded=true;
+ for(const variant of [0,1,2,3,4]){const m=new Match(0,0,0),model=avatar('#bbccdd',variant);m.player.vel=v();m.player.grounded=true;
  animateAvatar(model,m.player,0);poseLobbyAvatar(model,0);
  for(const [hip,knee,foot] of [[9,10,11],[12,13,14]]){assert.equal(model.joints[hip].x,model.joints[knee].x);assert.equal(model.joints[knee].x,model.joints[foot].x);assert.equal(model.joints[knee].z,model.joints[foot].z);}
  disposeObject(model.group);}
- for(const weapon of [0,1,2,3])for(const finish of [0,1,2,3,4,5]){const g=makeWeapon(weapon,true,finish);let triangles=0;g.traverse(o=>{if(o instanceof Mesh)triangles+=(o.geometry.index?.count??o.geometry.getAttribute('position').count)/3;});assert.ok(triangles<2500,`${weapon}/${finish}: ${triangles}`);disposeObject(g);}
+ for(const weapon of [0,1,2,3])for(const finish of [0,1,2,3,4,5,6]){const g=makeWeapon(weapon,true,finish);let triangles=0;g.traverse(o=>{if(o instanceof Mesh)triangles+=(o.geometry.index?.count??o.geometry.getAttribute('position').count)/3;});assert.ok(triangles<2500,`${weapon}/${finish}: ${triangles}`);disposeObject(g);}
 });
 
 await test('retired finishes refund once and reset equipped copies without losing savings',async()=>{
@@ -636,4 +636,73 @@ await test('authored challenge rotation is deterministic, diverse and refreshes 
   const next=refreshProfile(p,start+(day+1)*DAY);assert.equal(next.balance,p.balance);assert.deepEqual(claimChallenge(next,list[0].id,start+(day+1)*DAY),next);
  }
  assert.ok(seen.size>20);
+});
+
+await test('directional gait mirrors strafes, reverses travel and keeps a bounded hip turn',async()=>{
+ const {locomotionSample:sample}=await import('../lib/game/locomotion.js');
+ for(let d=0;d<4;d+=.02){
+  const left=sample(d,5,-1,0,0),right=sample(d,5,1,0,0),forward=sample(d,5,0,-1,0),back=sample(d,5,0,1,0);
+  assert.equal(left.x,-right.x);assert.equal(forward.z,-back.z);assert.ok(Math.abs(left.hips)<=.85);
+  assert.ok(left.lift>=0&&left.lift<=.14);if(left.planted)assert.equal(left.lift,0);
+ }
+});
+await test('Talon is earned, persists in EDGE slot and does not replace primary finishes',async()=>{
+ const {newProfile,purchase,equipWeaponFinish,weaponFinish,loadProfile,OPERATORS}=await import('../lib/game/progression.js');
+ let p={...newProfile(),balance:3000};assert.equal(OPERATORS.length,5);
+ assert.deepEqual(equipWeaponFinish(p,3,'skin-edge-hook'),p);
+ p=equipWeaponFinish(purchase(p,'skin-edge-hook'),3,'skin-edge-hook');p=loadProfile(JSON.stringify(p));
+ assert.equal(p.balance,1000);assert.equal(weaponFinish(p,3),6);assert.equal(weaponFinish(p,1),0);
+ assert.deepEqual(equipWeaponFinish(p,1,'skin-edge-hook'),p);
+ const model=avatar('#aabbcc',4),actor=new Match(0,0,0).player;actor.weapon=3;actor.weaponFinishes=[0,0,0,6];
+ animateAvatar(model,actor,0);assert.equal(model.weapon.userData.finish,6);
+ actor.weaponFinishes[3]=0;animateAvatar(model,actor,.016);assert.equal(model.weapon.userData.finish,0);disposeObject(model.group);
+});
+
+await test('themed distant scenery stays outside playable bounds and uses at most eight material batches',async()=>{
+ const {buildBackdrop}=await import('../lib/game/maps/backdrops.js');const {makeMap}=await import('../lib/game/core.js');
+ const names=new Set();
+ for(const id of [0,1,2,3]){const map=makeMap(id),g=buildBackdrop(map);names.add(g.name);let draws=0,triangles=0;
+  g.traverse(o=>{if(o instanceof Mesh){draws++;const p=o.geometry.getAttribute('position');triangles+=p.count/3;for(let i=0;i<p.count;i++){
+   const x=p.getX(i),y=p.getY(i),z=p.getZ(i);assert.ok(Number.isFinite(x+y+z));assert.ok(Math.abs(x)>map.width/2||Math.abs(z)>map.depth/2,`${id}: ${x},${z} crosses play area`);
+  }}});assert.ok(draws<=8,`${id}: ${draws}`);assert.ok(triangles<5000);disposeObject(g);
+ }assert.equal(names.size,4);
+});
+await test('forward and backward foot cycles complete within human-sized strides',async()=>{
+ const {locomotionSample}=await import('../lib/game/locomotion.js');
+ for(const direction of [-1,1]){let lifts=0,last=false;for(let distance=0;distance<4;distance+=.01){const p=locomotionSample(distance,4,0,direction,0);if(!p.planted&&!last)lifts++;last=!p.planted;assert.ok(Math.abs(p.z)<=.25);}assert.ok(lifts>=4&&lifts<=5,`${lifts} strides in 4 metres`);}
+});
+
+await test('EDGE diagonals cross once without a forward poke, then rest between stabs',async()=>{
+ const {edgePose}=await import('../lib/game/animation.js');const {EDGE_ATTACKS}=await import('../lib/game/core.js');
+ for(const side of [-1,1]){
+  const samples:number[]=[];
+  for(let i=16;i<=60;i++){const p=edgePose({weapon:3,edgeAttack:'slash',edgeSide:side,fired:EDGE_ATTACKS.slash.duration*(1-i/100)});assert.equal(p.z,0);samples.push(p.x*side);}
+  assert.ok(samples[0]>0&&samples.at(-1)!<0);assert.ok(samples.every((v,i)=>i===0||v<=samples[i-1]+1e-9));
+ }
+ const rest=edgePose({weapon:3,edgeAttack:'stab',edgeSide:1,fired:EDGE_ATTACKS.stab.duration*.1});assert.equal(rest.z,0);
+ assert.ok(EDGE_ATTACKS.slash.duration<EDGE_ATTACKS.stab.duration);assert.ok(EDGE_ATTACKS.slash.duration>=.4);
+});
+
+await test('price protection credits recorded purchases once, even after ledger pruning',async()=>{
+ const {newProfile,refreshProfile,loadProfile}=await import('../lib/game/progression.js');
+ const original={...newProfile(),balance:90,owned:['skin-kilo-regent'],ledger:[{id:'purchase:skin-kilo-regent',amount:-3200,reason:'Skin'}]};
+ const p=refreshProfile(original);assert.equal(p.balance,1190);assert.equal(original.balance,90);
+ assert.equal(loadProfile(JSON.stringify(p)).balance,1190);
+ assert.equal(refreshProfile({...p,ledger:[]}).balance,1190);
+ assert.equal(refreshProfile({...original,ledger:[]}).balance,90);
+ assert.equal(refreshProfile({...original,ledger:[{id:'purchase:skin-kilo-regent',amount:-2100,reason:'Skin'}]}).balance,90);
+});
+await test('Slate is an affordable separate EDGE finish and persists without changing primary skins',async()=>{
+ const {newProfile,purchase,equipWeaponFinish,weaponFinish,loadProfile,CATALOG}=await import('../lib/game/progression.js');
+ let p={...newProfile(),balance:600};p=loadProfile(JSON.stringify(equipWeaponFinish(purchase(p,'skin-edge-slate'),3,'skin-edge-slate')));
+ assert.equal(p.balance,0);assert.equal(weaponFinish(p,3),4);assert.equal(weaponFinish(p,0),0);
+ assert.ok(CATALOG.find(c=>c.id==='skin-edge-hook')!.cost>CATALOG.find(c=>c.id==='skin-edge-slate')!.cost*3);
+});
+await test('hit confirmation ignores shots and remote hits and preserves headshot priority across pellets',async()=>{
+ const {hitConfirmation}=await import('../lib/game/weapon-feedback.js');
+ assert.equal(hitConfirmation([{type:'shot',actor:0},{type:'hit',actor:1,target:0}]),null);
+ const body={type:'hit' as const,actor:0,target:1,head:false},head={...body,head:true};
+ assert.equal(hitConfirmation([body])?.head,false);
+ assert.equal(hitConfirmation([head,body])?.head,true);
+ assert.deepEqual(hitConfirmation([head,body]),hitConfirmation([body,head]));
 });

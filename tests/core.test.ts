@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   Match,
+  EDGE_ATTACKS,
   Navigation,
   makeMap,
   makeLegacyMap,
@@ -60,7 +61,7 @@ await test('AK body damage and headshot multiplier are distinct', () => {
   a.pitch = 0;
   a.cooldown = 0;
   m.shoot(a);
-  assert.ok(Math.abs(b.hp - 7.2) < 0.001);
+  assert.ok(Math.abs(b.hp - 4) < 0.001);
   a.cooldown = 0;
   m.shoot(a);
   assert.equal(a.kills, 1);
@@ -86,12 +87,12 @@ await test('blade kills in reach but never outside its range', () => {
   a.weapon = 3;
   b.pos = v(-5, 0, -5);
   m.shoot(a, true);
-  step(m,0.16);
+  step(m,EDGE_ATTACKS.stab.contact+.02);
   assert.equal(b.hp, 100);
   a.cooldown = 0;
   b.pos.z = -4;
   m.shoot(a, true);
-  step(m,0.16);
+  step(m,EDGE_ATTACKS.stab.contact+.02);
   assert.equal(b.alive, false);
   assert.equal(a.kills, 1);
 });
@@ -468,7 +469,7 @@ await test('shot events distinguish misses, world surfaces and individual shotgu
   a.cooldown = 0;
   m.events = [];
   m.shoot(a);
-  assert.equal(m.events.filter((e) => e.type === 'shot').length, 10);
+  assert.equal(m.events.filter((e) => e.type === 'shot').length, 12);
   assert.equal(a.ammo[2], 1);
 });
 await test('stepping up stairs does not snap the shared camera and bullet eye upward', () => {
@@ -578,20 +579,20 @@ await test('EDGE sweep hits an offset crouched opponent, rejects backs and respe
   b.pos = v(0.5, 0, -1.6);
   b.crouched = true;
   m.shoot(a);
-  step(m,0.1);
+  step(m,EDGE_ATTACKS.slash.contact+.02);
   assert.equal(b.alive, false);
   m.spawn(b);
   b.shield = 0;
   b.pos = v(0, 0, 1);
   a.cooldown = 0;
   m.shoot(a);
-  step(m,0.1);
+  step(m,EDGE_ATTACKS.slash.contact+.02);
   assert.equal(b.alive, true);
   b.pos = v(0, 0, -1.6);
   a.cooldown = 0;
   m.map.blocks = [{ x: 0, y: 1, z: -0.7, w: 2, h: 2, d: 0.2, color: '#fff' }];
   m.shoot(a);
-  step(m,0.1);
+  step(m,EDGE_ATTACKS.slash.contact+.02);
   assert.equal(b.alive, true);
 });
 
@@ -653,7 +654,7 @@ await test('EDGE uses delayed contact, distinct reach, shared cooldown and cance
     const {m,a,b}=duel();m.map.blocks=[];a.pos=v();a.weapon=3;b.pos=v(0,0,-2.6);
     m.shoot(a,stab); assert.equal(b.hp,100); assert.equal(a.edgeAttack,stab?'stab':'slash');
     const shots=a.shots;m.shoot(a,!stab);assert.equal(a.shots,shots);
-    step(m,0.17);assert.equal(b.alive,!stab);
+    step(m,0.24);assert.equal(b.alive,!stab);
     assert.equal(m.events.filter(e=>e.type==='melee-contact').length,1);
     step(m,0.1);assert.equal(m.events.filter(e=>e.type==='melee-contact').length,1);
   }
@@ -662,15 +663,15 @@ await test('EDGE uses delayed contact, distinct reach, shared cooldown and cance
 });
 await test('EDGE checks target position and cover at contact, not at button press',()=>{
   const {m,a,b}=duel();m.map.blocks=[];a.weapon=3;b.pos=v(-5,0,-3);
-  m.shoot(a);b.pos=v(-5,0,2);step(m,0.12);assert.equal(b.hp,100);
+  m.shoot(a);b.pos=v(-5,0,2);step(m,EDGE_ATTACKS.slash.contact+.02);assert.equal(b.hp,100);
   a.cooldown=0;b.pos=v(-5,0,-3);m.shoot(a);
-  m.map.blocks=[{x:-5,y:1,z:-2.5,w:2,h:2,d:0.1,color:'#fff'}];step(m,0.12);assert.equal(b.hp,100);
+  m.map.blocks=[{x:-5,y:1,z:-2.5,w:2,h:2,d:0.1,color:'#fff'}];step(m,EDGE_ATTACKS.slash.contact+.02);assert.equal(b.hp,100);
 });
 await test('right-click starts stab without left-click and slashes alternate',()=>{
   const m=new Match(0,0,0);m.map.blocks=[];const a=m.player;a.weapon=3;a.equip=0;a.cooldown=0;
   const input=emptyInput();input.ads=true;m.step(1/120,input);assert.equal(a.edgeAttack,'stab');assert.equal(a.shots,1);
-  input.ads=false;step(m,0.5,input);assert.equal(a.edgeAttack,'stab');assert.ok(a.cooldown>0);step(m,.13,input);input.fire=true;m.step(1/120,input);const side=a.edgeSide;assert.equal(a.edgeAttack,'slash');
-  step(m,0.31,input);assert.equal(a.edgeSide,-side!);
+  input.ads=false;step(m,0.5,input);assert.equal(a.edgeAttack,'stab');assert.ok(a.cooldown>0);step(m,.35,input);input.fire=true;m.step(1/120,input);const side=a.edgeSide;assert.equal(a.edgeAttack,'slash');
+  step(m,EDGE_ATTACKS.slash.duration+.02,input);assert.equal(a.edgeSide,-side!);
 });
 
 await test('v0.5 recoil has bounded climb, both lateral directions and returns to base aim',async()=>{
@@ -693,7 +694,7 @@ await test('respawns avoid occupied and recently fatal positions',()=>{
  for(let n=0;n<25;n++)m.spawn(a);assert.ok(m.recentSpawns.length<=16);
 });
 await test('MICA remains pellet based with stronger useful range, EDGE bonus is reduced',async()=>{
- const {GUNS}=await import('../lib/game/core.js');assert.equal(GUNS[2].damage,17);assert.equal(GUNS[2].range,42);assert.equal(GUNS[2].pellets,10);assert.ok(GUNS[3].speed<=1.06);
+ const {GUNS}=await import('../lib/game/core.js');assert.equal(GUNS[2].damage,17);assert.equal(GUNS[2].range,42);assert.equal(GUNS[2].pellets,12);assert.ok(GUNS[3].speed<=1.06);
  const {m,a,b}=duel();m.map.blocks=[];a.weapon=a.primary=2;a.ammo[2]=2;a.pitch=0;b.pos=v(-5,0,-18);m.random=()=>0;
  m.shoot(a);assert.equal(b.alive,false);
 });
@@ -793,4 +794,38 @@ await test('release jump buffers an independent slide through landing without a 
  let peak=0,landed=false;
  for(let i=0;i<160;i++){peak=Math.max(peak,a.pos.y);input.slide=a.vel.y<0&&a.pos.y<.5;m.step(1/120,input);if(a.grounded){landed=true;m.step(1/120,input);assert.ok(a.slide>0);break;}}
  assert.ok(landed);assert.ok(peak>1.2&&peak<1.5);
+});
+
+await test('veterans react before firing, track pitch gradually and receive actual gun recoil',async()=>{
+ const {applyGunRecoil}=await import('../lib/game/core.js');
+ const m=new Match(1,2,0,'hard',90,300),a=m.actors[1],target=m.player;
+ m.map.blocks=[];a.pos=v();target.pos=v(0,0,-8);a.yaw=0;a.pitch=.8;a.ai.role='assault';a.shield=target.shield=0;a.equip=0;
+ const before=a.pitch;m.botInput(a,1/120);assert.ok(Math.abs(a.pitch-before)<.05);assert.equal(a.shots,0);
+ for(let i=0;i<35;i++){m.elapsed+=1/120;m.botInput(a,1/120);}assert.equal(a.shots,0);
+ a.pitch=0;a.burst=1;applyGunRecoil(a,false);assert.ok(a.pitch>0);assert.ok(a.recoilPitch>0);
+});
+await test('regular bots fire bounded bursts and aim at the body of a visible stationary player',()=>{
+ const m=new Match(1,2,0,'normal',74,300),a=m.actors[1],target=m.player;
+ m.map.blocks=[];a.pos=v();target.pos=v(0,0,-8);a.yaw=0;a.pitch=0;a.ai.role='assault';a.shield=target.shield=0;a.equip=0;target.hp=100000;
+ let previous=0,pauses=0;
+ for(let i=0;i<120*8;i++){m.step(1/120,emptyInput());if((a.ai.burstPause??0)>0&&previous===0)pauses++;previous=a.ai.burstPause??0;}
+ assert.ok(a.shots>=8&&a.shots<40);assert.ok(pauses>=2);assert.ok(a.hits>0);assert.equal(a.headshots,0);
+});
+
+await test('MICA reliably drops a centered close target and applies only one modest shove',async()=>{
+ const {rng}=await import('../lib/game/core.js');
+ for(let seed=1;seed<=32;seed++){
+  const {m,a,b}=duel();m.random=rng(seed);a.weapon=2;a.ammo[2]=2;a.pitch=-Math.atan2(.6,5);b.vel=v();
+  m.shoot(a);assert.equal(b.alive,false,`seed ${seed}`);assert.equal(a.kills,1);assert.equal(a.ammo[2],1);
+  assert.ok(b.vel.z<-.5&&Math.hypot(b.vel.x,b.vel.z)<=2.01);
+  assert.equal(m.events.filter(e=>e.type==='shot').length,12);
+ }
+ const {m,a,b}=duel();a.weapon=2;b.shield=1;b.vel=v();m.shoot(a);assert.equal(b.hp,100);assert.deepEqual(b.vel,v());
+});
+
+await test('Snow storage keeps every spawn and all four warehouse entrances traversable',()=>{
+ const map=makeMap(1),nav=new Navigation(map),entrances=[v(-6,0,-19),v(-6,0,7),v(-19,0,-6),v(7,0,-6)];
+ for(const p of map.spawns)assert.ok(!map.blocks.some(b=>Math.abs(p.x-b.x)<b.w/2+.34&&Math.abs(p.z-b.z)<b.d/2+.34&&b.y-b.h/2<1.85),JSON.stringify(p));
+ for(const p of entrances)for(const q of entrances)if(p!==q)assert.ok(nav.path(p,q).length>0,'blocked warehouse route');
+ for(const [x,z] of [[-15,3],[3.5,3.5]]){const b=map.blocks.find(b=>b.kind==='crate'&&b.x===x&&b.z===z);assert.ok(b);assert.ok(!hasLOS(v(x, .7,z+3),v(x,.7,z),map.blocks),'storage must block shots');}
 });

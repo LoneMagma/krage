@@ -1,12 +1,14 @@
+import { locomotionSample } from './locomotion.js';
+import {buildBackdrop} from './maps/backdrops.js';
 import {buildFacility} from './maps/facility-render.js';
 import { buildDuneEnvironment } from './maps/dune-render.js';
 import { solveLimb } from './motion.js';
 import { ARENA_PALETTES, COLORS } from './palette.js';
-import { motionState, weaponPose } from './animation.js';
+import { motionState, weaponPose, edgePose } from './animation.js';
 import * as T from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { EDGE_ATTACKS, type ArenaMap, type Actor } from './core.js';
+import { type ArenaMap, type Actor } from './core.js';
 const grain = new Uint8Array(32 * 32 * 4);
 for (let i = 0; i < 32 * 32; i++) {
   const hash=Math.imul(i ^ 0x6d2b79f5,0x45d9f3b) >>> 0;
@@ -147,17 +149,19 @@ export function label(
 }
 /** One background draw, no downloaded skybox or dynamic cloud simulation. */
 export function buildSky(mapId: number) {
-  const palette = ARENA_PALETTES[mapId];
+  const palette = ARENA_PALETTES[mapId%2];
   const sky = new T.Mesh(new T.SphereGeometry(190, 24, 12), new T.ShaderMaterial({
     side: T.BackSide, depthWrite: false,
     uniforms: {
-      horizon: { value: new T.Color(palette.sky) },
-      zenith: { value: new T.Color(mapId === 0 ? '#668ba1' : '#607b9c') },
+      horizon: { value: new T.Color(mapId===1?'#829eaf':palette.sky) },
+      zenith: { value: new T.Color(['#668ba1','#172e52','#698eaa','#4d819e'][mapId]) },
       cloud: { value: new T.Color(mapId === 0 ? '#eee3cf' : '#dbe4ed') },
-      overcast: { value: mapId === 1 ? 0.65 : 0.0 },
+      overcast: { value: mapId === 1 ? 0.08 : 0.0 },
+      aurora: {value:mapId===1?1:0},
+      drift: {value:0},
     },
     vertexShader: `varying vec3 direction; void main() { direction = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); gl_Position.z = gl_Position.w * 0.99999; }`,
-    fragmentShader: `uniform vec3 horizon; uniform vec3 zenith; uniform vec3 cloud; uniform float overcast; varying vec3 direction;
+    fragmentShader: `uniform vec3 horizon; uniform vec3 zenith; uniform vec3 cloud; uniform float overcast; uniform float aurora; uniform float drift; varying vec3 direction;
       float hash(vec3 p) { p=fract(p*0.3183099+vec3(0.13,0.37,0.71)); p*=17.0; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }
       float noise(vec3 p) {
         vec3 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
@@ -173,6 +177,16 @@ export function buildSky(mapId: number) {
         float shade=noise(p+vec3(0.0,0.28,0.0));
         vec3 cloudColor=cloud*mix(0.82,1.04,shade);
         color=mix(color,cloudColor,density*smoothstep(-0.03,0.18,d.y)*0.85);
+        // Broad polar ribbons with finer vertical curtains, fixed in world direction.
+        if(aurora>0.5){
+          float longitude=atan(d.z,d.x);
+          float curve=.43+.10*sin(longitude*2.0+drift)+.045*sin(longitude*6.0-drift*.7);
+          float ribbon=exp(-pow((d.y-curve)/.06,2.0));
+          float veil=exp(-pow((d.y-curve-.085)/.11,2.0))*.35;
+          float curtain=.88+.12*sin(longitude*48.0+noise(d*8.0)*2.0+drift);
+          float mask=smoothstep(.05,.25,d.y)*(1.0-density*.12);
+          color+=mix(vec3(.12,.48,.34),vec3(.22,.13,.38),smoothstep(curve,curve+.2,d.y))*(ribbon+veil)*curtain*mask;
+        }
         float sun=pow(max(0.0,dot(d,normalize(vec3(-0.42,0.7,0.25)))),180.0);
         color+=vec3(0.1,0.075,0.035)*sun*(1.0-overcast);
         color+=(fract(sin(dot(gl_FragCoord.xy,vec2(12.9898,78.233)))*43758.5453)-0.5)/255.0;
@@ -183,13 +197,11 @@ export function buildSky(mapId: number) {
   }));
   sky.name = 'arena-sky'; sky.renderOrder = -100;
   sky.frustumCulled = false;
-  sky.onBeforeRender = (_renderer, _scene, camera) => { sky.position.copy(camera.position); sky.updateMatrixWorld(); };
+  sky.onBeforeRender = (_renderer, _scene, camera) => { sky.material.uniforms.drift.value=performance.now()*.000035; sky.position.copy(camera.position); sky.updateMatrixWorld(); };
   return sky;
 }
 export function buildMap(map: ArenaMap) {
-  if(map.id===0)return buildDuneEnvironment(map,buildSky(0));
-  if(map.id===1)return buildFacility(map,buildSky(1));
-  if(map.id>=2)return buildFacility(map,buildSky(map.id===3?1:0));
+  if(map.id>=0&&map.id<=3){const group=map.id===0?buildDuneEnvironment(map,buildSky(0)):buildFacility(map,buildSky(map.id));group.add(buildBackdrop(map));return group;}
   const group = new T.Group();
   const palette = ARENA_PALETTES[map.id];
   group.add(buildSky(map.id));
@@ -639,26 +651,42 @@ export function buildMap(map: ArenaMap) {
 export function makeWeapon(index: number, firstPerson = true, finish = 0) {
   const armor=box; // Crisp block forms, without bevel tessellation on every component.
   const g = new T.Group();
-  const dark = finish === 5 ? ['#d7e4e0','#151b24','#141d25'][index]??'#242938' : finish === 4 ? '#18272c' : finish === 1 ? '#3f5e7b' : finish === 2 ? '#172331' : finish === 3 ? '#261e39' : '#233032',
-    metal = finish === 5 ? ['#41666c','#d5ad62','#c3ced2'][index]??'#8898a0' : finish === 4 ? '#748489' : finish === 1 ? '#bacbdc' : finish === 2 ? '#8e614d' : finish === 3 ? '#726494' : '#687b90',
-    wood = finish === 5 ? ['#25414a','#292d32','#26363f'][index]??'#343c49' : finish === 4 ? '#2b3e43' : finish === 1 ? '#dce7ec' : finish === 2 ? '#e78851' : finish === 3 ? '#ac8cf5' : '#a6643f';
+  const dark = finish === 6 ? ['#172b32','#ded6be','#365363','#263038'][index] : finish === 5 ? ['#d7e4e0','#151b24','#141d25'][index]??'#242938' : finish === 4 ? '#18272c' : finish === 1 ? '#3f5e7b' : finish === 2 ? '#172331' : finish === 3 ? '#261e39' : '#233032',
+    metal = finish === 6 ? ['#acbeba','#53636a','#adcbd0','#d9b166'][index] : finish === 5 ? ['#41666c','#d5ad62','#c3ced2'][index]??'#8898a0' : finish === 4 ? '#748489' : finish === 1 ? '#bacbdc' : finish === 2 ? '#8e614d' : finish === 3 ? '#726494' : '#687b90',
+    wood = finish === 6 ? ['#273239','#394748','#c5d1ca','#39434a'][index] : finish === 5 ? ['#25414a','#292d32','#26363f'][index]??'#343c49' : finish === 4 ? '#2b3e43' : finish === 1 ? '#dce7ec' : finish === 2 ? '#e78851' : finish === 3 ? '#ac8cf5' : '#a6643f';
   if (index === 3) {
     armor(g, 0.01, 0, 0.05, 0.075, 0.09, 0.27, dark);
     armor(g, 0.01, 0.01, -0.1, 0.19, 0.045, 0.05, metal);
     const shape = new T.Shape();
-    shape.moveTo(-0.05, 0);
-    shape.lineTo(0.05, 0);
-    shape.lineTo(0.045, 0.37);
-    shape.lineTo(0, 0.54);
-    shape.lineTo(-0.045, 0.37);
-    shape.closePath();
+    if(finish===6){
+      shape.moveTo(-.055,0);shape.lineTo(.055,0);
+      shape.bezierCurveTo(.20,.15,.24,.38,.075,.52);
+      shape.bezierCurveTo(.13,.31,.035,.23,-.055,.18);shape.closePath();
+      const ring=new T.Mesh(new T.TorusGeometry(.074,.016,4,12),material(metal));
+      ring.rotation.x=Math.PI/2;ring.position.set(.01,.005,.235);g.add(ring);
+      const inlay=new T.Shape();inlay.moveTo(.058,.065);inlay.bezierCurveTo(.17,.21,.19,.33,.075,.52);inlay.bezierCurveTo(.16,.30,.10,.21,.03,.16);inlay.closePath();
+      const edge=new T.Mesh(new T.ShapeGeometry(inlay,6),material('#f2e3b5'));
+      edge.rotation.x=-Math.PI/2;edge.position.set(.01,.017,-.12);g.add(edge);
+      for(let i=0;i<3;i++)armor(g,.012,.048,-.025+i*.055,.055,.013,.027,metal);
+    }else{
+      shape.moveTo(-0.05,0);shape.lineTo(0.05,0);shape.lineTo(0.045,.37);
+      shape.lineTo(0,.54);shape.lineTo(-.045,.37);shape.closePath();
+    }
     const blade = new T.Mesh(
-      new T.ExtrudeGeometry(shape, { depth: 0.016, bevelEnabled: false, steps:1 }),
-      material('#b8d0ca'),
+      new T.ExtrudeGeometry(shape, { depth: 0.016, bevelEnabled: false, steps:1, curveSegments:6 }),
+      material(finish===6?'#d9b166':finish===4?'#647e89':'#b8d0ca'),
     );
     blade.rotation.x = -Math.PI / 2;
     blade.position.set(0.01, 0, -0.12);
     g.add(blade);
+    if(finish===4){
+      // Slate keeps the straight utility profile; Talon alone gets the curved blade and ring.
+      for(let i=0;i<4;i++)armor(g,.01,.047,-.035+i*.053,.078,.009,.023,i%2?'#334c55':'#659c9b');
+      armor(g,.01,.019,-.30,.014,.004,.23,'#b7cdd0');
+      armor(g,.01,.025,-.11,.14,.014,.034,'#659c9b');
+      const facet=new T.Shape();facet.moveTo(.028,.07);facet.lineTo(.045,.37);facet.lineTo(0,.54);facet.lineTo(.015,.35);facet.closePath();
+      const bevel=new T.Mesh(new T.ShapeGeometry(facet),material('#c9d7d8'));bevel.rotation.x=-Math.PI/2;bevel.position.set(.01,.017,-.12);g.add(bevel);
+    }
   } else {
     armor(
       g,
@@ -864,6 +892,20 @@ export function makeWeapon(index: number, firstPerson = true, finish = 0) {
       for(let n=0;n<3;n++)armor(g,side*.079,.016-n*.02,-.01+n*.018,.008,.007,.035,accent);
     }
   }
+  if(finish===6&&index===0){
+    for(const side of [-1,1]){
+      armor(g,side*.078,.024,-.12,.009,.053,.10,'#d3dcd5');
+      armor(g,side*.084,.027,-.06,.008,.012,.18,'#6bcec1');
+      for(let n=0;n<3;n++)armor(g,side*.084,-.005,-.03+n*.025,.008,.013,.01,'#6bcec1');
+    }
+  }
+  if(finish===6&&index<3){
+    for(const side of [-1,1]){
+      armor(g,side*.078,.035,-.08,.008,.026,.22,metal);
+      for(let n=0;n<3;n++){const stripe=armor(g,side*.081,.005,-.10+n*.055,.009,.045,.012,metal);stripe.rotation.x=-.6;}
+      armor(g,side*.063,.02,.34,.009,.018,.15,metal);
+    }
+  }
   if(finish===5&&index<3){
     const accent=['#85f4dd','#f5ce78','#e7d8b2'][index];
     for(const side of [-1,1]){
@@ -926,6 +968,7 @@ export function makeWeapon(index: number, firstPerson = true, finish = 0) {
   }
   batchPart(g);
   g.userData.weapon = index;
+  g.userData.finish = finish;
   return g;
 }
 export const RIG_POINTS = [
@@ -1050,8 +1093,8 @@ export function avatar(color: string, variant = 0, finish = 0): Avatar {
   const points = RIG_POINTS.map(p=>new T.Vector3(...p));
   const parts = RIG_LINKS.map(([a,b],i)=>{
     const part=new T.Group();part.userData.length=points[a].distanceTo(points[b]);group.add(part);
-    const style=Math.max(0,Math.min(2,variant));
-    const shirt=['#48674c','#377e9d','#6c426e'][style],pants=['#354538','#253d57','#343040'][style],skin=['#c8946e','#dda784','#9b7055'][style],hair=['#3c3027','#362a26','#26272e'][style],accent=['#d99b4c','#e3d9bb','#cca763'][style];
+    const style=Math.max(0,Math.min(4,variant));
+    const shirt=['#48674c','#377e9d','#6c426e','#b66b47','#556778'][style],pants=['#354538','#253d57','#343040','#52493e','#303e4e'][style],skin=['#c8946e','#dda784','#9b7055','#a87956','#d1a582'][style],hair=['#3c3027','#362a26','#26272e','#2f2926','#403526'][style],accent=['#d99b4c','#e3d9bb','#cca763','#e3d4b2','#deb958'][style];
     const length=part.userData.length;
     if(i===0){
       box(part,0,.055,0,.35,.35,.33,skin);
@@ -1062,6 +1105,15 @@ export function avatar(color: string, variant = 0, finish = 0): Avatar {
       if(style===0){box(part,-.115,-.027,-.176,.027,.012,.012,'#b87d5e');box(part,-.195,.025,0,.035,.075,.085,'#26393b');}
       if(style===1){for(const x of [-.11,.11])box(part,x,-.005,-.176,.042,.016,.009,'#bd7961');box(part,.195,-.045,0,.025,.045,.025,accent);}
       if(style===2)box(part,.12,-.012,-.176,.012,.05,.009,'#d2a48a');
+      if(style===3){
+        box(part,0,.235,0,.39,.08,.37,accent);box(part,0,.12,.18,.38,.3,.07,accent);
+        box(part,-.18,-.10,.08,.055,.22,.075,accent);box(part,.11,-.02,-.176,.045,.02,.01,'#d8ac7c');
+      }
+      if(style===4){
+        box(part,0,.24,0,.38,.07,.36,accent);box(part,0,.205,-.21,.32,.03,.12,accent);
+        box(part,-.195,.05,0,.035,.11,.09,pants);box(part,.195,.05,0,.035,.11,.09,pants);
+        box(part,0,-.075,-.175,.11,.04,.012,hair);
+      }
       if(style===0){box(part,0,.24,0,.39,.07,.37,shirt);box(part,0,.205,-.23,.37,.035,.16,shirt);}
       if(style===1){box(part,0,.03,.17,.37,.31,.09,hair);box(part,-.155,.1,-.14,.09,.22,.06,hair);box(part,.13,.19,-.17,.11,.10,.035,hair);}
       if(style===2){box(part,0,.07,.17,.41,.39,.07,shirt);for(const x of [-.09,.09])box(part,x,.12,-.188,.12,.07,.015,accent);box(part,.205,.27,0,.03,.17,.04,'#35464c');}
@@ -1070,8 +1122,15 @@ export function avatar(color: string, variant = 0, finish = 0): Avatar {
       box(part,0,.14,-.15,.31,.11,.025,color);
       for(const x of [-.15,.15])box(part,x,-.07,-.17,.13,.14,.06,accent);
       box(part,0,.02,.185,.32,.36,.1,pants);
+      if(style===0){box(part,-.19,.12,.25,.12,.17,.12,'#2c3e36');box(part,-.19,.25,.25,.018,.16,.018,'#263434');}
+      if(style===1){box(part,.28,.13,.02,.10,.20,.27,accent);box(part,-.16,-.23,-.14,.13,.16,.08,pants);}
+      if(style===2){box(part,0,.16,.26,.34,.24,.13,pants);box(part,0,.05,-.178,.25,.07,.028,accent);}
+      if(style===3){box(part,-.23,.13,-.02,.075,.25,.33,accent);box(part,.18,-.27,0,.16,.18,.33,pants);}
+      if(style===4){box(part,.27,.13,0,.09,.22,.29,accent);box(part,-.27,.13,0,.09,.22,.29,accent);box(part,0,-.21,-.21,.2,.085,.11,pants);}
       if(style===0){box(part,-.21,.09,-.17,.05,.3,.04,pants);box(part,.19,.06,.26,.085,.23,.085,accent);}
       if(style===1){box(part,0,.25,-.02,.5,.065,.33,accent);box(part,-.18,-.18,.21,.10,.17,.12,shirt);}
+      if(style===3){box(part,0,.25,0,.51,.085,.34,accent);box(part,.19,-.16,.18,.11,.19,.10,pants);}
+      if(style===4){for(const x of [-.19,.19])box(part,x,.03,-.162,.045,.38,.026,accent);box(part,.18,.10,.27,.10,.23,.09,accent);}
       if(style===2)box(part,-.18,.03,-.16,.035,.32,.028,accent);
       if(style===2)box(part,.19,.14,.20,.08,.2,.08,accent);
     }else if(i<6){
@@ -1168,7 +1227,7 @@ export function animateAvatar(model: Avatar, a: Actor, time: number, frameDt = 1
   points[0].z -= Math.sin(a.pitch) * 0.09;
   const memory = model.group.userData.locomotion ??= {
     time, spawn: a.spawnId, velocity: new T.Vector3(), lean: new T.Vector3(),
-    feet: [new T.Vector3(),new T.Vector3()], planted: [false,false], air: 0,
+    feet: [new T.Vector3(),new T.Vector3()], planted: [false,false], air: 0, hips: 0, travel: new T.Vector3(),
     footTargets: [new T.Vector3(-0.15,0.08,0),new T.Vector3(0.15,0.08,0)],
     scratch: new T.Vector3(), jointVelocity: points.map(() => new T.Vector3()), previousJoints: points.map(p => p.clone()),
   };
@@ -1185,39 +1244,51 @@ export function animateAvatar(model: Avatar, a: Actor, time: number, frameDt = 1
   const leanX=Math.cos(a.yaw)*memory.lean.x-Math.sin(a.yaw)*memory.lean.z;
   const leanZ=Math.sin(a.yaw)*memory.lean.x+Math.cos(a.yaw)*memory.lean.z;
   memory.air += ((a.grounded ? 0 : 1) - memory.air) * blend;
-  const compression=(a.landingCompression??0)*0.13 + .025*Math.min(1,speed/2)*(1-stance)*(a.grounded?1:0);
+  const compression=(a.landingCompression??0)*0.13 + .035*Math.min(1,speed/2)*(1-stance)*(a.grounded?1:0);
   const air=a.grounded?0:Math.max(0,Math.min(1,(a.vel.y+9)/18));
   for (const i of [0,1,2,3,4,5,6,7,8,9,12]) {
     points[i].y-=compression;
     points[i].x+=leanX*(i===0?1:0.6);
     points[i].z+=leanZ*(i===0?1:0.6);
   }
-  for (const [hip,knee,foot,offset,index] of [[9,10,11,0,0],[12,13,14,Math.PI,1]]) {
-    const phase=(a.stride*2.7+offset)%(Math.PI*2);
-    const lateral=speed>0.1?(Math.cos(a.yaw)*a.vel.x-Math.sin(a.yaw)*a.vel.z)/speed:0;
-    const forward=speed>0.1?(Math.sin(a.yaw)*a.vel.x+Math.cos(a.yaw)*a.vel.z)/speed:0;
-    const stride=-Math.cos(phase)*Math.min(0.24,speed*0.045);
+  memory.travel.lerp(a.vel,1-Math.exp(-dt*10));
+  const travelSpeed=Math.hypot(memory.travel.x,memory.travel.z);
+  const lateral=travelSpeed>.1?(Math.cos(a.yaw)*memory.travel.x-Math.sin(a.yaw)*memory.travel.z)/travelSpeed:0;
+  const forward=travelSpeed>.1?(Math.sin(a.yaw)*memory.travel.x+Math.cos(a.yaw)*memory.travel.z)/travelSpeed:0;
+  const desiredHips=locomotionSample(a.stride,speed,lateral,forward,0,stance).hips;
+  memory.hips+=(desiredHips-memory.hips)*(1-Math.exp(-dt*10));
+  for(const hip of [9,12])points[hip].applyAxisAngle(new T.Vector3(0,1,0),memory.hips);
+  const slideBlend=a.slideBlend??0;
+  for (const [hip,knee,foot,index] of [[9,10,11,0],[12,13,14,1]]) {
+    const gait=locomotionSample(a.stride,speed,lateral,forward,index,stance);
     const target=points[foot];
-    target.x+=stride*lateral*.48;target.z+=stride*forward;
-    target.y+=(1-memory.air)*Math.max(0,Math.sin(phase))*Math.min(0.095,speed*0.017)+memory.air*(0.08+air*0.12);
-    target.z+=(a.slideBlend??0)*0.22;
-    const planted=a.grounded && speed>0.3 && a.slide<=0 && phase>=Math.PI;
+    target.applyAxisAngle(new T.Vector3(0,1,0),memory.hips);
+    target.x+=gait.x*(1-memory.air)*(1-slideBlend);
+    target.z+=gait.z*(1-memory.air)*(1-slideBlend);
+    target.y+=(1-memory.air)*gait.lift+memory.air*(.07+air*.11);
+    // Backpedal keeps knees facing aim while feet travel in reverse.
+    target.y+=forward>0 ? gait.lift*.15 : 0;
+    target.z+=slideBlend*(index===0?.32:.18);
+    const planted=a.grounded && speed>.3 && a.slide<=0 && gait.planted;
     if(planted){
       if(!memory.planted[index]) memory.feet[index].copy(target).applyAxisAngle(new T.Vector3(0,1,0),a.yaw).add(a.pos);
       target.copy(memory.feet[index]).sub(a.pos).applyAxisAngle(new T.Vector3(0,1,0),-a.yaw);
       // Release a plant if a turn or correction would overextend the leg.
-      if(target.distanceTo(points[hip])>0.775 || Math.abs(target.x-points[hip].x)>.17) { memory.planted[index]=false; target.set(RIG_POINTS[foot][0],0.08,0); }
+      if(target.distanceTo(points[hip])>0.775 || Math.abs(target.x-points[hip].x)>.32) { memory.planted[index]=false; target.set(RIG_POINTS[foot][0],0.08,0); }
       else memory.planted[index]=true;
     } else {
       memory.planted[index]=false;
       target.copy(memory.footTargets[index].lerp(target,1-Math.exp(-dt*24)));
     }
     if(speed<.1&&a.grounded&&stance<.01&&compression<.005){points[knee].set(...RIG_POINTS[knee] as [number,number,number]);target.set(...RIG_POINTS[foot] as [number,number,number]);memory.footTargets[index].copy(target);continue;}
-    const solved=solveLimb(points[hip],target,0.4,0.38,{x:0,y:0,z:-1});
+    const solved=solveLimb(points[hip],target,0.4,0.38,{x:-Math.sin(memory.hips),y:0,z:-Math.cos(memory.hips)});
     points[knee].copy(solved.joint);target.copy(solved.end);
     memory.footTargets[index].copy(target);
   }
   const breath = Math.sin(time * 2) * 0.006;
+  const gaitWeight=Math.min(1,speed/3)*(1-memory.air)*(1-slideBlend);
+  const gaitBob=Math.cos(a.stride*13.8)*.012*gaitWeight;
+  for(const i of [0,1,2,3,6]){points[i].y+=gaitBob;points[i].z+=forward*.018*gaitWeight;}
   const flinch = a.hp < 100 ? Math.max(0, 1 - (time - a.lastDamage) * 9) : 0;
   points[0].z += flinch * 0.07;
   points[1].z += flinch * 0.045;
@@ -1232,14 +1303,8 @@ export function animateAvatar(model: Avatar, a: Actor, time: number, frameDt = 1
     1.02 - stance * 0.65 - compression - reload * 0.22 + aimLift,
     -0.53 + reload * 0.35,
   );
-  const edgeSpec=EDGE_ATTACKS[a.edgeAttack ?? 'slash'];
-  const edgePhase=a.weapon===3&&a.fired>0 ? Math.max(0,1-a.fired/edgeSpec.duration) : 0;
-  const edgeContact=edgeSpec.contact/edgeSpec.duration;
-  const edgeSwing=edgePhase<edgeContact ? Math.sin(edgePhase/edgeContact*Math.PI/2) : Math.pow(1-(edgePhase-edgeContact)/(1-edgeContact),2);
-  const edgeAmount=a.weapon===3&&a.fired>0?edgeSwing:0;
-  const edgeSide=a.edgeSide||1;
-  points[8].z-=edgeAmount*(a.edgeAttack==='stab'?0.35:0.12);
-  points[8].x+=a.edgeAttack==='stab'?0:edgeAmount*edgeSide*0.28;
+  const edge=edgePose(a);
+  points[8].x+=edge.x*.7;points[8].y+=edge.y*.7;points[8].z+=edge.z*.7;
   if(a.weapon!==3){
     const rotation=new T.Euler(a.pitch*.7-reload*.4,0,-reload*.3);
     for(const [hand,grip] of [[5,[-.065,-.11,-.35]],[8,[.04,-.14,.1]]] as const){
@@ -1258,16 +1323,17 @@ export function animateAvatar(model: Avatar, a: Actor, time: number, frameDt = 1
   poseAvatar(model, points);
   model.shadow.visible = a.pos.y < 0.1;
   model.ring.visible = a.shield > 0;
-  if (model.gunId !== a.weapon) {
+  const finish=a.weaponFinishes?.[a.weapon]??model.finish;
+  if (model.gunId !== a.weapon || (model.weapon.userData.finish??model.finish)!==finish) {
     disposeObject(model.weapon);
-    model.weapon = makeWeapon(a.weapon, false, model.finish);
+    model.weapon = makeWeapon(a.weapon, false, finish);
     model.weapon.scale.setScalar(0.65);
     model.group.add(model.weapon);
     model.gunId = a.weapon;
   }
-  model.weapon.position.set(0.2, 1.1 - stance * 0.65 - compression + breath + aimLift * 0.5, -0.3 + a.fired * 0.2);
+  model.weapon.position.set(0.2, 1.1 - stance * 0.65 - compression + breath + aimLift * 0.5, -0.3 + (a.weapon===3?0:a.fired * 0.2));
   model.weapon.rotation.set(a.pitch * 0.7 - reload * 0.4, 0, -reload * 0.3);
-  if(a.weapon===3){model.weapon.position.z-=edgeAmount*(a.edgeAttack==='stab'?0.35:0.12);model.weapon.position.x+=a.edgeAttack==='stab'?0:edgeAmount*edgeSide*0.28;model.weapon.rotation.z+=a.edgeAttack==='stab'?0:edgeAmount*edgeSide*1.1;}
+  if(a.weapon===3){model.weapon.position.x+=edge.x*.7;model.weapon.position.y+=edge.y*.7;model.weapon.position.z+=edge.z*.7;model.weapon.rotation.x+=edge.pitch;model.weapon.rotation.y+=edge.yaw;model.weapon.rotation.z+=edge.roll;}
 
 }
 /** Lobby-only carry pose: hands follow actual weapon grip locations. */
@@ -1300,7 +1366,7 @@ export function disposeObject(o: T.Object3D) {
       }
     }
   });
-  for(const m of o.userData.mapMaterials??[])m.dispose();
+  o.traverse(n=>{for(const m of n.userData.mapMaterials??[])m.dispose();});
   for(const t of o.userData.mapTextures??[])t.dispose();
   o.removeFromParent();
 }

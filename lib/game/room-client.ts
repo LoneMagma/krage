@@ -4,6 +4,7 @@ import {
   type RoomSnapshot,
 } from './network-state.js';
 export type ConnectionInfo = {
+  removed?: boolean;
   lobby?: RoomSnapshot;
   public?: boolean;
   host?: number | null;
@@ -22,11 +23,14 @@ export type ConnectionInfo = {
 export type RoomOptions = {
   url: string;
   room?: string;
+  password?: string;
+  listed?: boolean;
   name: string;
   mode: number;
   map: number;
   primary: number;
   operator?: number;
+  weaponFinishes?: number[];
   duration?: number;
   capacity?: number;
   quickPlay?: boolean;
@@ -144,6 +148,8 @@ export class RoomClient {
           const ping = Math.max(0, Date.now() - m.nonce);
           this.notify({ ping, jitter: this.info.ping ? (this.info.jitter ?? 0) * 0.8 + Math.abs(ping - this.info.ping) * 0.2 : 0 });
         }
+        else if(m.type==='lobby-error')this.notify({message:String(m.message).slice(0,120)});
+        else if(m.type==='kicked'){this.stop();this.token='';this.notify({status:'failed',removed:true,lobby:undefined,message:'Removed by host'});}
         else if (m.type === 'error') {
           this.stop();
           this.notify({
@@ -211,6 +217,7 @@ export class RoomClient {
   rematch() {
     if(this.socket?.readyState===WebSocket.OPEN)this.socket.send(JSON.stringify({type:'rematch'}));
   }
+  kick(id:number) { if(this.socket?.readyState===WebSocket.OPEN)this.socket.send(JSON.stringify({type:'kick',id})); }
   startMatch() {
     this.notify({message:''});
     if (this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify({type:'start'}));

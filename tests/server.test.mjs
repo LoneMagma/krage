@@ -4,8 +4,8 @@ import { once } from 'node:events';
 import { WebSocket } from 'ws';
 import { Room, sanitizeInput } from '../server/rooms.mjs';
 import { createArenaServer } from '../server/index.mjs';
-import { NetworkState, localId } from '../.server-build/network-state.js';
-import { emptyInput, makeLegacyMap } from '../.server-build/core.js';
+import { NetworkState, localId, ROOM_PROTOCOL } from '../.server-build/network-state.js';
+import { emptyInput, makeLegacyMap, EDGE_ATTACKS } from '../.server-build/core.js';
 import { EconomyStore } from '../server/economy.mjs';
 const message = (seq, extra = {}) => ({
   seq,
@@ -399,7 +399,7 @@ await test('online secondary EDGE attack is server timed and reaches beyond slas
   r.match.map.blocks=[];a.pos={x:0,y:0,z:0};b.pos={x:0,y:0,z:-2.6};a.weapon=3;a.equip=0;a.cooldown=0;a.yaw=a.pitch=0;a.shield=b.shield=0;
   r.match.remoteInputs.set(a.id,{...emptyInput(),fire:!secondary,ads:secondary});
   r.step();assert.equal(b.hp,100);assert.equal(a.edgeAttack,secondary?'stab':'slash');
-  for(let n=0;n<20;n++)r.step();assert.equal(b.alive,!secondary);
+  for(let n=0;n<Math.ceil(EDGE_ATTACKS.stab.contact*120)+2;n++)r.step();assert.equal(b.alive,!secondary);
   assert.equal(r.snapshot(x.token).events.filter(e=>e.type==='melee-contact').length,1);
  }
 });
@@ -535,7 +535,7 @@ await test('match and team chat never leak into other rooms or opposing teams', 
 await test('Dune and Skirmish rooms expose their matching shared arena and protocol',()=>{
  for(const map of [0,2]){
   const room=new Room(0,map,undefined,{public:true,capacity:4});const player=room.join('Explorer');
-  const state=room.snapshot(player.token);assert.equal(state.map,map);assert.equal(state.protocol,15);
+  const state=room.snapshot(player.token);assert.equal(state.map,map);assert.equal(state.protocol,ROOM_PROTOCOL);
   assert.equal(room.match.map.width,map===0?72:60);assert.equal(room.match.map.name,map===0?'DUNE':'CELL I');
   for(const a of room.match.actors)assert.ok(!room.match.map.blocks.some(b=>Math.abs(a.pos.x-b.x)<b.w/2+.33&&Math.abs(a.pos.z-b.z)<b.d/2+.33&&b.y-b.h/2<a.pos.y+1.85&&b.y+b.h/2>a.pos.y+.01));
  }
@@ -543,7 +543,7 @@ await test('Dune and Skirmish rooms expose their matching shared arena and proto
 });
 
 await test('new Snow and CELL II are selectable online with shared geometry',()=>{
- for(const map of [1,3]){const room=new Room(2,map,undefined,{botFill:true});const a=room.join('A'),b=room.join('B');assert.equal(room.snapshot(a.token).map,map);assert.equal(room.snapshot(b.token).protocol,15);assert.equal(room.match.map.name,map===1?'SNOW':'CELL II');}
+ for(const map of [1,3]){const room=new Room(2,map,undefined,{botFill:true});const a=room.join('A'),b=room.join('B');assert.equal(room.snapshot(a.token).map,map);assert.equal(room.snapshot(b.token).protocol,ROOM_PROTOCOL);assert.equal(room.match.map.name,map===1?'SNOW':'CELL II');}
 });
 
 await test('public rotation preserves sessions and loadouts and skips undersized team modes',()=>{
@@ -567,5 +567,54 @@ await test('full global room spills into another room without splitting existing
   const welcome=new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('welcome timeout')),2000);ws.on('message',raw=>{const m=JSON.parse(raw);if(m.type==='welcome'){clearTimeout(timer);resolve(m);}});});
   ws.send(JSON.stringify({type:'quick',name:'Q'+i,mode:i%4,map:i%4}));sessions.push(await welcome);
  }assert.ok(sessions.slice(0,6).every(s=>s.room===sessions[0].room));assert.notEqual(sessions[6].room,sessions[0].room);
+ }finally{for(const ws of sockets)ws.terminate();await server.close();}
+});
+
+await test('new outfits and bounded cosmetic IDs survive multiplayer snapshots and reconnects',()=>{
+ const room=new Room(0,0,undefined,{botFill:true,staging:true});
+ const one=room.join('Sable',undefined,1000,1,3,[6,6,6,6]);
+ const two=room.join('Flint',undefined,1000,2,4,[999,-1,'6',6]);
+ room.lobbyChange(one.token,{operator:4,primary:2});
+ const state=room.snapshot(two.token),actor=state.actors.find(a=>a.id===one.id);
+ assert.equal(actor.operator,4);assert.equal(actor.primary,2);assert.deepEqual(actor.weaponFinishes,[6,6,6,6]);
+ assert.deepEqual(state.actors.find(a=>a.id===two.id).weaponFinishes,[0,0,0,6]);
+ room.disconnect(one.token,2000);room.join('ignored',one.token,3000);
+ assert.deepEqual(room.match.actors[one.id].weaponFinishes,[6,6,6,6]);
+ assert.throws(()=>room.lobbyChange(one.token,{operator:5}),/character/);
+});
+
+await test('custom room directory only reveals live listed human rooms',()=>{
+ const room=new Room(0,1,undefined,{staging:true,capacity:4,botFill:true});
+ assert.equal(room.listing(),null);
+ const host=room.join('Host'),guest=room.join('Guest');
+ assert.deepEqual({...room.listing(),room:'CODE'},{room:'CODE',name:'Host',map:1,mode:0,humans:2,capacity:4,available:2,locked:false,state:'waiting',duration:300,fragLimit:20});
+ room.disconnect(host.token);assert.equal(room.listing().name,'Guest');assert.equal(room.listing().humans,1);assert.equal(room.listing().available,2);
+ room.listed=false;assert.equal(room.listing(),null);room.listed=true;room.disconnect(guest.token);assert.equal(room.listing(),null);
+ const publicRoom=new Room(0,0,undefined,{public:true});publicRoom.join('Human');assert.equal(publicRoom.listing(),null);
+});
+await test('password storage is salted, listings reveal no secret, kick is host-only and revokes reconnect',async()=>{
+ const room=new Room(0,0,undefined,{staging:true,botFill:true});await room.setPassword('friends only');
+ assert.equal(await room.checkPassword('wrong'),false);assert.equal(await room.checkPassword('friends only'),true);
+ const host=room.join('Host'),guest=room.join('Guest');
+ assert.equal(room.listing().locked,true);assert.ok(!JSON.stringify(room.listing()).includes('friends only'));
+ assert.ok(!JSON.stringify(room.snapshot(host.token)).includes('password'));
+ assert.throws(()=>room.kick(guest.token,host.id),/host/);assert.throws(()=>room.kick(host.token,host.id),/another/);
+ assert.equal(room.kick(host.token,guest.id),guest.token);assert.equal(room.slots.size,1);assert.equal(room.match.actors[guest.id].bot,true);
+ assert.throws(()=>room.join('Guest',guest.token),/Session/);
+ await assert.rejects(room.setPassword('x'.repeat(65)),/Password/);
+});
+await test('real sockets browse, enforce passwords, reject non-host kicks and notify a kicked player', {timeout:15000},async()=>{
+ const server=createArenaServer({port:0}),address=await server.listen(),sockets=[];
+ const socket=async()=>{const ws=new WebSocket(`ws://127.0.0.1:${address.port}/play`);sockets.push(ws);await once(ws,'open');return ws;};
+ const message=(ws,type)=>new Promise((resolve,reject)=>{const timer=setTimeout(()=>{ws.off('message',listener);reject(Error('Missing '+type));},4000);const listener=raw=>{const m=JSON.parse(raw);if(m.type===type){clearTimeout(timer);ws.off('message',listener);resolve(m);}};ws.on('message',listener);});
+ try{
+  const host=await socket(),welcome=message(host,'welcome');host.send(JSON.stringify({type:'create',name:'HOST',mode:0,map:1,password:'secret',staging:true}));const h=await welcome;
+  const browser=await socket(),list=message(browser,'rooms');browser.send(JSON.stringify({type:'rooms'}));const directory=await list;
+  assert.equal(directory.rooms.length,1);assert.equal(directory.rooms[0].locked,true);
+  const bad=await socket(),denied=message(bad,'error');bad.send(JSON.stringify({type:'join',room:h.room,name:'BAD',password:'no'}));assert.match((await denied).message,/password/);
+  assert.equal(server.rooms.get(h.room).slots.size,1);
+  const guest=await socket(),joined=message(guest,'welcome');guest.send(JSON.stringify({type:'join',room:h.room,name:'GUEST',password:'secret'}));const g=await joined;
+  const forbidden=message(guest,'lobby-error');guest.send(JSON.stringify({type:'kick',id:h.id}));assert.match((await forbidden).message,/host/);
+  const kicked=message(guest,'kicked');host.send(JSON.stringify({type:'kick',id:g.id}));assert.equal((await kicked).message,'Removed by host');assert.equal(server.rooms.get(h.room).slots.size,1);
  }finally{for(const ws of sockets)ws.terminate();await server.close();}
 });

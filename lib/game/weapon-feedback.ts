@@ -49,3 +49,11 @@ export class WeaponFeedback {
     return event.inputSeq !== undefined && event.life !== undefined && this.played.has(this.key(event.type, event.life, event.inputSeq, event.weapon ?? -1));
   }
 }
+
+/** Confirmed damage only: a later body pellet must not erase a headshot. */
+export function hitConfirmation(events: GameEvent[], actor = 0) {
+  const hits = events.filter(e => e.type === 'hit' && e.actor === actor);
+  if (!hits.length) return null;
+  const head = hits.some(e => e.head);
+  return { head, duration: head ? 0.22 : 0.16, color: head ? '#ffca76' : '#f4fbff' };
+}

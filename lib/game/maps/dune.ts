@@ -50,19 +50,17 @@ export function makeDune():ArenaMap {
  add(-1,1.1,-10,5.5,2.2,3.2,'pump','#62817b');add(1.1,2.3,-10,1.2,4.6,1.5,'tank','#5e7770');
  add(6,1.05,-19,3.2,2.1,2.8,'crate','#917453');add(-14,.65,-17,3,1.3,2,'stone','#bbad8e');
  add(-15,1.75,-7,5,3.5,.7,'plaster','#c3a87c'); // Offset market entrance.
- add(8,1.7,-5,.7,3.4,6,'plaster','#bba17c');
  // Market counters and fabric shade, separated to keep the interior loop open.
  for(const [x,z] of [[-18,1],[-19,9],[-31,-9]]){
   add(x,.55,z,3,1.1,1.5,'stall','#84674b');add(x,3.3,z,3.8,.10,2.8,'canopy','#487d78');
   for(const side of [-1,1])add(x+side*1.7,1.6,z+1.1,.12,3.2,.12,'timber','#695441');
  }
  add(-18,.55,24,4.5,1.1,2,'stone','#b9a888');
- add(1,1.2,23,4,2.4,2.5,'crate','#8b7154');add(5,.55,11,2,1.1,3,'stone','#bfa984');
- // Excavation machinery and retaining edges frame a ground-level excavation crossing.
+ add(1,1.2,23,4,2.4,2.5,'crate','#8b7154');
+ // Excavation machinery anchors the yard; the ground crossing stays unobstructed.
  add(25,.65,14,5,1.3,3.6,'machine','#ad793e');add(25,1.8,15,2.6,2.4,2.5,'machine','#b5834b');
  add(9,1.6,24,5.5,3.2,3,'hopper','#826d53');
- add(11,.4,15,.6,.8,9,'stone','#b5a286');add(16,.4,20,9,.8,.6,'stone','#b5a286');
- add(30,1.1,5,3,2.2,2,'crate','#8c765c');add(8,.6,3,2.5,1.2,2,'stone','#bfad8d');
+ add(30,1.1,5,3,2.2,2,'crate','#8c765c');
  // Collision for substantial rendered protrusions. Small flush trims stay cosmetic.
  const fixtures:Block[]=[];
  const fixture=(x:number,y:number,z:number,w:number,h:number,d:number)=>fixtures.push({x,y,z,w,h,d,kind:'detail-collision',color:'#936b48'});
