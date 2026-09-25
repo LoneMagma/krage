@@ -50,11 +50,11 @@ export const GUNS = [
     short: 'ECHO',
     mag: 35,
     damage: 20,
-    head: 1.75,
+    head: 1.85,
     interval: 0.084,
-    reload: 1.5,
-    spread: 0.012,
-    recoil: 0.014,
+    reload: 1.2,
+    spread: 0.0007,
+    recoil: 0.011,
     range: 65,
     pellets: 1,
     speed: 1.02,
@@ -64,10 +64,10 @@ export const GUNS = [
     short: 'KILO',
     mag: 25,
     damage: 32,
-    head: 2.0,
+    head: 2.1,
     interval: 0.12,
-    reload: 1.9,
-    spread: 0.004,
+    reload: 1.52,
+    spread: 0.00015,
     recoil: 0.024,
     range: 95,
     pellets: 1,
@@ -78,11 +78,11 @@ export const GUNS = [
     short: 'MICA',
     mag: 2,
     damage: 17,
-    head: 1.3,
-    interval: 0.34,
-    reload: 2.05,
-    spread: 0.059,
-    recoil: 0.062,
+    head: 1.4,
+    interval: 0.31,
+    reload: 1.64,
+    spread: 0.052,
+    recoil: 0.048,
     range: 42,
     pellets: 12,
     speed: 0.97,
@@ -879,7 +879,7 @@ export class Match {
   enemy(a: Actor, b: Actor) {
     return a.id !== b.id && (this.mode < 2 || a.team !== b.team);
   }
-  spawn(a: Actor, initial = false) {
+  spawn(a: Actor, _initial = false) {
     a.spawnId = (a.spawnId ?? 0) + 1;
     a.stanceBlend = a.slideBlend = a.landingCompression = 0;
     const candidates =
@@ -894,18 +894,19 @@ export class Match {
           ];
     const spawnPoints = candidates.filter(p=>!this.map.blocks.some(b=>overlapsXZ(p,b,.38)&&b.y-b.h/2<p.y+1.85&&b.y+b.h/2>p.y+.01));
     let point = spawnPoints[a.id % spawnPoints.length] ?? this.map.spawns[0];
-    if (!initial) {
+    {
+      const unoccupied=spawnPoints.filter(p=>!this.actors.some(e=>e.id!==a.id&&e.alive&&dist(p,e.pos)<1.3));
+      const pool=unoccupied.length?unoccupied:spawnPoints;
       let best = -Infinity;
-      for (const p of spawnPoints) {
-        if(this.map.blocks.some(b=>Math.abs(p.x-b.x)<b.w/2+0.38&&Math.abs(p.z-b.z)<b.d/2+0.38&&b.y-b.h/2<1.85&&b.y+b.h/2>0.1)) continue;
+      for (const p of pool) {
         let safety = 80;
         for (const e of this.actors) {
           if (!e.alive || !this.enemy(a, e)) continue;
           const d = dist(p, e.pos);
-          safety = Math.min(
-            safety,
-            d - (hasLOS(v(p.x, 1.6, p.z), eye(e), this.map.blocks) ? 10 : 0),
-          );
+          const exposed=hasLOS(v(p.x,p.y+1.6,p.z),eye(e),this.map.blocks)||hasLOS(v(p.x,p.y+.8,p.z),eye(e),this.map.blocks);
+          const facing=((p.x-e.pos.x)*-Math.sin(e.yaw)+(p.z-e.pos.z)*-Math.cos(e.yaw))/Math.max(.01,d);
+          safety = Math.min(safety,d-(exposed?14+(facing>.6?6:0):0)-Math.max(0,9-d)*3);
+
         }
         for(const other of this.actors) if(other.alive&&other.id!==a.id&&dist(p,other.pos)<1.2) safety-=100;
         for(const recent of this.recentSpawns) if(this.elapsed-recent.time<4) safety-=Math.max(0,6-dist(p,recent.pos))*5;
@@ -1485,11 +1486,11 @@ export class Match {
 }
 
 export function shotSpread(a: Actor, ads = false) {
-  return GUNS[a.weapon].spread *
-    (a.weapon === 1 ? Math.min(1.8, 0.65 + Math.max(0, a.burst - 1) * 0.10) : 1) *
-    (ads ? 0.55 : 1) *
-    (a.slide > 0 ? 1.85 : a.crouched ? 0.6 : Math.hypot(a.vel.x, a.vel.z) > 5 ? 1.25 : 1) *
-    (a.grounded ? 1 : 1.4);
+  if(a.weapon===3)return 0;
+  const w=a.weapon,moving=clamp((Math.hypot(a.vel.x,a.vel.z)-.1)/4.4,0,1);
+  const travel=[.035,.04,.065][w]*moving;
+  const stance=Math.max(a.slide>0?[.055,.065,.07][w]:0,!a.grounded?[.06,.065,.05][w]:0);
+  return (GUNS[w].spread+travel+stance)*(ads?.7:1)*(a.crouched&&a.grounded&&a.slide<=0?.6:1);
 }
 
 export function advanceGunTimers(a: Actor, dt: number) {
@@ -1497,7 +1498,7 @@ export function advanceGunTimers(a: Actor, dt: number) {
       a.equip = Math.max(0, a.equip - dt);
       a.fired = Math.max(0, a.fired - dt);
       // Recover only the recoil contribution; leave the player's mouse input intact.
-      if (a.fired === 0 && a.cooldown === 0) {
+      if (a.fired === 0 && (a.cooldown === 0 || a.weapon === 2)) {
         const recovery = 1 - Math.exp(-10 * dt);
         a.pitch = clamp(a.pitch - a.recoilPitch * recovery, -1.48, 1.48);
         a.yaw -= a.recoilYaw * recovery;
@@ -1518,9 +1519,9 @@ export function applyGunRecoil(a: Actor, ads: boolean) {
   if (a.weapon === 3) return;
   const gun = GUNS[a.weapon];
   const stance=a.slide>0?1.25:a.crouched?0.7:1;
-  const patterns=[[0.15,0.3,0.45,0.4,0.1,-0.25,-0.5,-0.35],[0.2,0.4,0.7,0.4,-0.35,-0.65,-0.5,0.15],[0.45,-0.45]];
+  const patterns=[[0.15,0.3,0.45,0.4,0.1,-0.25,-0.5,-0.35],[.03,-.03,.04,-.04,.02,-.02,.03,-.03,.55,.65,.7,.7,.55,.3,.1,-.4,-.6,-.7,-.7,-.6,-.4,-.2,.15,.2,.15],[0.45,-0.45]];
   const pattern=patterns[a.weapon],gain=stance*(ads?0.65:1);
-  const rise=gun.recoil*(a.weapon===2?0.85:a.weapon===0?0.42:0.52)*gain;
+  const rise=gun.recoil*(a.weapon===2?0.85:a.weapon===0?0.38:((Math.max(1,a.burst)-1)%25<8?.52:.13))*gain;
   const lateral=pattern[(Math.max(1,a.burst)-1)%pattern.length]*gun.recoil*0.65*gain;
   const pitchKick=Math.min(rise,Math.max(0,gun.recoil*6-a.recoilPitch));
   const yawKick=clamp(a.recoilYaw+lateral,-gun.recoil*2,gun.recoil*2)-a.recoilYaw;

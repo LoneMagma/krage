@@ -379,7 +379,7 @@ await test('friend staging freezes simulation, publishes loadout, and enforces h
   assert.equal(remote.primary,2);assert.equal(remote.operator,1);assert.equal(remote.ready,true);
   assert.throws(()=>r.startMatch(b.token),/host/);
   assert.throws(()=>r.startMatch(a.token),/ready/);
-  r.lobbyChange(a.token,{ready:true});r.startMatch(a.token);r.step();
+  r.lobbyChange(a.token,{ready:true});r.startMatch(a.token);for(let i=0;i<361;i++)r.step();
   assert.equal(r.snapshot(a.token).state,'playing');assert.equal(r.match.fragLimit,50);
   assert.equal(r.match.difficulty,'hard');assert.ok(r.match.time<180);
   assert.equal(r.match.actors[b.id].ammo[2],2);
@@ -412,7 +412,7 @@ await test('private rematch preserves party, clears combat and accepts the next 
  assert.throws(()=>r.rematch(y.token),/host/);r.rematch(x.token);
  const s=r.snapshot(x.token);assert.notEqual(s.roundId,roundId);assert.equal(s.staging,true);assert.equal(s.actors.find(a=>a.id===x.id).primary,0);assert.equal(s.actors.find(a=>a.id===y.id).primary,2);assert.equal(s.actors.find(a=>a.id===x.id).kills,0);
  assert.equal(r.input(x.token,message(501,{life:0})),false);
- r.lobbyChange(x.token,{ready:true});r.lobbyChange(y.token,{ready:true});r.startMatch(x.token);
+ r.lobbyChange(x.token,{ready:true});r.lobbyChange(y.token,{ready:true});r.startMatch(x.token);for(let i=0;i<360;i++)r.step();
  assert.equal(r.input(x.token,message(1,{life:0})),false);assert.equal(r.input(x.token,message(1,{life:1})),true);
  assert.equal(r.snapshot(y.token).room,s.room);assert.equal(r.slots.size,2);
 });
@@ -590,7 +590,7 @@ await test('custom room directory only reveals live listed human rooms',()=>{
  assert.deepEqual({...room.listing(),room:'CODE'},{room:'CODE',name:'Host',map:1,mode:0,humans:2,capacity:4,available:2,locked:false,state:'waiting',duration:300,fragLimit:20});
  room.disconnect(host.token);assert.equal(room.listing().name,'Guest');assert.equal(room.listing().humans,1);assert.equal(room.listing().available,2);
  room.listed=false;assert.equal(room.listing(),null);room.listed=true;room.disconnect(guest.token);assert.equal(room.listing(),null);
- const publicRoom=new Room(0,0,undefined,{public:true});publicRoom.join('Human');assert.equal(publicRoom.listing(),null);
+ const publicRoom=new Room(0,0,undefined,{public:true});publicRoom.join('Human');assert.equal(publicRoom.listing().humans,1);assert.equal(publicRoom.listing().name,`ARENA ${publicRoom.code}`);
 });
 await test('password storage is salted, listings reveal no secret, kick is host-only and revokes reconnect',async()=>{
  const room=new Room(0,0,undefined,{staging:true,botFill:true});await room.setPassword('friends only');
@@ -617,4 +617,14 @@ await test('real sockets browse, enforce passwords, reject non-host kicks and no
   const forbidden=message(guest,'lobby-error');guest.send(JSON.stringify({type:'kick',id:h.id}));assert.match((await forbidden).message,/host/);
   const kicked=message(guest,'kicked');host.send(JSON.stringify({type:'kick',id:g.id}));assert.equal((await kicked).message,'Removed by host');assert.equal(server.rooms.get(h.room).slots.size,1);
  }finally{for(const ws of sockets)ws.terminate();await server.close();}
+});
+
+await test('custom countdown freezes match and rejects input; disconnect cancels and requires readiness again',()=>{
+ const r=new Room(1,0,undefined,{staging:true}),a=r.join('A'),b=r.join('B');
+ r.lobbyChange(a.token,{ready:true});r.lobbyChange(b.token,{ready:true});r.startMatch(a.token);
+ assert.equal(r.snapshot(a.token).countdown,3);assert.equal(r.snapshot(a.token).staging,true);assert.equal(r.input(a.token,message(1)),false);
+ const time=r.match.time;for(let i=0;i<120;i++)r.step();assert.equal(r.snapshot(a.token).countdown,2);assert.equal(r.match.time,time);
+ r.disconnect(b.token);assert.equal(r.startTicks,0);assert.equal(r.started,false);assert.equal(r.slots.get(a.token).ready,false);
+ r.join('B',b.token);r.lobbyChange(a.token,{ready:true});r.lobbyChange(b.token,{ready:true});r.startMatch(a.token);
+ for(let i=0;i<360;i++)r.step();assert.equal(r.snapshot(a.token).staging,false);assert.equal(r.match.time,time);r.step();assert.ok(r.match.time<time);
 });

@@ -8,7 +8,7 @@ import {
   type Input,
   type GameEvent,
 } from './core.js';
-export const ROOM_PROTOCOL = 18;
+export const ROOM_PROTOCOL = 21;
 export type WireActor = Omit<Actor, 'ai'> & {
   life: number;
   connected: boolean;
@@ -25,6 +25,7 @@ export type RoomSnapshot = {
   roundId?: string;
   nextRound?: {mode:number;map:number;seconds:number}|null;
   staging?: boolean;
+  countdown?: number;
   host?: number | null;
   fragLimit?: number;
   botFill?: boolean;

@@ -262,3 +262,82 @@ kbd{display:inline-grid;place-items:center;padding:3px 6px;border:1px solid curr
 @keyframes frag-confirm{0%{opacity:0;transform:translate(9px,5px) scale(.94)}35%{opacity:1;transform:translate(-2px,0) scale(1.035);filter:brightness(1.35)}100%{opacity:1;transform:none;filter:brightness(1)}}
 @keyframes frag-score{0%{opacity:0;transform:translateY(6px) scale(.8)}50%{opacity:1;transform:translateY(-2px) scale(1.12);text-shadow:0 0 9px #f8cb6970}100%{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){.frag-stack .frag-notice,.frag-stack .frag-notice b{animation:none!important}}
+
+/* 1.4: legible combat hierarchy, clear selectors, no additional HUD panels. */
+.health-track{height:8px;border-radius:3px;background:#101e2bba;border:1px solid #d0e8ee44;overflow:hidden}
+.health-track i{background:linear-gradient(90deg,#66cec5,#d6fff1);box-shadow:0 0 8px #71eee866;transition:width .14s ease-out}
+.health-track.critical i{background:#ff826b;box-shadow:0 0 10px #ff654c88}
+.health-row strong{font-family:var(--font-ui);font-size:48px;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-.055em}
+.health-plus{color:#a2eee3}.health-row>span:last-child{font-family:var(--font-ui);font-weight:800;letter-spacing:.08em}
+.kill-feed{gap:7px;max-width:min(360px,32vw)}.feed-row{font:700 13px var(--font-ui);padding:8px 11px;gap:9px;border-radius:4px;background:#0b202dde;border-right:3px solid #8fa5b2;box-shadow:0 2px 7px #0003}
+.feed-row span{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.feed-row.own{background:#173a44ed;border-color:#9ae5d9}.feed-row .weapon-glyph{width:60px;height:23px;flex-shrink:0}
+.clock-row{clip-path:none;border-radius:8px;border:1px solid #c4e1e744;background:#0d1d2bea;box-shadow:0 5px 18px #0004;height:54px;overflow:hidden}
+.clock{font:800 29px var(--font-ui);font-variant-numeric:tabular-nums;letter-spacing:.04em}.score-blue,.score-red{font-family:var(--font-ui);font-size:28px;width:60px;height:54px;line-height:52px}.score-blue{background:#28657696}.score-red{background:#894b4196}.mode-heading{font:800 12px var(--font-ui);letter-spacing:.12em}.score-labels{font:700 9px var(--font-ui)}
+.frag-stack{left:55%;top:59%;width:min(330px,42vw);gap:5px}.frag-stack .frag-notice{font:900 clamp(16px,1.5vw,23px) var(--font-ui);letter-spacing:-.025em}.frag-stack .frag-notice b{font-variant-numeric:tabular-nums;letter-spacing:-.04em}
+.match-shell .chat-v2{bottom:190px!important;max-width:min(355px,38vw)}.chat-v2 .chat-toast{background:linear-gradient(90deg,#081923b8,transparent);padding:5px 9px;border:0}.chat-v2 .chat-toast b,.chat-v2 .chat-messages b{background:none!important;border:0!important;border-radius:0!important;padding:0!important;font:800 13px var(--font-ui);color:#abe4df}
+.lobby-shell .setup-panel.match-setup{background:linear-gradient(135deg,#153646f2,#0c1b28ed)!important;border:1px solid #8bcacb66!important;border-top:3px solid #9ee4d8!important;box-shadow:0 18px 50px #0004!important;gap:14px;border-radius:18px!important}
+.lobby-shell .setup-panel .deploy-button{min-height:58px!important;background:linear-gradient(120deg,#a6efdd,#72cfc8)!important;color:#10262d!important;box-shadow:0 5px 18px #69d1c125!important;letter-spacing:.06em}
+.lobby-shell .lobby-player-name input{font:700 16px var(--font-ui)!important;letter-spacing:.025em;border:0!important;padding:7px 0!important}
+.lobby-shell .map-switcher button,.lobby-shell .character-toggle button{background:#174b60!important;border:1px solid #88cbd0!important;color:#e1fff7!important;box-shadow:0 3px 10px #0003}.lobby-shell .map-switcher button:hover,.lobby-shell .character-toggle button:hover{background:#297185!important}
+.end-panel{border-top:3px solid #b9d9e0!important}.end-panel.outcome-victory{background:radial-gradient(ellipse at top,#245349,#0d1e29 75%)!important;border-color:#9fe4bf!important}.end-panel.outcome-defeat{background:radial-gradient(ellipse at top,#563537,#151e29 75%)!important;border-color:#e8a398!important}.result-hero h2{font-family:var(--font-ui)!important;font-weight:900!important;letter-spacing:-.05em!important}.result-hero>strong{font-family:var(--font-ui);font-variant-numeric:tabular-nums}
+.spawn-choice .weapon-glyph{height:66px!important}.weapon-slot .weapon-glyph{filter:drop-shadow(0 2px 2px #0007)}
+@media(max-height:650px){.match-shell .chat-v2{bottom:165px!important}.health-row strong{font-size:39px}.feed-row{padding:5px 8px}.spawn-choice .weapon-glyph{height:48px!important}}
+@media(max-width:700px){.feed-row{font-size:10px;gap:5px;padding:5px}.feed-row .weapon-glyph{width:38px;height:18px}.kill-feed{max-width:40vw}.match-shell .chat-v2{max-width:43vw}.frag-stack{left:54%;width:44vw}}
+
+/* Warm amber controls; bundled display face keeps the wordmark consistent. */
+@font-face{font-family:KrageTitle;src:url('/fonts/krage-title.ttf') format('truetype');font-weight:900;font-style:normal;font-display:swap}
+.lobby-shell .krage-logo{transform:none!important;filter:drop-shadow(0 3px 2px #0008)}
+.lobby-shell .krage-logo .brand-name{font-family:KrageTitle,sans-serif!important;font-weight:900!important;font-style:normal!important;font-synthesis:none;letter-spacing:.015em!important;font-size:clamp(24px,2.4vw,39px)!important;color:#fff3db}
+.lobby-shell{--orange:#e9b464;--line:#e2c79a29}
+.lobby-shell .topbar nav{background:#241e1beb!important;border-color:#dab98966!important}
+.lobby-shell .nav-button.active,.lobby-shell .nav-button[aria-current=page]{background:#79582e!important;border-color:#e9bd79!important;color:#fff3dd!important;box-shadow:none!important}
+.lobby-shell .game-choice button[aria-pressed=true],.lobby-shell .arena-tabs button.active,.lobby-shell .character-toggle button,.lobby-shell .map-switcher button,.lobby-shell .party-map-picker>button{background:#5a4129!important;border-color:#dfb16d!important;color:#fff0d5!important}
+.lobby-shell .game-choice button:not([aria-pressed=true]),.lobby-shell .arena-tabs button:not(.active){background:#241e1dc9!important;border-color:#c4ab873d!important;color:#cfc5b6}
+.lobby-shell .setup-panel.match-setup{background:linear-gradient(140deg,#30261ff2,#191d20f0)!important;border-color:#e1b57588!important;border-top-color:#efc787!important;box-shadow:0 18px 45px #0004!important}
+.lobby-shell .setup-panel .deploy-button{background:linear-gradient(120deg,#f4d396,#dfab5c)!important;color:#292118!important;box-shadow:0 4px 16px #d69c4525!important}
+.lobby-shell .section-tabs button[aria-pressed=true]{color:#f4cf93!important;border-color:#e1b575!important;background:#68472966!important}
+.lobby-section>header .back-to-play,.friend-lobby-panel>header .back-to-play{width:auto!important;height:auto!important;padding:10px 18px!important;border:1px solid #d7b273!important;border-radius:7px!important;background:#53402c!important;color:#fff1d4!important;font:800 12px var(--font-ui)!important;letter-spacing:.07em;opacity:1!important;white-space:nowrap}
+.lobby-section>header .back-to-play:hover,.friend-lobby-panel>header .back-to-play:hover{background:#775535!important}
+.quality-choice .quality-scene,.crosshair-choice .aim-preview{width:40px!important;height:28px!important;background:none!important;border:0!important}
+.quality-choice button,.crosshair-choice button{min-height:56px!important;display:flex;flex-direction:row!important;gap:5px;justify-content:center}
+.quality-choice button{color:#ebcf9d}.crosshair-choice button span{font-size:10px}.settings-fields>[hidden]{display:none!important}
+.hud-bottom-right .weapon-slot{width:134px!important;height:56px!important;padding:6px 10px!important}.hud-bottom-right .weapon-slot .weapon-glyph{width:112px!important;height:41px!important}.hud-bottom-right .weapon-slots{gap:8px}
+.lobby-browser-title .find-match{margin-left:auto;padding:8px 13px;border:1px solid #d4af71;border-radius:6px;background:#5a4129;color:#fff0d5;font:800 11px var(--font-ui)}.empty-lobbies{color:#d0c6b8;font:13px var(--font-ui);padding:18px 0}
+.party-slot-empty:not(:disabled){border:1px dashed #d4b37a!important;color:#f0d09b!important;background:#8b632018!important}.party-slot-empty:not(:disabled):hover{background:#8b632038!important}
+@media(max-width:750px){.hud-bottom-right .weapon-slot{width:96px!important;height:46px!important}.hud-bottom-right .weapon-slot .weapon-glyph{width:78px!important;height:33px!important}.lobby-shell .krage-logo .brand-name{font-size:22px!important}.quality-choice button,.crosshair-choice button{flex-direction:column!important}}
+.settings-fields .crosshair-choice{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px!important}
+.lobby-shell .secondary-button,.lobby-shell .chat-toggle,.lobby-shell .hero-loadout{background:#302922e8!important;border-color:#b69a6d70!important;color:#ead8b9!important}
+.lobby-shell[data-section=online] .chat-v2{bottom:7px!important}
+.lobby-shell[data-section=online] .chat-toggle{padding:6px 8px!important;font-size:10px!important}
+.lobby-shell[data-section=online] .lobby-footer{left:145px!important}
+/* Quiet matte controls: selection is contrast and shape, not glow. */
+.lobby-shell{--orange:#b5a18a;--line:#b5ada333}
+.lobby-shell button,.lobby-shell .setup-panel.match-setup,.lobby-shell .topbar nav{box-shadow:none!important;text-shadow:none!important}
+.lobby-shell .krage-logo{filter:none!important}
+.lobby-shell .nav-button.active,.lobby-shell .nav-button[aria-current=page],.lobby-shell .game-choice button[aria-pressed=true],.lobby-shell .arena-tabs button.active,.lobby-shell .character-toggle button,.lobby-shell .map-switcher button,.lobby-shell .party-map-picker>button{background:#48433e!important;border-color:#857c70!important;color:#eae5dd!important}
+.lobby-shell .setup-panel.match-setup{background:linear-gradient(140deg,#282827ef,#1c2022ef)!important;border-color:#746e6380!important;border-top-width:1px!important}
+.lobby-shell .setup-panel .deploy-button,.lobby-shell .deploy-button{background:#b5aa98!important;color:#222422!important;border-color:#b5aa98!important}
+.lobby-shell .topbar nav{background:#242625ee!important;border-color:#77766d66!important}
+.lobby-shell .section-tabs button[aria-pressed=true],.lobby-shell .back-to-play,.lobby-browser-title .find-match{background:#45433e!important;border-color:#817b70!important;color:#e4dfd5!important}
+.lobby-shell .party-slot-empty:not(:disabled){color:#c6bdad!important;border-color:#887e6b!important;background:#38373133!important}
+.match-intro{top:16%;width:min(580px,82vw);padding:22px 24px;gap:9px;border:1px solid #bdb6a14a;border-left:4px solid #bdb29b;border-radius:3px;background:linear-gradient(110deg,#151c23f2,#1a232be8);align-items:flex-start;animation:match-intro 3.6s both;box-shadow:none}
+.match-intro strong{font:900 clamp(28px,4vw,46px) KrageTitle,var(--font-ui);line-height:1.1}.match-intro .match-start-title{font:900 clamp(26px,4vw,48px) var(--font-ui);letter-spacing:.08em;color:#f3ead7;line-height:1.15}.match-intro>span{font-size:13px;letter-spacing:.1em}.match-intro-details{display:flex;gap:22px;flex-wrap:wrap;border-top:1px solid #bbc9ce33;padding-top:12px;margin-top:3px;width:100%}.match-intro-details span{font:700 9px var(--font-ui);letter-spacing:.04em;color:#a7b5bc}.match-intro-details b{display:block;font:800 19px var(--font-ui);color:#e4e9e9;margin-bottom:4px;font-variant-numeric:tabular-nums}
+.lobby-countdown{position:absolute;inset:0;z-index:15;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:14px;border-radius:inherit;background:#111c25f5;pointer-events:none;color:#e9e4d8}.lobby-countdown span{font:800 13px var(--font-ui);letter-spacing:.15em}.lobby-countdown strong{font:900 100px KrageTitle,var(--font-ui);line-height:1.1;animation:count-settle .25s ease-out}.lobby-countdown small{font:700 12px var(--font-ui);letter-spacing:.08em;color:#a8b8bd}@keyframes count-settle{from{transform:scale(1.05)}to{transform:scale(1)}}
+@media(max-height:650px){.match-intro{top:18%;padding:15px 20px;gap:5px}.match-intro strong{font-size:26px}.match-intro .match-start-title{font-size:30px}}
+@media(prefers-reduced-motion:reduce){.lobby-countdown strong{animation:none}.match-intro{animation:none}}
+.lobby-shell .map-switcher button:hover,.lobby-shell .character-toggle button:hover,.lobby-shell .back-to-play:hover{background:#56524b!important;color:#f0ece4!important;border-color:#9b9283!important}
+.lobby-shell button:focus-visible{outline:2px solid #c0b5a2!important;outline-offset:3px!important;box-shadow:none!important}
+
+.lobby-shell input[type=range]{accent-color:#b5aa98!important}
+
+.lobby-countdown strong{color:#ede7dc}
+.lobby-shell .setup-panel.match-setup{border:1px solid #a9a39499!important}
+.lobby-shell .setup-panel .deploy-button{background:#dec38d!important;border:1px solid #efdcaf!important;color:#29251d!important}
+.lobby-shell .setup-panel .deploy-button:hover{background:#ead3a7!important}
+.game-shell kbd{display:inline-flex;align-items:center;justify-content:center;min-width:22px;min-height:22px;padding:2px 6px!important;border:1px solid #aeb9bb88!important;border-bottom-width:3px!important;border-radius:4px;background:#111c25c9!important;color:#f0eee5!important;font:800 10px var(--font-ui)!important;letter-spacing:.05em;line-height:1.2;opacity:1!important;white-space:nowrap}
+.spawn-key-hint{display:flex;align-items:center;justify-content:flex-end;gap:5px;flex-wrap:wrap}.chat-v2 .chat-hints span{display:flex;gap:6px;align-items:center}.chat-v2 .chat-toggle{gap:7px}
+.lobby-shell .lobby-footer{left:auto!important;right:4%!important;justify-content:flex-end;gap:20px!important}.lobby-footer .version-link{order:2}.lobby-footer .project-credit{order:1}
+.settings-fields .quality-choice .quality-scene{width:78px!important;height:41px!important}.settings-fields .quality-choice button{flex-direction:column!important;gap:5px!important;padding:8px!important;min-height:68px!important}
+.match-intro{animation:readable-intro 7s both}@keyframes readable-intro{0%{opacity:0;translate:0 5px}5%,90%{opacity:1;translate:0 0}100%{opacity:0;translate:0 -5px}}
+@media(prefers-reduced-motion:reduce){.match-intro{animation:none}}
+@media(max-width:700px){.lobby-shell .lobby-footer{gap:10px!important}.lobby-footer .project-credit{gap:7px!important}.settings-fields .quality-choice .quality-scene{width:60px!important;height:32px!important}}

@@ -1,6 +1,6 @@
 {
   "name": "krage-arena",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
@@ -22,6 +22,7 @@
   "dependencies": {
     "@base-ui/react": "1.7.0",
     "@shadcn/react": "0.3.0",
+    "@supabase/supabase-js": "^2.117.2",
     "@types/three": "^0.180.0",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",

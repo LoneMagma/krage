@@ -44,8 +44,8 @@ export function ArenaChat({name,room,visible,boxVisible,team,forceOpen,onForceCl
   {open&&<div className="chat-box"><nav aria-label="Chat channel">{(['global',...(room?['match']:[]),...(room&&team?['team']:[])] as ChatMessage['channel'][]).map(c=><button key={c} aria-pressed={selected===c} onClick={()=>setChannel(c)}>{c==='global'?'ALL':c.toUpperCase()}</button>)}<button className="chat-icon" aria-label={muted?'Unmute chat':'Mute chat'} onClick={()=>setMuted(!muted)}>{muted?<VolumeX size={15}/>:<Volume2 size={15}/>}</button><button className="chat-icon" aria-label="Close chat" onClick={close}><X size={16}/></button></nav>
    <div className="chat-messages" ref={feed} role="log">{!muted&&lines.filter(m=>m.channel===selected).map(m=><p key={m.id}><b>{m.name}</b><span>{m.text}</span></p>)}</div>
    <form onSubmit={e=>{e.preventDefault();send();}}><input ref={input} aria-label="Chat message" maxLength={160} value={draft} autoComplete="off" placeholder={`${selected==='global'?'Everyone':selected==='team'?'Your team':'This match'}…`} onChange={e=>setDraft(e.target.value)}/><button type="submit" aria-label="Send message"><Send size={17}/></button></form>
-   {status&&<output>{status}</output>}<div className="chat-hints"><span>ENTER send</span><span>ESC close</span></div>
+   {status&&<output>{status}</output>}<div className="chat-hints"><span><kbd>ENTER</kbd> SEND</span><span><kbd>ESC</kbd> CLOSE</span></div>
   </div>}
-  {!open&&canShowBox&&<button className="chat-toggle" onClick={()=>setOpenState(true)}><MessageSquare size={16}/> CHAT <kbd>↵</kbd></button>}
+  {!open&&canShowBox&&<button className="chat-toggle" onClick={()=>setOpenState(true)}><MessageSquare size={16}/> CHAT <kbd>ENTER</kbd></button>}
  </aside>;
 }

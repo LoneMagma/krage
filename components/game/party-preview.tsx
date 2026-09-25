@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { WireActor } from '@/lib/game/network-state';
 export type PartyMember = Pick<WireActor,'id'|'name'|'team'|'operator'|'primary'|'weaponFinishes'|'bot'|'connected'|'ready'>;
 /** Independent portrait cameras, one shared renderer. Live outfits and weapons, never thumbnails. */
-export function PartyPreview({players,capacity=players.length,you,hostId,onInvite,onKick}:{players:PartyMember[];capacity?:number;you?:number;hostId?:number|null;onInvite?:()=>void;onKick?:(id:number)=>void}) {
+export function PartyPreview({players,capacity=players.length,you,hostId,onInvite,onKick,inviteLabel='INVITE'}:{players:PartyMember[];capacity?:number;you?:number;hostId?:number|null;onInvite?:()=>void;inviteLabel?:string;onKick?:(id:number)=>void}) {
  const host=useRef<HTMLDivElement>(null),cards=useRef(new Map<number,HTMLButtonElement>()),angles=useRef(new Map<number,number>());
  const current=useRef(players),drag=useRef<{id:number;x:number}|null>(null);
  const [failed,setFailed]=useState(false),[page,setPage]=useState(0),[confirm,setConfirm]=useState<number|null>(null);
@@ -62,7 +62,7 @@ export function PartyPreview({players,capacity=players.length,you,hostId,onInvit
      </button>
      <div className="party-card-caption"><strong>{hostId===p.id&&<Crown size={12}/>} {p.name}{p.id===you&&<small> YOU</small>}</strong><span>{!p.connected?'RECONNECTING':p.ready?'READY':'CHOOSING'}</span></div>
      {hostId===you&&p.id!==you&&onKick&&<button className="party-kick" title={confirm===p.id?'Confirm removal':'Remove player'} aria-label={`${confirm===p.id?'Confirm remove':'Remove'} ${p.name}`} onClick={()=>{if(confirm===p.id){onKick(p.id);setConfirm(null);}else setConfirm(p.id);}} onBlur={()=>setConfirm(null)}>{confirm===p.id?'REMOVE?':<X size={14}/>}</button>}
-    </div>:<button key={'empty'+i} className="party-slot-empty" onClick={onInvite} disabled={!onInvite}><Plus size={24}/><span>OPEN SLOT</span></button>;
+    </div>:<button key={'empty'+i} className="party-slot-empty" onClick={onInvite} disabled={!onInvite}><Plus size={24}/><span>{inviteLabel}</span></button>;
    })}
   </div>
   {pages>1&&<div className="party-pages"><button aria-label="Previous players" disabled={!active} onClick={()=>setPage(active-1)}><ChevronLeft size={16}/></button><span>{active*4+1}–{Math.min(slots,active*4+4)} / {slots}</span><button aria-label="Next players" disabled={active===pages-1} onClick={()=>setPage(active+1)}><ChevronRight size={16}/></button></div>}

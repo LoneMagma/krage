@@ -1,5 +1,5 @@
 ## v1.4.0: deploy frontend and rooms together
-This build requires **protocol 18**. Reload existing tabs after both deployments. `/health` must report protocol 18. Matches remain in server memory; restarting the room process ends them.
+This build requires **protocol 21**. Reload existing tabs after both deployments. `/health` must report protocol 21. Matches remain in server memory; restarting the room process ends them.
 
 For players in India, test a **Singapore room-server service**. The existing service region has not been verified. Render cannot move an existing service between regions: create a replacement, set `KRAGE_ORIGINS`, then rebuild the frontend with that service's `NEXT_PUBLIC_ROOM_URL`. Keep one room instance until room routing exists. See [Render regions](https://render.com/docs/regions).
 

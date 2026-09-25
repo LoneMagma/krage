@@ -33,94 +33,46 @@ export function WeaponGlyph({
         </linearGradient>
       </defs>
       {finish===4&&id<3&&<path d="M92 39H154M97 43H145" stroke={accent} strokeWidth="3"/>}
-      <path d="M18 78H222" stroke="#a4bacb" opacity="0.15"/>
-      <g stroke="#101b2c" strokeWidth="1.5" strokeLinejoin="round">
-        {id === 3 && finish===6 ? (
-          <><circle cx="31" cy="43" r="17" fill="none" stroke="#d9b166" strokeWidth="7"/>
-          <path fill="#293a42" d="M49 30 117 34 115 57 47 53z"/>
-          <path fill="#d9b166" d="M114 33C174 1 220 31 219 73C204 49 173 39 115 57z"/>
-          <path d="M132 36Q178 17 207 45" fill="none" stroke="#fff0c2"/>
-          <path d="M63 34v17m16-16v17m16-16v17" stroke="#718287" strokeWidth="4"/></>
-        ) : id === 3 ? (
-          <>
-            <path fill={finish===4?'#647e89':'#b8c9dc'} d="m93 36 113-8 25 10-26 13H93z" />
-            <path fill="#e9f3ff" stroke="none" d="m103 38 118 1-21 7h-97z" />
-            <path fill={finish===4?'#263c45':'#314459'} d="M14 34h72v20H14zM85 24h10v39H85z" />
-            {finish===4&&<path d="M105 35 194 32" stroke="#9bbfc0" strokeWidth="2"/>}
-            {[24, 36, 48, 60, 72].map((x) => (
-              <path key={x} d={`M${x} 36v15`} stroke={finish===4?'#659c9b':'#a9b9cd'} />
-            ))}
-          </>
-        ) : (
-          <>
-            {id === 0 ? (
-              <>
-                <path fill="#4a6078" d="M13 27h44v10H24v18H13z" />
-                <path
-                  fill={`url(#${key})`}
-                  d="M54 25h96l12 9v16h-40l-5 14H89l-5-14H54z"
-                />
-                <path fill="#273b52" d="m90 46 24 1-3 31H92z" />
-                <path fill="#71859b" d="M151 32h50v13h-50zM201 30h14v17h-14z" />
-                <path fill={accent} d="M59 28h7v18h-7zM128 29h23v7h-23z" />
-                <path fill="#344961" d="M80 18h58v7H80zM150 19h6v12h-6z" />
-                <path d="M72 32h35v9H72z" fill="#142330"/>
-                {[82,92,102,112,122,132].map(x=><path key={x} d={`M${x} 18v5`} stroke="#c9d5df"/>) }
-                <path d="M20 31h30M20 52l28-14" stroke="#a8b9c8" fill="none"/>
-                <path d="M95 53v18M101 53v18M107 53v18" stroke="#576e83"/>
-              </>
-            ) : id === 1 ? (
-              <>
-                <path fill={wood} d="m10 37 44-11 13 7-4 21H41L10 65z" />
-                <path fill={`url(#${key})`} d="M59 30h82v22H61z" />
-                <path fill={wood} d="M139 30h43v20h-43z" />
-                <path fill="#65798e" d="M180 35h48v8h-48zM193 20h6v16h-6z" />
-                <path
-                  fill="#33465c"
-                  d="m109 50 16-1 3 16 12 11-11 8-15-15zM79 50h17l-7 27H75z"
-                />
-                <path fill="#92a3b6" d="M66 24h68v6H66z" />
-                <path d="M70 27h58M67 48h35M183 37h40" stroke="#d5dedc" opacity="0.6"/>
-                <path d="M98 37h26v6H98z" fill="#23333c"/>
-                <circle cx="90" cy="43" r="1.8" fill="#cad0ca"/>
-                <path d="m17 43 25-8M18 48l23-8" stroke="#c49c73" opacity="0.65"/>
-                <path fill={accent} d="M144 32h32v4h-32z" />
-                {[149, 158, 167].map((x) => (
-                  <path key={x} d={`M${x} 39v8`} stroke="#523927" />
-                ))}
-                <path
-                  d="m115 56 4 13 12 10M77 33h40"
-                  fill="none"
-                  stroke="#98a9bd"
-                />
-              </>
-            ) : (
-              <>
-                <path fill={wood} d="m9 42 49-14 15 9-3 23-20-3L9 72z" />
-                <path
-                  fill={`url(#${key})`}
-                  d="M61 31h41v25H64zM101 28h124v10H101zM101 40h124v10H101z"
-                />
-                <path fill={wood} d="M100 51h81l-12 12h-58z" />
-                <path d="M108 30h111M108 42h111" stroke="#dbe3e6" opacity="0.7"/>
-                <path d="m69 39 15-4 9 6-10 9-13-4z" fill="none" stroke="#bda77f"/>
-                <path d="M217 29v8M217 41v8" stroke="#263441" strokeWidth="3"/>
-                <path fill="#2b3c52" d="m72 54 16 3-9 20H65z" />
-                <path fill={accent} d="M65 35h30v5H65z" />
-                <path fill="#b9cadd" d="M208 23h6v5h-6z" />
-                <path d="M111 55h57" stroke="#d6ab7b" />
-              </>
-            )}
-            <path
-              d="M95 53q15 15 24 0"
-              fill="none"
-              stroke="#a3b5c9"
-              strokeWidth="2"
-            />
-            <path d="M73 34h12" stroke="#e2eaf3" strokeWidth="2" />
-            <circle cx="72" cy="44" r="2" fill="#d5e0ec" />
-          </>
-        )}
+      <g stroke="#101b24" strokeWidth="1.6" strokeLinejoin="round">
+        {id===0 ? <>
+          <path d="M16 32H58V44H29V60H16Z" fill={wood}/>
+          <path d="M53 26H159L171 35V51H120L111 60H78L70 50H53Z" fill={`url(#${key})`}/>
+          <path d="M88 49H109V78H88ZM64 49H78L73 70H60Z" fill="#26353d"/>
+          <path d="M167 33H208V45H167ZM208 31H220V47H208Z" fill={steel}/>
+          <path d="M62 21H143V27H62ZM150 20H156V31H150Z" fill="#26353d"/>
+          <path d="M70 34H108M124 35H149" stroke={finish?accent:'#b6c6ce'} strokeWidth="3"/>
+          <path d="M94 55V72M102 55V72" stroke="#60757e"/>
+        </> : id===1 ? <>
+          <path d="M9 39 46 27 60 34 55 55 38 54 9 68Z" fill={wood}/>
+          <path d="M56 30H139V52H58ZM63 24H131V31H63Z" fill={`url(#${key})`}/>
+          <path d="M138 31H181V50H138ZM72 51H88L81 76H68Z" fill={wood}/>
+          <path d="M103 51H121Q122 68 138 77L125 85Q107 74 103 51Z" fill="#2b3d45"/>
+          <path d="M180 35H231V42H180ZM199 21H204V35H199ZM139 24H185V29H139Z" fill={steel}/>
+          <path d="M110 56Q114 71 129 79M67 35H125" fill="none" stroke="#9eafb3"/>
+          <path d="M146 35V46M159 35V46M172 35V46" stroke="#403329" strokeWidth="2"/>
+          <path d="M86 52Q93 65 103 52" fill="none" stroke={steel}/>
+        </> : id===2 ? <>
+          <path d="M10 43 47 29 66 36 61 57 42 55 10 73Z" fill={wood}/>
+          <path d="M61 31H102V53H62Z" fill={`url(#${key})`}/>
+          <path d="M101 27H225V39H101ZM101 40H225V50H101Z" fill={steel}/>
+          <path d="M104 49H181L173 59H110Z" fill={wood}/>
+          <path d="M111 30H218M112 43H218" stroke="#d0dce0" strokeWidth="2"/>
+          <path d="M216 27V49" stroke="#17272e" strokeWidth="4"/>
+          <path d="M72 53Q82 70 99 53M86 52V61" fill="none" stroke={steel}/>
+          <path d="M202 21H208V27H202Z" fill="#d9c5a4"/>
+        </> : finish===6 ? <>
+          <circle cx="30" cy="44" r="16" fill="none" stroke="#d9b166" strokeWidth="6"/>
+          <path d="M47 31 117 35 115 57 47 53Z" fill="#263840"/>
+          <path d="M115 35C170 4 219 30 219 73C200 49 166 41 115 57Z" fill="#d9b166"/>
+          <path d="M136 35Q175 22 204 45" fill="none" stroke="#fff0ca"/>
+          <path d="M63 35V51M82 36V53M101 38V54" stroke="#667d83" strokeWidth="3"/>
+        </> : <>
+          <path d="M94 34 198 28 231 38 203 53H94Z" fill={finish===4?'#647e89':'#b8c9dc'}/>
+          <path d="M104 42 224 39 202 49H104Z" fill="#e5eff0" stroke="none"/>
+          <path d="M15 33H86V55H15ZM85 24H95V64H85Z" fill={finish===4?'#263c45':'#314459'}/>
+          <path d="M27 37V51M42 37V51M57 37V51M72 37V51" stroke={finish===4?'#659c9b':'#7f969e'} strokeWidth="3"/>
+          <path d="M107 36 188 33" stroke="#9bbfc0" strokeWidth="2"/>
+        </>}
       </g>
       {finish===5&&id<3&&<g stroke={['#85f4dd','#f5ce78','#e7d8b2'][id]} fill="none"><path d="M82 34H149M88 38H144" strokeWidth="2"/><path d="M109 42l5 4-5 4-5-4Z" strokeWidth="2"/><path d="M157 47l5-6m1 6 5-6m1 6 5-6" strokeWidth="1.5"/></g>}
     </svg>
@@ -131,8 +83,8 @@ export function WeaponGlyph({
 export function KrCredit(){return <svg className="kr-credit" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2 28 9v14l-12 7L4 23V9Z" fill="none" stroke="currentColor" strokeWidth="2"/><path d="M10 9h4v6l6-6h5l-8 8 8 7h-6l-5-5v5h-4Z" fill="currentColor"/><path d="M26 5v5M23 7.5h6" stroke="currentColor" strokeWidth="1.5"/></svg>;}
 
 export function QualityPreview({level}:{level:0|1|2}){
- return <svg className="quality-scene" viewBox="0 0 92 48" aria-hidden="true"><rect width="92" height="48" rx="6" fill={level===0?'#243b47':level===1?'#466d79':'#6c94a0'}/><path d="M0 34 24 16 42 31 68 13 92 31V48H0z" fill="#8b9e99"/><path d="M0 40 30 30 54 39 92 28V48H0z" fill="#677a6f"/><path d="m36 25 14-6 15 6v17H36z" fill="#d2b789"/><path d="M50 19v23h15V25z" fill="#8b765f"/>{level>0&&<><path d="M65 42 85 35 70 30 60 34z" fill="#23323c" opacity=".45"/><path d="M41 32h5v6h-5zm14-4h5v5h-5z" fill="#384a51"/></>}{level===2&&<><circle cx="73" cy="10" r="4" fill="#f3dab0"/><path d="m12 12 8-2 10 2m8-5 12-1 7 2" stroke="#d4e4df" strokeWidth="3"/><path d="M38 39h10m6-2h8M38 29h10" stroke="#ead4b0" strokeWidth="1.4"/></>}</svg>;
+ return <svg className="quality-scene" viewBox="0 0 92 48" aria-hidden="true"><rect width="92" height="48" rx="5" fill={level===0?'#34464b':level===1?'#5c777c':'#81999b'}/><path d="M0 34 22 16 44 31 68 13 92 30V48H0Z" fill="#9aa89e"/><path d="M0 41 30 30 54 39 92 28V48H0Z" fill="#6e8176"/><path d="M36 25 50 19 65 25V42H36Z" fill="#d2b789"/><path d="M50 19V42H65V25Z" fill="#8b765f"/>{level>0&&<><path d="M65 42 85 35 70 30 60 34Z" fill="#23323c" opacity=".45"/><path d="M41 32H46V38H41ZM55 28H60V33H55Z" fill="#384a51"/></>}{level===2&&<><circle cx="74" cy="10" r="4" fill="#f3dab0"/><path d="M12 12 20 10 30 12M38 7 50 6 57 8" stroke="#e0e7dc" strokeWidth="2"/><path d="M39 28H47M53 35H62M40 40H47" stroke="#bba17b"/></>}</svg>;
 }
 export function CrosshairPreview({color}:{color:string}){
- return <svg className="aim-preview" viewBox="0 0 70 48" aria-hidden="true"><rect width="70" height="48" rx="6" fill="#14232e"/><path d="m0 40 25-12 45 12M35 28V6" stroke="#34505b" strokeWidth="1"/><g stroke="#071017" strokeWidth="5"><path d="M35 12v7m0 10v7M22 24h7m12 0h7"/></g><g stroke={color} strokeWidth="2"><path d="M35 12v7m0 10v7M22 24h7m12 0h7"/></g><circle cx="35" cy="24" r="1.4" fill={color}/></svg>;
+ return <svg className="aim-preview" viewBox="0 0 40 28" aria-hidden="true"><g stroke={color} strokeWidth="2"><path d="M20 4v6m0 8v6M10 14h6m8 0h6"/></g><circle cx="20" cy="14" r="1" fill={color}/></svg>;
 }

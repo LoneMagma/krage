@@ -2,6 +2,7 @@ import { ROOM_PROTOCOL } from '../.server-build/network-state.js';
 import { createServer } from 'node:http';
 import { WebSocketServer } from 'ws';
 import { Room } from './rooms.mjs';
+import { createAccounts } from './accounts.mjs';
 export function createArenaServer({
   host = '127.0.0.1',
   port = 3002,
@@ -10,7 +11,9 @@ export function createArenaServer({
   const rooms = new Map(),
     peers = new Map();
   let pendingAuth = 0;
-  const http = createServer((req, res) => {
+  const accounts=createAccounts();
+  const http = createServer(async (req, res) => {
+    if(await accounts.handle(req,res,origins))return;
     if (req.url === '/health') {
       res.writeHead(200, {
         'Content-Type': 'application/json',
@@ -24,7 +27,7 @@ export function createArenaServer({
   });
   const wss = new WebSocketServer({
     noServer: true,
-    maxPayload: 2048,
+    maxPayload: 12288,
     perMessageDeflate: false,
     maxFragments: 16,
     maxBufferedChunks: 64,
@@ -111,6 +114,9 @@ export function createArenaServer({
           peer.authAt=now; peer.joining=true; pendingAuth++;
           try {
           let room;
+          const identity=m.accessToken?await accounts.verify(m.accessToken):null;
+          const account=identity?await accounts.get(identity.id):null;
+          if(account?.data.migratedTo)throw Error('Sign in again');
           if (m.type === 'quick') {
             // One global queue: fill existing rooms before allocating another.
             room = [...rooms.values()].filter(r=>r.public&&!r.match.ended&&r.match.time>15&&r.slots.size<r.capacity).sort((a,b)=>b.slots.size-a.slots.size)[0];
@@ -134,7 +140,12 @@ export function createArenaServer({
           if (!room) throw new Error('Room unavailable');
           if(m.type==='join' && !m.token && !await room.checkPassword(m.password)) throw new Error('Incorrect lobby password');
           if(ws.readyState!==1)return;
-          const session = room.join(m.name, m.token, Date.now(), m.primary, m.operator, m.weaponFinishes);
+          const prior=m.token?room.slots.get(m.token):null;
+          if(prior?.accountId&&prior.accountId!==identity?.id)throw Error('Sign in to reconnect');
+          if(identity&&[...rooms.values()].some(r=>[...r.slots.values()].some(s=>s.accountId===identity.id&&s.connected)))throw Error('Account already playing on another device');
+          const cosmetics=account?accounts.cosmetics(account.data):null;
+          const session = room.join(account?.data.name??m.name, m.token, Date.now(), m.primary, cosmetics?.operator??m.operator, cosmetics?.weaponFinishes??m.weaponFinishes);
+          const slot=room.slots.get(session.token);slot.accountId=identity?.id??null;slot.accountJoinedAt??=room.match.elapsed;
           peer.room = room;
           peer.token = session.token;
           peer.joined = true;
@@ -162,7 +173,11 @@ export function createArenaServer({
             send(other,{type:'kicked',message:'Removed by host'});p.room=null;p.token=null;other.close(4003,'Removed by host');
           }
         }
-        else if (m.type === 'lobby') peer.room?.lobbyChange(peer.token, m);
+        else if (m.type === 'lobby') {
+          const slot=peer.room?.slots.get(peer.token);
+          if(slot?.accountId){const row=await accounts.get(slot.accountId);if(row.data.migratedTo)throw Error('Sign in again');Object.assign(m,accounts.cosmetics(row.data),{name:row.data.name});}
+          peer.room?.lobbyChange(peer.token,m);
+        }
         else if (m.type === 'rematch') peer.room?.rematch(peer.token);
         else if (m.type === 'start') peer.room?.startMatch(peer.token);
         else if (m.type === 'ping') send(ws, { type: 'pong', nonce: m.nonce });
@@ -187,7 +202,18 @@ export function createArenaServer({
     last = now;
     let steps = 0;
     while (accumulator >= 1 / 120 && steps++ < 12) {
-      for (const room of rooms.values()) room.step();
+      for (const room of rooms.values()) {
+        room.step();
+        if(room.match.ended&&room.accountRewardRound!==room.roundId){
+          room.accountRewardRound=room.roundId;
+          for(const [token,slot] of room.slots){
+            if(!slot.accountId)continue;
+            const a=room.match.actors[slot.id],seconds=room.match.elapsed-(slot.accountJoinedAt??0);
+            const receipt={id:room.roundId,seconds,eligible:seconds>=30,kills:a.kills,headshots:a.headshots,meleeKills:a.meleeKills,matches:1,wins:room.snapshot(token).outcome==='victory'?1:0};
+            try{accounts.queue(slot.accountId,receipt);}catch{console.error('Account reward could not be queued');}
+          }
+        }
+      }
       accumulator -= 1 / 120;
     }
     for (const [code, room] of rooms)
@@ -227,6 +253,7 @@ export function createArenaServer({
       }),
     close: () =>
       new Promise((resolve) => {
+        accounts.close();
         clearInterval(tick);
         clearInterval(broadcast);
         clearInterval(heartbeat);

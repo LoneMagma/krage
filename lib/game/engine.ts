@@ -251,7 +251,7 @@ export class Arena {
       this.loadModels();
       this.applyTheme();
       this.phase = 'playing';
-      this.introUntil=performance.now()+3600;
+      this.introUntil=0;this.introPending=true;
       this.dragAim=!this.touchMode&&document.pointerLockElement!==this.renderer.domElement;
       this.accumulator=0;this.last=performance.now();
       this.benchmark = null;
@@ -322,6 +322,7 @@ export class Arena {
   lastFragTime = -Infinity;
   comboCount = 0;
   introUntil=0;
+  introPending=false;
   nextRound:Snapshot['nextRound']=null;
   roundId = '';
   completedRound: string | null = null;
@@ -694,7 +695,7 @@ export class Arena {
     this.resetEffects();
     this.lastDeath = null;
     this.roundId = crypto.randomUUID();
-    this.introUntil=performance.now()+3000;this.nextRound=null;
+    this.introUntil=0;this.introPending=true;this.nextRound=null;
     this.botFootsteps.clear();
     this.match = new Match(mode, map, bots, difficulty, seed);
     this.match.player.primary = weapon;
@@ -1232,6 +1233,7 @@ export class Arena {
         this.renderer.setViewport(0, 0, host.width, host.height);
       }
     }
+    if(this.introPending&&this.phase==='playing'&&!this.capture.pending){this.introPending=false;this.introUntil=performance.now()+7000;this.emit();}
     this.renderCalls = this.renderer.info.render.calls;
     this.renderTriangles = this.renderer.info.render.triangles;
     if (this.benchmark && !this.benchmark.complete) {
@@ -1365,9 +1367,9 @@ export class Arena {
         String(Math.min(1, this.hitFlash * 10)),
       );
       this.hud.style.setProperty('--hit-kick', String(Math.max(0, (this.hitFlash - this.hitDuration + .07) / .07)));
-      const spread = shotSpread(weaponView, this.input.ads);
+      const spread = shotSpread({...weaponView,vel:p.vel,grounded:p.grounded,crouched:p.crouched,slide:p.slide}, this.input.ads);
       const radius = Math.tan(spread) / Math.tan(this.camera.fov * Math.PI / 360) * this.host.clientHeight / 2;
-      this.hud.style.setProperty('--shotgun-radius', `${Math.max(10, radius)}px`);
+      this.hud.style.setProperty('--shotgun-radius', `${Math.min(38,Math.max(10, radius))}px`);
       this.hud.style.setProperty('--cross-gap', `${Math.max(3, radius * 0.4) + this.crossSpread}px`);
       this.hud.style.setProperty('--cross-color', this.settings.crosshair);
       this.hud.style.setProperty(
@@ -1530,8 +1532,8 @@ export class Arena {
           this.comboCount = now >= this.lastFragTime && now - this.lastFragTime <= 4 ? this.comboCount + 1 : 1;
           this.lastFragTime = now;
           this.audio.kill(this.comboCount);
-          const combo = this.comboCount >= 4 ? `${this.comboCount}× MULTIKILL` : this.comboCount === 3 ? '3× COMBO' : this.comboCount === 2 ? '2× COMBO' : '';
-          const title = combo || (e.head ? 'HEADSHOT' : e.weapon === 3 ? (e.attack === 'stab' ? 'SKEWERED' : 'CUTTHROAT') : killer.streak >= 5 ? 'UNSTOPPABLE' : killer.streak >= 3 ? 'ON FIRE' : 'ELIMINATED');
+          const combo = this.comboCount >= 4 ? `${this.comboCount}× MULTIKILL` : this.comboCount === 3 ? 'TRIPLE KILL' : this.comboCount === 2 ? 'DOUBLE KILL' : '';
+          const title = combo || (e.head ? 'HEADSHOT' : e.weapon === 3 ? (e.attack === 'stab' ? 'SKEWERED' : 'CUTTHROAT') : killer.streak >= 10 ? 'DOMINATING' : killer.streak >= 5 ? 'UNSTOPPABLE' : killer.streak >= 3 ? 'ON FIRE' : 'ELIMINATED');
           this.onFrag(`${title}${combo && e.head ? ' · HEADSHOT' : ''} +${e.head ? 150 : 100}`);
           this.killFlash = 1.5;
         }

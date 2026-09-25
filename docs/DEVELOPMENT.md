@@ -78,4 +78,7 @@ Deploy the frontend and room service together with protocol 17; refresh old tabs
 
 ## 1.4.0 combat and presentation patch
 
-See [release details](RELEASE-1.4.0.md) for current gun balance, EDGE timing, horizon/aurora changes, confirmation audio and the default quick-play entry. This supersedes previous combat constants above. Deploy frontend and rooms together with protocol 18.
+See [release details](RELEASE-1.4.0.md) for current gun balance, EDGE timing, horizon/aurora changes, confirmation audio and the default quick-play entry. This supersedes previous combat constants above. Deploy frontend and rooms together with protocol 21.
+
+## 1.4.0 economy and final presentation
+Current constants, map changes, skin prices, migration behavior and verification are in [RELEASE-1.4.0.md](RELEASE-1.4.0.md). Hit-marker batching lives in `weapon-feedback.ts`; per-frame opacity/scale uses HUD CSS variables without React updates. Weapon silhouettes are shared through `WeaponGlyph`. No new public queues or authentication provider were deployed.

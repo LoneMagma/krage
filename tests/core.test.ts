@@ -61,7 +61,7 @@ await test('AK body damage and headshot multiplier are distinct', () => {
   a.pitch = 0;
   a.cooldown = 0;
   m.shoot(a);
-  assert.ok(Math.abs(b.hp - 4) < 0.001);
+  assert.ok(Math.abs(b.hp - 0.8) < 0.001);
   a.cooldown = 0;
   m.shoot(a);
   assert.equal(a.kills, 1);
@@ -828,4 +828,40 @@ await test('Snow storage keeps every spawn and all four warehouse entrances trav
  for(const p of map.spawns)assert.ok(!map.blocks.some(b=>Math.abs(p.x-b.x)<b.w/2+.34&&Math.abs(p.z-b.z)<b.d/2+.34&&b.y-b.h/2<1.85),JSON.stringify(p));
  for(const p of entrances)for(const q of entrances)if(p!==q)assert.ok(nav.path(p,q).length>0,'blocked warehouse route');
  for(const [x,z] of [[-15,3],[3.5,3.5]]){const b=map.blocks.find(b=>b.kind==='crate'&&b.x===x&&b.z===z);assert.ok(b);assert.ok(!hasLOS(v(x, .7,z+3),v(x,.7,z),map.blocks),'storage must block shots');}
+});
+
+await test('KILO climbs before its horizontal sweep; MICA settles during its shot cooldown',async()=>{
+ const {applyGunRecoil,advanceGunTimers}=await import('../lib/game/core.js');
+ const a=new Match(0,0,1).player;a.weapon=1;a.pitch=a.yaw=0;
+ for(let n=1;n<=8;n++){a.burst=n;applyGunRecoil(a,false);}const rise=a.recoilPitch;
+ assert.ok(Math.abs(a.recoilYaw)<.003);
+ for(let n=9;n<=16;n++){a.burst=n;applyGunRecoil(a,false);}assert.ok(a.recoilPitch-rise<rise*.4);assert.ok(a.recoilYaw>.02);
+ a.weapon=2;a.burst=1;a.recoilPitch=0;applyGunRecoil(a,false);const kick=a.recoilPitch;a.fired=0;a.cooldown=.2;advanceGunTimers(a,1/60);
+ assert.ok(a.cooldown>0);assert.ok(a.recoilPitch<kick);
+});
+
+await test('movement widens every firearm cone continuously, including ADS, while stopping restores accuracy',()=>{
+ const a=new Match(0,0,0).player;a.grounded=true;
+ for(const weapon of [0,1,2]){a.weapon=weapon;a.burst=1;a.vel=v();a.crouched=false;a.slide=0;
+  for(const ads of [false,true]){const still=shotSpread(a,ads);a.vel=v(2,0,0);const walking=shotSpread(a,ads);a.vel=v(4.5,0,0);const running=shotSpread(a,ads);
+   assert.ok(walking>still*1.5);assert.ok(running>still*2);assert.ok(running>walking);a.slide=.3;assert.ok(shotSpread(a,ads)>running);a.slide=0;a.vel=v();assert.equal(shotSpread(a,ads),still);}
+ }
+});
+await test('initial spawns keep living actors apart on every arena and mode',()=>{
+ for(const map of [0,1,2,3])for(const mode of [0,1,2,3] as Mode[]){const m=new Match(mode,map,7,'dummy',91);
+  for(const a of m.actors)for(const b of m.actors)if(a.id!==b.id)assert.ok(Math.hypot(a.pos.x-b.pos.x,a.pos.z-b.pos.z)>1.3,`${map}/${mode} overlapping initial spawn`);
+ }
+});
+
+await test('actual fired rays lose accuracy while running, sliding and airborne for every firearm',()=>{
+ for(const weapon of [0,1,2]){
+  const rms=(state:number)=>{const m=new Match(0,0,0,'dummy',422),a=m.player;m.map.blocks=[];let total=0,n=0;
+   a.weapon=a.primary=weapon;a.pos=v();a.grounded=state!==3;a.vel=state?v(4.5,0,0):v();a.slide=state===2?.3:0;
+   for(let i=0;i<48;i++){a.ammo[weapon]=10;a.cooldown=a.equip=a.reload=0;a.yaw=a.pitch=a.recoilYaw=a.recoilPitch=0;m.events=[];m.shoot(a);
+    for(const e of m.events)if(e.type==='shot'&&e.end&&e.pos){const dx=e.end.x-e.pos.x,dy=e.end.y-e.pos.y,dz=e.end.z-e.pos.z;total+=Math.atan2(Math.hypot(dx,dy),-dz)**2;n++;}}
+   return Math.sqrt(total/n);
+  };
+  const still=rms(0),run=rms(1);assert.ok(run>still*(weapon===2?2:20));assert.ok(rms(2)>run*1.4);assert.ok(rms(3)>run*1.3);
+  if(weapon<2)assert.ok(still<.001,'stationary fire should be nearly pinpoint');
+ }
 });

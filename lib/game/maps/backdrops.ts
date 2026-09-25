@@ -25,6 +25,12 @@ export function buildBackdrop(map:ArenaMap){
  }else if(map.id===1){
   // Glacial shelves, a research station and its cable supports beyond the ridge.
   for(let i=0;i<7;i++){const x=-wx-13-i%2*4,z=-25+i*9;box(x,2+i%3,z,7,5+i%3*2,8,i%2?'#86b9c9':'#b4d9df');box(x,5+i%3*2,z,7.3,.6,8.3,'#e2edf0');}
+  // Small outlying station huts break the empty horizon without occupying combat lanes.
+  for(const [x,z] of [[wx+22,-18],[wx+27,20]]){
+   box(x,2.5,z,8,5,6,'#ba8b5f');box(x,5.2,z,9,.6,7,'#e2edf0');
+   box(x-4.03,3,z,.05,1.1,3.8,'#a8dedb');pole(x+6,4,z,.12,8,'#597586');
+   box(x+6,7.5,z,2,.16,.16,'#e2edf0');
+  }
   const z=-dz-19;box(10,4,z,14,8,9,'#597586');box(10,8.3,z,15,.6,10,'#d4e4e9');box(10,5.4,z+4.55,11,1.5,.06,'#a8dedb');
   add(new T.SphereGeometry(5.4,12,6,0,Math.PI*2,0,Math.PI/2),10,8.6,z,'#d4e4e9');
   for(const x of [-30,-9,30]){pole(x,8,z+8,.35,16,'#597586');box(x,15,z+8,5,.35,.4,'#a8bdc9');}

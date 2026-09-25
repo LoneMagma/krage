@@ -114,9 +114,9 @@ function SettingsPanel({
     <div className="settings-fields" hidden={category==='PERFORMANCE'}>
       <button hidden={category!=='SOUND'} aria-pressed={settings.musicEnabled !== false} onClick={() => update('musicEnabled', settings.musicEnabled === false)}>MUSIC <b>{settings.musicEnabled === false ? 'OFF' : 'ON'}</b></button>
       <button hidden={category!=='SOUND'} aria-pressed={settings.effectsEnabled !== false} onClick={() => update('effectsEnabled', settings.effectsEnabled === false)}>GAME SOUND <b>{settings.effectsEnabled === false ? 'OFF' : 'ON'}</b></button>
-      <label hidden={category!=='VIEW'}>
-        Camera sway <output>{Math.round((settings.cameraMotion ?? 0.65) * 100)}%</output>
-        <input aria-label="Camera sway" type="range" min="0" max="1" step="0.05" value={settings.cameraMotion ?? 0.65} onChange={e => update('cameraMotion', +e.target.value)} />
+      <label hidden={category!=='MOVEMENT'}>
+        Camera motion <output>{Math.round((settings.cameraMotion ?? 0.65) * 100)}%</output>
+        <input aria-label="Camera motion" type="range" min="0" max="1" step="0.05" value={settings.cameraMotion ?? 0.65} onChange={e => update('cameraMotion', +e.target.value)} />
       </label>
       <label hidden={category!=='MOVEMENT'}>
         Mouse sensitivity <output>{settings.sensitivity.toFixed(2)}</output>
@@ -173,15 +173,12 @@ function SettingsPanel({
             update('quality', value as Settings['quality'])
           }
         >
-          <option value="potato"><QualityPreview level={0}/><span>Potato</span></option>
+          <option value="potato"><QualityPreview level={0}/><span>Low</span></option>
           <option value="balanced"><QualityPreview level={1}/><span>Balanced</span></option>
           <option value="high"><QualityPreview level={2}/><span>High</span></option>
         </GameChoice>
       </fieldset>
-      <p className="setting-note">
-        Potato lowers resolution and disables debris and ragdolls. Hit detection
-        and movement stay identical.
-      </p>
+
       <fieldset hidden={category!=='MOVEMENT'} className="choice-setting"><legend>Hold crouch</legend><GameChoice
           value={settings.crouchKey}
           aria-label="Crouch key"
@@ -218,9 +215,7 @@ function SettingsPanel({
           )}
         </GameChoice>
       </fieldset>
-      <p className="setting-note">
-        Hold to crouch. Double-tap to slide.
-      </p>
+
       <fieldset hidden={category!=='VIEW'} className="choice-setting"><legend>Crosshair</legend><GameChoice
           value={settings.crosshair}
           className="crosshair-choice"
@@ -371,6 +366,7 @@ export default function Home() {
             setSnap(snapshot);
             setChatRoom(instance?.roomClient??null);
             if (snapshot.network && snapshot.phase !== 'menu') setModal(null);
+            if (snapshot.network?.removed) setModal(null);
           };
           instance.onMatchComplete = (receipt) => {
             setProfile((p) => recordMatch(p, receipt));
@@ -728,14 +724,14 @@ export default function Home() {
                 {snap.network?.status==='connecting' ? 'JOINING…' : ready ? 'PLAY ONLINE' : 'LOADING…'}
                 <ArrowUpRight size={23} />
               </Button>
-              <div className="public-rotation">PUBLIC · FFA / 2v2 / 3v3</div>
+
               <div className="secondary-play-actions"><Button className="practice-button" disabled={!ready} onClick={()=>setModal('online')}>LOBBY / CUSTOM</Button><Button className="practice-button" disabled={!ready || !!snap.network?.lobby} onClick={start}>PRACTICE</Button></div>
               <label className="lobby-player-name">PLAYER<input aria-label="Your player name" value={playerName} maxLength={16} onChange={e=>savePlayerName(e.target.value)}/></label>
               {snap.network?.status==='failed'&&<output role="alert">{snap.network.message}</output>}
             </section>
           </section>
           {modal === 'online' && <aside className="friend-lobby-panel" aria-label="Custom lobby">
-            <header><h2>LOBBY</h2><button aria-label="Close lobby panel" onClick={()=>setModal(null)}>×</button></header>
+            <header><h2>LOBBY</h2><button className="back-to-play" aria-label="Return to play" onClick={()=>setModal(null)}>← PLAY</button></header>
             <RoomPanel weaponFinishes={[0,1,2,3].map(w=>weaponFinish(profile,w))} mode={mode} map={map} primary={weapon} operator={OPERATORS.find(o=>o.id===profile.operator)?.variant??0} name={playerName} onName={savePlayerName} ready={ready} info={snap.network}
               onConnect={options=>arena.current?.joinRoom(options)}
               onChange={change=>arena.current?.roomClient?.lobby(change)}
@@ -743,9 +739,9 @@ export default function Home() {
               onLeave={()=>{arena.current?.disconnectRoom();setModal(null);}} />
           </aside>}
           <footer className="lobby-footer">
-            <span>
+            <span className="version-link">
               <MousePointer2 size={14} />
-              <a href="https://github.com/lonemagma" target="_blank" rel="noreferrer">v1.4.0</a>
+              <a href="https://github.com/lonemagma" target="_blank" rel="noreferrer">v1.5.0</a>
             </span>
 
             <span className="project-credit"><strong>MADE IN INDIA</strong><span>A <a href="https://pacify.site" target="_blank" rel="noreferrer">pacify</a> project</span></span>
@@ -769,7 +765,7 @@ export default function Home() {
                   {snap.fps} FPS · {snap.frameMs.toFixed(1)} MS
                 </span>
               </div>
-              <small>HOSTILE FIRE REVEALS POSITION</small>
+
             </div>
             {snap.network && (
               <output
@@ -896,7 +892,7 @@ export default function Home() {
                 </strong>
                 <span>HEALTH</span>
               </div>
-              <div className="health-track">
+              <div className={"health-track"+(snap.hp<30?" critical":"")} aria-hidden="true">
                 <i style={{ width: `${snap.hp}%` }} />
               </div>
               <div className="movement-readout">
@@ -912,7 +908,7 @@ export default function Home() {
                   {snap.crouched
                     ? 'CROUCHED'
                     : snap.slideCooldown > 0
-                      ? 'SLIDE RECOVERING'
+                      ? ''
                       : 'STANDING'}
                 </span>
               </div>
@@ -933,10 +929,10 @@ export default function Home() {
                 <span>
                   /{' '}
                   {snap.weapon === 3
-                    ? 'ONE HIT'
+                    ? 'EDGE'
                     : String(GUNS[snap.weapon].mag).padStart(2, '0')}
                   <small>
-                    {snap.weapon === 3 ? 'INSTANT KILL' : 'R / RELOAD'}
+                    {snap.weapon === 3 ? '' : 'R / RELOAD'}
                   </small>
                 </span>
               </div>
@@ -995,7 +991,7 @@ export default function Home() {
               </span>
             </div>
           </div>
-          {!!snap.intro&&snap.phase==='playing'&&<div className="match-intro" key={snap.network?.room+snap.map+snap.mode}><small>{snap.network?'ROOM '+snap.network.room:'PRACTICE'}</small><strong>{snap.map}</strong><span>{modes[activeMode]}</span></div>}
+          {!!snap.intro&&snap.phase==='playing'&&<section className="match-intro" key={snap.network?.room+snap.map+snap.mode} aria-live="polite"><small>{snap.network?'ROOM '+snap.network.room:'PRACTICE'}</small>{snap.intro>5&&<b className="match-start-title">MATCH START</b>}<strong>{snap.map}</strong><span>{modes[activeMode]}</span><div className="match-intro-details"><span><b>{snap.fragLimit}</b> FRAGS TO WIN</span><span><b>{minutes}:{String(seconds).padStart(2,'0')}</b> REMAINING</span><span><b>{snap.network?.players??1}</b> {snap.network?'ONLINE':'PLAYER'}</span></div></section>}
           {snap.phase === 'spawning' && !snap.benchmark && (
             <div className="spawn-overlay">
               <section className="spawn-panel">
@@ -1019,7 +1015,7 @@ export default function Home() {
                 <progress className="respawn-progress" aria-label="Respawn ready" max={2} value={2-Math.min(2,snap.respawn)}/>
                 <h2>
                   RESPAWN{' '}
-                  <small className="spawn-key-hint">1 / 2 / 3 · SPACE / ENTER</small>
+                  <small className="spawn-key-hint"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> LOADOUT <kbd>SPACE</kbd> RESPAWN</small>
                 </h2>
                 <div className="spawn-choices">
                   {GUNS.slice(0, 3).map((g, i) => (

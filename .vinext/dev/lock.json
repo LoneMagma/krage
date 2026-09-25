@@ -1,8 +1,8 @@
 {
-  "pid": 431285,
-  "port": 3002,
+  "pid": 390735,
+  "port": 3001,
   "hostname": "localhost",
-  "appUrl": "http://localhost:3002",
-  "startedAt": 1790276641970,
+  "appUrl": "http://localhost:3001",
+  "startedAt": 1790376638115,
   "cwd": "/home/lone/Documents/release/projects/krage/krage_v1"
 }

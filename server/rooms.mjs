@@ -37,7 +37,7 @@ export class Room {
     if (![0, 1, 2, 3].includes(mode) || ![0, 1, 2, 3].includes(map))
       throw new Error('Invalid room settings');
     this.code = code;
-    this.roundId=randomBytes(12).toString('hex');
+    this.roundId=randomBytes(12).toString('hex');if(this.slots)for(const slot of this.slots.values())slot.accountJoinedAt=0;
     this.mode = mode;
     this.map = map;
     const duration = options.duration ?? 300;
@@ -48,6 +48,7 @@ export class Room {
     if (![10,20,30,50,100].includes(fragLimit) || !['dummy','casual','normal','hard'].includes(difficulty)) throw new Error('Invalid score or bot skill');
     this.staging = options.staging === true;
     this.started = !this.staging;
+    this.startTicks = 0;
     this.hostToken = null;
     this.botFill = options.public === true || options.botFill === true;
     this.difficulty = difficulty;
@@ -93,12 +94,12 @@ export class Room {
   }
   listing() {
     const connected = [...this.slots.values()].filter(s => s.connected);
-    if (this.public || !this.listed || !connected.length) return null;
+    if (!this.listed || !connected.length) return null;
     const host = this.slots.get(this.hostToken);
-    return {room:this.code, name:host ? this.match.actors[host.id].name : 'LOBBY',
+    return {room:this.code, name:this.public ? `ARENA ${this.code}` : host ? this.match.actors[host.id].name : 'LOBBY',
       map:this.map, mode:this.mode, humans:connected.length, capacity:this.capacity,
       available:this.capacity-this.slots.size, locked:!!this.passwordHash,
-      state:this.match.ended?'ended':this.started?'playing':'waiting',
+      state:this.match.ended?'ended':this.started&&this.startTicks===0?'playing':'waiting',
       duration:this.match.duration, fragLimit:this.match.fragLimit};
   }
   kick(token, id) {
@@ -198,9 +199,9 @@ export class Room {
   rematch(token) {
     if(this.public || token!==this.hostToken || !this.match.ended) throw new Error('Only the host can reopen a finished private match');
     const m=this.match;
-    this.roundId=randomBytes(12).toString('hex');
+    this.roundId=randomBytes(12).toString('hex');if(this.slots)for(const slot of this.slots.values())slot.accountJoinedAt=0;
     m.ended=false;m.time=m.duration;m.elapsed=0;m.teams=[0,0];m.winner='';m.pendingSpawn=false;m.events=[];
-    m.recentSpawns=[];m.recentDeaths=[];this.finishedAt=0;this.started=false;this.staging=true;this.lagHistory=new LagHistory();this.eventLog=[];
+    m.recentSpawns=[];m.recentDeaths=[];this.finishedAt=0;this.started=false;this.startTicks=0;this.staging=true;this.lagHistory=new LagHistory();this.eventLog=[];
     for(const a of m.actors){a.kills=a.deaths=a.score=a.headshots=a.hits=a.shots=a.meleeKills=a.streak=0;if(a.bot)m.spawn(a,true);}
     for(const slot of this.slots.values()){
       slot.life++;slot.ready=false;slot.seq=-1;slot.ack=-1;slot.queue=[];slot.current=null;slot.remaining=0;
@@ -223,7 +224,7 @@ export class Room {
     const next=new Match(mode,map,this.capacity-1,'normal');
     next.manualRespawns=true;next.remoteInputs=new Map();next.rewindPose=previous.rewindPose;
     next.duration=next.time=300;next.fragLimit=30;this.match=next;
-    this.roundId=randomBytes(12).toString('hex');this.finishedAt=0;this.eventLog=[];this.lagHistory=new LagHistory();
+    this.roundId=randomBytes(12).toString('hex');if(this.slots)for(const slot of this.slots.values())slot.accountJoinedAt=0;this.finishedAt=0;this.eventLog=[];this.lagHistory=new LagHistory();
     for(const actor of next.actors)this.fillBot(actor);
     saved.forEach(({slot,actor},id)=>{
       slot.id=id;slot.life++;slot.seq=slot.ack=-1;slot.queue=[];slot.current=null;slot.remaining=0;slot.lastInput=now;
@@ -244,12 +245,13 @@ export class Room {
       this.match.spawn(this.match.actors[slot.id],true);
     }
     this.started = true;
+    this.startTicks = 360;
     return true;
   }
   input(token, message, now = Date.now()) {
     const slot = this.slots.get(token);
     if (!slot?.connected) throw new Error('Join first');
-    if (!this.started) return false;
+    if (!this.started || this.startTicks > 0) return false;
     const accepted = sanitizeInput(message);
     if (accepted.seq <= slot.seq) return false;
     if (message.life !== undefined && message.life !== slot.life) return false;
@@ -288,6 +290,7 @@ export class Room {
     if (!slot) return;
     slot.connected = false;
     slot.ready = false;
+    if(this.startTicks>0){this.startTicks=0;this.started=false;for(const s of this.slots.values())s.ready=false;}
     if (this.hostToken === token) this.hostToken = [...this.slots].find(([key,s]) => key !== token && s.connected)?.[0] ?? null;
     slot.lastSeen = now;
     slot.queue = [];
@@ -314,6 +317,7 @@ export class Room {
     const connected = [...this.slots.values()].filter(
       (s) => s.connected,
     ).length;
+    if(this.startTicks>0){this.startTicks--;return;}
     if (this.started && connected >= (this.botFill ? 1 : 2) && !this.match.ended) {
       for (const slot of this.slots.values()) {
         if (!slot.connected) continue;
@@ -387,7 +391,8 @@ export class Room {
       roundId:this.roundId,
       nextRound:this.public&&this.match.ended?{...this.nextPublicSettings(),seconds:Math.max(0,Math.ceil((this.finishedAt+8000-Date.now())/1000))}:null,
       protocol: ROOM_PROTOCOL,
-      staging: this.staging && !this.started,
+      staging: this.staging && (!this.started || this.startTicks>0),
+      countdown: Math.ceil(this.startTicks/120),
       host: this.slots.get(this.hostToken)?.id ?? null,
       fragLimit: this.match.fragLimit,
       botFill: this.botFill,
@@ -404,7 +409,7 @@ export class Room {
       eventHead: this.eventHead,
       state: this.match.ended
         ? 'ended'
-        : !this.started || [...this.slots.values()].filter((s) => s.connected).length < (this.botFill ? 1 : 2)
+        : !this.started || this.startTicks>0 || [...this.slots.values()].filter((s) => s.connected).length < (this.botFill ? 1 : 2)
           ? 'waiting'
           : 'playing',
       mode: this.mode,

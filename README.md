@@ -2,7 +2,7 @@
 
 Browser arena FPS with public Quick Play, private friend rooms and practice bots. Three primaries, one blade, four modes and four arenas. Built with Three.js, TypeScript, React and Vinext. Characters use simple articulated blocks; weapons use lightweight angular Three.js meshes. Audio combines the original v0.6 gunfire with edited supplied effects.
 
-This v1.3 build requires frontend and room server protocol 18. See [developer handoff](docs/DEVELOPMENT.md) and [Render deployment instructions](docs/DEPLOY.md).
+This v1.3 build requires frontend and room server protocol 21. See [developer handoff](docs/DEVELOPMENT.md) and [Render deployment instructions](docs/DEPLOY.md).
 
 ## Play
 
