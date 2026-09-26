@@ -12,6 +12,9 @@ COPY --from=build /app/node_modules/ws ./node_modules/ws
 COPY --from=build /app/.server-build ./.server-build
 COPY package.json ./package.json
 COPY server ./server
+RUN mkdir -p /app/server/data/account-outbox /tmp/krage-account-outbox \
+ && chown -R node:node /app/server/data /tmp/krage-account-outbox
+ENV KRAGE_ACCOUNT_OUTBOX=/tmp/krage-account-outbox
 USER node
 EXPOSE 3002
 CMD ["node", "server/index.mjs"]

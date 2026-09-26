@@ -1,6 +1,7 @@
 import {newProfile,refreshProfile,purchase,equipCosmetic,equipWeaponFinish,claimChallenge,recordMatch,CATALOG,weaponFinish} from '../.server-build/progression.js';
 import {mkdirSync,writeFileSync,renameSync,readdirSync,readFileSync,unlinkSync} from 'node:fs';
 import {join} from 'node:path';
+import {tmpdir} from 'node:os';
 import {createHash} from 'node:crypto';
 export function cleanPreferences(value){
  const p={};if(!value||typeof value!=='object'||Array.isArray(value))return p;
@@ -29,8 +30,13 @@ export function accountAction(data,action,now=Date.now()){
  }else if(action.type!=='refresh')throw Error('Unsupported account action');
  return {...data,name,preferences,profile};
 }
-export function createAccounts({url=process.env.SUPABASE_URL,key=process.env.SUPABASE_PUBLISHABLE_KEY,secret=process.env.SUPABASE_SECRET_KEY,fetcher=fetch,outbox=process.env.KRAGE_ACCOUNT_OUTBOX||'server/data/account-outbox'}={}){
+export function createAccounts({url=process.env.SUPABASE_URL,key=process.env.SUPABASE_PUBLISHABLE_KEY,secret=process.env.SUPABASE_SECRET_KEY,fetcher=fetch,outbox=process.env.KRAGE_ACCOUNT_OUTBOX||join(tmpdir(),'krage-account-outbox')}={}){
  const enabled=!!(url&&key&&secret);let draining=false;const cache=new Map();
+ function ensureOutbox(){
+  try{mkdirSync(outbox,{recursive:true,mode:0o700});return true;}
+  catch(e){console.error('account outbox unavailable:',e.message||e);return false;}
+ }
+
  async function request(path,{token=secret,method='GET',body,prefer}={}){
   const r=await fetcher(url+path,{method,headers:{apikey:token===secret?secret:key,Authorization:`Bearer ${token}`,'Content-Type':'application/json',...(prefer?{Prefer:prefer}:{})},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(8000)});
   if(!r.ok)throw Error(r.status===401||r.status===403?'Sign in again':'Account service unavailable');
@@ -60,13 +66,13 @@ export function createAccounts({url=process.env.SUPABASE_URL,key=process.env.SUP
   }throw Error('Account changed on another device. Try again');
  }
  function queue(id,receipt){
-  if(!enabled)return;mkdirSync(outbox,{recursive:true,mode:0o700});
+  if(!enabled||!ensureOutbox())return;
   const file=join(outbox,createHash('sha256').update(id+receipt.id).digest('hex')+'.json');
   writeFileSync(file+'.tmp',JSON.stringify({id,receipt}),{mode:0o600});renameSync(file+'.tmp',file);void drain();
  }
  async function drain(){
   if(!enabled||draining)return;draining=true;
-  try{mkdirSync(outbox,{recursive:true,mode:0o700});for(const file of readdirSync(outbox).filter(f=>f.endsWith('.json')).slice(0,20)){
+  try{if(!ensureOutbox())return;for(const file of readdirSync(outbox).filter(f=>f.endsWith('.json')).slice(0,20)){
    try{const job=JSON.parse(readFileSync(join(outbox,file),'utf8'));await mutate(job.id,data=>({...data,profile:recordMatch(data.profile,job.receipt)}),'match:'+job.receipt.id);unlinkSync(join(outbox,file));}catch{break;}
   }}finally{draining=false;}
  }
