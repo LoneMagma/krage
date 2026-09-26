@@ -51,8 +51,12 @@ export const metadata: Metadata = {
     images: ['/social-card.png'],
   },
   icons: {
-    icon: '/icon.png',
-    apple: '/icon.png',
+    icon: [
+      { url: '/favicon-16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon-bw.png', type: 'image/png' },
+    ],
+    apple: '/favicon-bw.png',
   },
   category: 'games',
 };

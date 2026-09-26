@@ -3,6 +3,7 @@ import {
   type InputFrame,
   type RoomSnapshot,
 } from './network-state.js';
+import { accountToken } from './account-token.js';
 export type ConnectionInfo = {
   removed?: boolean;
   lobby?: RoomSnapshot;
@@ -103,13 +104,15 @@ export class RoomClient {
     });
     const socket = (this.socket = new WebSocket(address.href));
     this.lastMessage = Date.now();
-    socket.onopen = () => {
+    socket.onopen = async () => {
+      if(this.socket!==socket||this.stopped){socket.close();return;}
+      const accessToken = await accountToken(address.href).catch(()=>undefined);
       if(this.socket!==socket||this.stopped){socket.close();return;}
       socket.send(
         JSON.stringify(
           this.token
-            ? { type: 'join', room: this.info.room, token: this.token }
-            : { type: this.options.room ? 'join' : this.options.quickPlay ? 'quick' : 'create', ...this.options },
+            ? { type: 'join', room: this.info.room, token: this.token, accessToken }
+            : { type: this.options.room ? 'join' : this.options.quickPlay ? 'quick' : 'create', ...this.options, accessToken },
         ),
       );
     };

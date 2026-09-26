@@ -2,6 +2,8 @@
 import { matchReward } from '@/lib/game/progression';
 import { ArenaChat } from '@/components/game/arena-chat';
 import { GameChoice } from '@/components/game/game-choice';
+import { AccountPanel } from '@/components/game/account-panel';
+import { useAccount } from '@/lib/account/use-account';
 import { type RoomClient, defaultRoomURL } from '@/lib/game/room-client';
 import Link from 'next/link';
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
@@ -485,6 +487,15 @@ export default function Home() {
       localStorage.setItem('krage-settings-v03', JSON.stringify(s));
     } catch {}
   };
+  const account = useAccount(
+    true,
+    (data) => {
+      setProfile(data.profile);
+      updateSettings({ ...settings, ...data.preferences });
+      savePlayerName(data.name);
+    },
+    () => {},
+  );
   const copyInvite = async () => {
     if (!snap.network?.room) return;
     const link = new URL(location.href); link.search = ''; link.searchParams.set('room', snap.network.room);
@@ -581,11 +592,14 @@ export default function Home() {
         <>
           <div className="menu-vignette" />
           <header className="topbar">
-            <Link href="/" aria-label="krage home">
+            <Link href="/" aria-label="krage home" className="topbar-home">
               <KrageLogo />
             </Link>
             <nav aria-label="Main navigation">{[['play','PLAY'],['online','LOBBY'],['locker','LOCKER'],['challenges','CHALLENGES'],['settings','SETTINGS']].map(([id,label])=><Button key={id} className={'nav-button '+((modal==='controls'?'settings':modal==='loadout'?'play':modal??'play')===id?'active':'')} onClick={()=>setModal(id==='play'?null:id as 'online'|'locker'|'challenges'|'settings')}>{label}{id==='challenges'&&claimable>0&&<b className="claim-badge">{claimable}</b>}</Button>)}</nav>
-            <button className="nav-wallet" onClick={()=>setModal('challenges')} aria-label="Credits and challenges"><KrCredit/><strong key={profile.balance}>{profile.balance.toLocaleString()}</strong><small>KR</small></button>
+            <div className="topbar-actions">
+              <AccountPanel account={account} />
+              <button className="nav-wallet" onClick={()=>setModal('challenges')} aria-label="Credits and challenges"><KrCredit/><strong key={profile.balance}>{profile.balance.toLocaleString()}</strong><small>KR</small></button>
+            </div>
           </header>
           <section className="lobby lobby-v4">
             <div className="lobby-workspace">

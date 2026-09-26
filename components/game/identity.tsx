@@ -2,14 +2,72 @@ import Image from 'next/image';
 import { useId } from 'react';
 import { WEAPON_COLORS } from '@/lib/game/palette';
 
+/** Front-facing 3D cube mark — square toward camera, K stamp above. */
+export function KrageBlockMark({ size = 52 }: { size?: number }) {
+  return (
+    <svg
+      className="krage-block-mark"
+      width={size}
+      height={size * (148 / 128)}
+      viewBox="0 0 128 148"
+      fill="none"
+      aria-hidden="true"
+    >
+      <g transform="translate(64 22)">
+        <path
+          d="M-20 -12 L20 -12 L24 -4 L20 10 L-20 10 L-24 -4 Z"
+          fill="none"
+          stroke="#E8956A"
+          strokeWidth="2.2"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M-9 -7 L-9 6 M-9 0 L7 -7 M-9 0 L7 6"
+          stroke="#E8ECF0"
+          strokeWidth="3"
+          strokeLinecap="square"
+        />
+        <circle cx="13" cy="-1" r="2.2" fill="#E8956A" />
+      </g>
+      <g transform="translate(64 86)">
+        <ellipse cx="2" cy="42" rx="40" ry="7" fill="#000" opacity="0.3" />
+        <path d="M-36 -36 L0 -52 L36 -36 L0 -20 Z" fill="#5a6874" />
+        <path d="M36 -36 L36 20 L0 36 L0 -20 Z" fill="#2a343e" />
+        <path d="M-36 -36 L0 -20 L0 36 L-36 20 Z" fill="#3a4550" />
+        <path d="M-28 -24 L-6 -14 L-6 18 L-28 8 Z" fill="#1a222b" />
+        <path d="M-28 -24 L-6 -14 L-6 18 L-28 8 Z" fill="none" stroke="#E8956A" strokeWidth="1.8" />
+        <path d="M-17 -12 V8 M-26 -2 H-8" stroke="#E8956A" strokeWidth="1.7" strokeLinecap="square" />
+        <path d="M-14 -40 L0 -46 L14 -40" fill="none" stroke="#E8956A" strokeWidth="2" strokeLinecap="square" />
+        <path d="M-32 12 L-4 24 L-4 28 L-32 16 Z" fill="#E8956A" />
+        <path
+          d="M-36 -36 L0 -20 L36 -36 M0 -20 L0 36 M-36 20 L0 36 L36 20"
+          fill="none"
+          stroke="#1a222b"
+          strokeWidth="1"
+          opacity="0.5"
+        />
+      </g>
+    </svg>
+  );
+}
+
 export function KrageLogo({ compact = false }: { compact?: boolean }) {
   return (
     <span className="krage-logo" aria-label="kRAGE">
-      <Image unoptimized src="/krage-logo.png" width="52" height="52" alt="" />
+      <Image
+        unoptimized
+        src="/krage-logo.png"
+        width={compact ? 40 : 52}
+        height={compact ? 40 : 52}
+        alt=""
+        className="krage-logo-mark"
+        priority
+      />
       {!compact && <span className="brand-name">KRAGE</span>}
     </span>
   );
 }
+
 
 /** Detailed, scalable side elevations used consistently in lobby, spawn and HUD. */
 export function WeaponGlyph({

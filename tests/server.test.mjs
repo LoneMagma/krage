@@ -471,9 +471,9 @@ await test('manual retry retains session and ignores callbacks from the old sock
     Object.defineProperty(globalThis,'location',{value:{protocol:'http:'},configurable:true});
     Object.defineProperty(globalThis,'document',{value:{hidden:false},configurable:true});
     client=new RoomClient({url:'ws://localhost:3002/play',name:'A',mode:0,map:0,primary:1,quickPlay:true},()=>{},()=>{});
-    client.connect();const old=sockets[0];old.onopen();
+    client.connect();const old=sockets[0];await old.onopen();
     old.onmessage({data:JSON.stringify({type:'welcome',protocol:ROOM_PROTOCOL,token:'secret',room:'ABCDEF'})});
-    client.retry();const next=sockets[1];next.onopen();
+    client.retry();const next=sockets[1];await next.onopen();
     assert.deepEqual(next.sent[0],{type:'join',room:'ABCDEF',token:'secret'});
     old.onmessage({data:JSON.stringify({type:'error',message:'late'})});old.onclose();
     assert.equal(client.socket,next);assert.equal(client.info.status,'reconnecting');assert.equal(client.stopped,false);
