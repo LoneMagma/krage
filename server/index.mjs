@@ -122,8 +122,8 @@ export function createArenaServer({
             room = [...rooms.values()].filter(r=>r.public&&!r.match.ended&&r.match.time>15&&r.slots.size<r.capacity).sort((a,b)=>b.slots.size-a.slots.size)[0];
             if (!room) {
               if (rooms.size >= 32) throw new Error('Room limit');
-              const rotation=[...rooms.values()].filter(r=>r.public).length;
-              const mode=[0,2,3][rotation%3],map=rotation%2;
+              const mode=[0,1,2,3][Math.floor(Math.random()*4)];
+              const roll=Math.random(),map=roll<0.35?0:roll<0.70?1:roll<0.85?2:3;
               room=new Room(mode,map,undefined,{duration:300,capacity:6,fragLimit:30,public:true,difficulty:'normal'});
               while(rooms.has(room.code))room=new Room(mode,map,undefined,{duration:300,capacity:6,fragLimit:30,public:true,difficulty:'normal'});
               rooms.set(room.code,room);

@@ -19,12 +19,15 @@ export function LobbyBrowser({onJoin,onQuick,busy}:{onQuick:()=>void;onJoin:(roo
  const pages=Math.max(1,Math.ceil(rooms.length/2)),active=Math.min(page,pages-1);
  return <div className="lobby-browser"><div className="lobby-browser-title"><strong>ACTIVE LOBBIES</strong><button className="find-match" disabled={busy} onClick={onQuick}>FIND MATCH</button><button aria-label="Refresh lobbies" onClick={()=>{setStatus('FINDING LOBBIES');setRefresh(n=>n+1);}}><RefreshCw size={17}/></button></div>
   {status&&<output>{status}</output>}
-  <div className="lobby-list">{rooms.slice(active*2,active*2+2).map(r=><div className="lobby-list-row" key={r.room}>
+  {!status&&!rooms.length?<div className="lobby-list"><div className="lobby-list-row" key="default-arena">
+   <MapDiagram id={0}/><div><strong>DEFAULT ARENA</strong><small>OPEN MATCHMAKING · JOIN OR START A MATCH</small></div>
+   <span className="lobby-occupancy"><Users size={14}/>0/6</span>
+   <button disabled={busy} onClick={onQuick}>JOIN</button>
+  </div></div>:<div className="lobby-list">{rooms.slice(active*2,active*2+2).map(r=><div className="lobby-list-row" key={r.room}>
    <MapDiagram id={r.map}/><div><strong>{r.name}{r.locked&&<LockKeyhole size={13}/>}</strong><small>{['DUNE','SNOW','CELL I','CELL II'][r.map]} · {['FFA','1 v 1','2 v 2','3 v 3'][r.mode]} · {r.duration/60} MIN · {r.fragLimit} FRAGS</small></div>
    <span className="lobby-occupancy"><Users size={14}/>{r.humans}/{r.capacity}</span>
    {selected===r.room&&r.locked?<form onSubmit={e=>{e.preventDefault();onJoin(r.room,password);}}><input type="password" aria-label="Lobby password" placeholder="PASSWORD" maxLength={64} value={password} onChange={e=>setPassword(e.target.value)}/><button type="submit" disabled={busy||!password}>JOIN</button></form>:<button disabled={busy||r.available===0||r.state==='ended'} onClick={()=>{if(r.locked){setSelected(r.room);setPassword('');}else onJoin(r.room,'');}}>{r.state==='ended'?'ENDED':r.available===0?'FULL':r.state==='playing'?'JOIN MATCH':'JOIN'}</button>}
-  </div>)}</div>
-  {!status&&!rooms.length&&<p className="empty-lobbies">No active rooms</p>}
+  </div>)}</div>}
   {pages>1&&<div className="party-pages"><button disabled={!active} aria-label="Previous lobbies" onClick={()=>setPage(active-1)}><ChevronLeft size={16}/></button><span>{active+1} / {pages}</span><button disabled={active===pages-1} aria-label="Next lobbies" onClick={()=>setPage(active+1)}><ChevronRight size={16}/></button></div>}
  </div>;
 }

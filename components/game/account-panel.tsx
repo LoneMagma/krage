@@ -21,13 +21,17 @@ export function AccountPanel({ account }: { account: ReturnType<typeof useAccoun
     [code, setCode] = useState(''),
     [sent, setSent] = useState(false),
     [busy, setBusy] = useState(false),
-    [message, setMessage] = useState('');
+    [message, setMessage] = useState(''),
+    [pendingAction, setPendingAction] = useState<(() => Promise<void>) | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const connected = account.session && !account.session.user.is_anonymous;
   const label = account.session?.user.email ?? '';
   useEffect(() => {
     if (open) dialog.current?.showModal();
-    else dialog.current?.close();
+    else {
+      dialog.current?.close();
+      setPendingAction(null);
+    }
   }, [open]);
   async function run(fn: () => Promise<void>) {
     if (busy) return;
@@ -67,6 +71,36 @@ export function AccountPanel({ account }: { account: ReturnType<typeof useAccoun
 
         {!account.configured ? (
           <p className="account-note">Account sign-in is not enabled yet.</p>
+        ) : pendingAction ? (
+          <div className="account-warning">
+            <p>
+              If the account you sign into already has its own saved progress, this
+              guest session's progress will <strong>not</strong> be merged — it will be
+              replaced and lost. Signing into a brand-new account keeps this guest
+              progress instead.
+            </p>
+            <div className="account-warning-actions">
+              <button
+                type="button"
+                className="account-linklike"
+                disabled={busy}
+                onClick={() => setPendingAction(null)}
+              >
+                CANCEL
+              </button>
+              <button
+                className="account-submit"
+                disabled={busy}
+                onClick={() => {
+                  const action = pendingAction;
+                  setPendingAction(null);
+                  void run(action);
+                }}
+              >
+                CONTINUE
+              </button>
+            </div>
+          </div>
         ) : connected ? (
           <>
             <div className="account-identity">
@@ -115,7 +149,7 @@ export function AccountPanel({ account }: { account: ReturnType<typeof useAccoun
               className="account-google"
               disabled={busy || account.loading}
               onClick={() =>
-                void run(async () => {
+                setPendingAction(() => async () => {
                   await account.preserveGuest();
                   const { error } = await client!.auth.signInWithOAuth({
                     provider: 'google',
@@ -135,9 +169,9 @@ export function AccountPanel({ account }: { account: ReturnType<typeof useAccoun
               className="account-email"
               onSubmit={(e) => {
                 e.preventDefault();
-                void run(async () => {
-                  await account.preserveGuest();
-                  if (sent) {
+                if (sent) {
+                  setPendingAction(() => async () => {
+                    await account.preserveGuest();
                     const { error } = await client!.auth.verifyOtp({
                       email,
                       token: code.trim(),
@@ -147,15 +181,17 @@ export function AccountPanel({ account }: { account: ReturnType<typeof useAccoun
                     setOpen(false);
                     setSent(false);
                     setCode('');
-                  } else {
-                    const { error } = await client!.auth.signInWithOtp({
-                      email,
-                      options: { shouldCreateUser: true },
-                    });
-                    if (error) throw error;
-                    setSent(true);
-                    setMessage('Check your email for your code.');
-                  }
+                  });
+                  return;
+                }
+                void run(async () => {
+                  const { error } = await client!.auth.signInWithOtp({
+                    email,
+                    options: { shouldCreateUser: true },
+                  });
+                  if (error) throw error;
+                  setSent(true);
+                  setMessage('Check your email for your code.');
                 });
               }}
             >

@@ -210,17 +210,23 @@ export class Room {
     }
     return true;
   }
+  // Weighted pick: modes equal (25% each) among those that fit the seated humans
+  // (rotation keeps everyone seated); maps Dune 35 / Snow 35 / Cell I 15 / Cell II 15.
+  // Cached per finished match so the next-round preview equals what actually starts.
   nextPublicSettings(){
-    const modes=[0,2,3],start=modes.indexOf(this.mode);
-    let mode=modes[(start+1)%modes.length];
-    if(mode===2&&this.slots.size>4)mode=3;
-    return {mode,map:(this.map+1)%2};
+    if(this.nextPick?.match===this.match)return this.nextPick.value;
+    const seated=this.slots.size;
+    const modes=[0,1,2,3].filter(m=>m===1?seated<=2:m===2?seated<=4:true);
+    const mode=modes[Math.floor(Math.random()*modes.length)];
+    const roll=Math.random(),map=roll<0.35?0:roll<0.70?1:roll<0.85?2:3;
+    const value={mode,map};this.nextPick={match:this.match,value};
+    return value;
   }
   rotatePublic(now=Date.now()){
     if(!this.public||!this.match.ended)return false;
     const {mode,map}=this.nextPublicSettings(),previous=this.match;
     const saved=[...this.slots].map(([token,slot])=>({token,slot,actor:previous.actors[slot.id]}));
-    this.mode=mode;this.map=map;this.capacity=mode===2?4:6;
+    this.mode=mode;this.map=map;this.capacity=[6,2,4,6][mode];
     const next=new Match(mode,map,this.capacity-1,'normal');
     next.manualRespawns=true;next.remoteInputs=new Map();next.rewindPose=previous.rewindPose;
     next.duration=next.time=300;next.fragLimit=30;this.match=next;

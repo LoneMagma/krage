@@ -322,13 +322,15 @@ await test('Quick Play ignores private preferences and pools live players', { ti
     ws.on('message',handler);
   });
   try {
+    const seed=new Room(0,1,undefined,{duration:300,capacity:6,fragLimit:30,public:true,difficulty:'normal'});
+    server.rooms.set(seed.code,seed);
     const options={type:'quick',mode:0,map:1,duration:180,capacity:4,primary:0,operator:1};
     const a=await connect(); const aw=waitFor(a,'welcome'); a.send(JSON.stringify({...options,name:'A'}));const first=await aw;
     const b=await connect(); const bw=waitFor(b,'welcome'); b.send(JSON.stringify({...options,name:'B',primary:2}));const second=await bw;
     assert.equal(first.room,second.room); assert.notEqual(first.id,second.id);
     const snap=await waitFor(a,'snapshot');
     assert.equal(snap.actors.filter(x=>x.bot).length,4); assert.equal(snap.actors.filter(x=>x.connected).length,2);
-    assert.equal(snap.duration,300);assert.equal(snap.map,0);assert.equal(snap.state,'playing');
+    assert.equal(snap.duration,300);assert.equal(snap.map,1);assert.equal(snap.state,'playing');
     assert.equal(snap.actors.find(x=>x.id===second.id).primary,2);
     const c=await connect();const cw=waitFor(c,'welcome');c.send(JSON.stringify({...options,map:0,name:'C'}));assert.equal((await cw).room,first.room);
   } finally { for (const ws of sockets) ws.terminate(); await server.close(); }
@@ -490,6 +492,8 @@ await test('four live friends share one match and a returning socket keeps its s
     const handler=raw=>{const m=JSON.parse(raw);if(m.type===type){clearTimeout(timer);ws.off('message',handler);resolve(m);}};ws.on('message',handler);
   });
   try {
+    const seed=new Room(0,1,undefined,{duration:300,capacity:6,fragLimit:30,public:true,difficulty:'normal'});
+    server.rooms.set(seed.code,seed);
     const sessions=[];
     for(let i=0;i<4;i++){
       const ws=await connect(),welcome=waitFor(ws,'welcome');
@@ -546,23 +550,34 @@ await test('new Snow and CELL II are selectable online with shared geometry',()=
  for(const map of [1,3]){const room=new Room(2,map,undefined,{botFill:true});const a=room.join('A'),b=room.join('B');assert.equal(room.snapshot(a.token).map,map);assert.equal(room.snapshot(b.token).protocol,ROOM_PROTOCOL);assert.equal(room.match.map.name,map===1?'SNOW':'CELL II');}
 });
 
-await test('public rotation preserves sessions and loadouts and skips undersized team modes',()=>{
+await test('public rotation preserves sessions and loadouts and skips modes too small for seated humans',()=>{
  const r=new Room(0,0,undefined,{public:true,capacity:6});const people=Array.from({length:5},(_,i)=>r.join('P'+i,undefined,1000,i%3));
  const old=r.roundId;r.match.ended=true;r.finishedAt=1000;r.step(9001);
- assert.notEqual(r.roundId,old);assert.equal(r.mode,3);assert.equal(r.map,1);assert.equal(r.slots.size,5);
+ assert.notEqual(r.roundId,old);assert.ok([0,3].includes(r.mode),'5 seated humans only fit FFA or 3v3');assert.ok(r.map>=0&&r.map<=3);assert.equal(r.capacity,6);assert.equal(r.slots.size,5);
  for(const [i,p] of people.entries()){const s=r.snapshot(p.token);assert.equal(s.state,'playing');assert.equal(s.actors.find(a=>a.id===s.you).name,'P'+i);assert.equal(s.actors.find(a=>a.id===s.you).primary,i%3);assert.equal(s.actors.find(a=>a.id===s.you).kills,0);assert.equal(s.actors.find(a=>a.id===s.you).life,1);}
  r.disconnect(people[0].token,9002);const resumed=r.join('ignored',people[0].token,9003);assert.equal(resumed.token,people[0].token);
  const privateRoom=new Room(0,0);privateRoom.join('Host');privateRoom.match.ended=true;assert.equal(privateRoom.rotatePublic(),false);
 });
-await test('small public parties cycle FFA, 2v2 and 3v3 with all bot skills',()=>{
+await test('small public parties rotate through valid modes with all bot skills',()=>{
  const r=new Room(0,0,undefined,{public:true,capacity:6});r.join('A');r.join('B');
  assert.equal(new Set(r.match.actors.filter(a=>a.bot).map(a=>a.botDifficulty)).size,3);
- for(const mode of [2,3,0]){r.match.ended=true;r.rotatePublic();assert.equal(r.mode,mode);assert.equal(r.match.actors.length,r.capacity);assert.equal(r.slots.size,2);}
+ for(let i=0;i<6;i++){r.match.ended=true;r.rotatePublic();assert.ok([0,1,2,3].includes(r.mode));assert.equal(r.capacity,[6,2,4,6][r.mode]);assert.equal(r.match.actors.length,r.capacity);assert.equal(r.slots.size,2);}
+});
+await test('public rotation weights maps 35/35/15/15, spreads modes evenly and never seats humans in a mode too small',()=>{
+ const real=Math.random;
+ const pick=(seated,modeRoll,mapRoll)=>{const r=new Room(0,0,undefined,{public:true,capacity:6});for(let i=0;i<seated;i++)r.join('P'+i);const q=[modeRoll,mapRoll];Math.random=()=>q.shift();try{return r.nextPublicSettings();}finally{Math.random=real;}};
+ assert.deepEqual([0,.25,.5,.75].map(x=>pick(2,x,.5).mode),[0,1,2,3]);
+ assert.deepEqual([0,.34,.35,.69,.7,.84,.85,.99].map(x=>pick(2,0,x).map),[0,0,1,1,2,2,3,3]);
+ assert.deepEqual([0,.4,.8].map(x=>pick(3,x,.5).mode),[0,2,3]);
+ assert.deepEqual([0,.6].map(x=>pick(5,x,.5).mode),[0,3]);
+ const r=new Room(0,0,undefined,{public:true,capacity:6});r.join('A');const first=r.nextPublicSettings();
+ for(let i=0;i<20;i++)assert.deepEqual(r.nextPublicSettings(),first);
 });
 
 await test('full global room spills into another room without splitting existing players', {timeout:10000}, async()=>{
  const server=createArenaServer({port:0}),address=await server.listen(),sockets=[],sessions=[];
- try{for(let i=0;i<7;i++){
+ try{const seed=new Room(0,1,undefined,{duration:300,capacity:6,fragLimit:30,public:true,difficulty:'normal'});server.rooms.set(seed.code,seed);
+ for(let i=0;i<7;i++){
   const ws=new WebSocket(`ws://127.0.0.1:${address.port}/play`);sockets.push(ws);await once(ws,'open');
   const welcome=new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('welcome timeout')),2000);ws.on('message',raw=>{const m=JSON.parse(raw);if(m.type==='welcome'){clearTimeout(timer);resolve(m);}});});
   ws.send(JSON.stringify({type:'quick',name:'Q'+i,mode:i%4,map:i%4}));sessions.push(await welcome);

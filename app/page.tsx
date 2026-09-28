@@ -492,7 +492,6 @@ export default function Home() {
     (data) => {
       setProfile(data.profile);
       updateSettings({ ...settings, ...data.preferences });
-      savePlayerName(data.name);
     },
     () => {},
   );
