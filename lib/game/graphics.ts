@@ -776,7 +776,7 @@ export function makeWeapon(index: number, firstPerson = true, finish = 0) {
     armor(g, 0, 0.085, -0.56, 0.035, 0.09, 0.05, metal);
     armor(g, 0, 0.146, -0.56, 0.013, 0.065, 0.03, dark);
     armor(g, 0, 0.184, -0.56, 0.012, 0.009, 0.018, '#d9e8b0');
-    }else{armor(g,0,.052,-.63,.018,.012,.43,metal);armor(g,0,.065,-.83,.023,.02,.02,'#ead5ac');}
+    }else{armor(g,0,.052,-.63,.018,.012,.43,metal);armor(g,0,.093,-.83,.018,.074,.024,dark);armor(g,0,.135,-.83,.023,.02,.02,'#ead5ac');}
     armor(g, 0.07, 0.02, -0.04, 0.02, 0.06, 0.17, '#69807d');
     if (index === 0)
       armor(g, -0.065, -0.005, -0.16, 0.009, 0.032, 0.13, '#ef7548');
@@ -916,6 +916,8 @@ export function makeWeapon(index: number, firstPerson = true, finish = 0) {
     }
     for(const z of [-.43,-.40]){const ring=cylinder(g,0,.02,z,.034,.014,accent,8);ring.rotation.x=Math.PI/2;}
   }
+  // The shoulder stock belongs behind the first-person camera, not in the sightline.
+  if(firstPerson&&index===2)for(const part of g.children.slice()){if(part instanceof T.Mesh&&part.position.z>.23){g.remove(part);disposeObject(part);}}
   if (firstPerson) {
     const hands = new T.Group();
     hands.name = 'support-hand';
@@ -967,7 +969,8 @@ export function makeWeapon(index: number, firstPerson = true, finish = 0) {
     }
   }
   batchPart(g);
-  g.userData.sightHeight=index===2?.075:.184;
+  g.userData.sightHeight=index===2?.145:.184;
+  g.userData.adsDistance=index===2?-1.02:-.4;
   const aimReference=new T.Object3D();aimReference.name='aim-reference';aimReference.position.set(0,g.userData.sightHeight,index===2?-.83:-.56);g.add(aimReference);
   g.userData.weapon = index;
   g.userData.finish = finish;

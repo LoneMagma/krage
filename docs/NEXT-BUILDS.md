@@ -43,3 +43,5 @@ Exit: a route structure and encounter rhythm visibly different from Dune, safe s
 Finish and verify one build at a time. v1.6 must first pass live provider, cross-device and persistent-volume checks. Then v1.7 starts with one screen/component sample before a full UI pass. Do not add payments, new modes, expensive skins or more effects to compensate for a weak core loop. These stay outside the sequence until the existing game is coherent and fun.
 
 Source for optional audio tooling: https://github.com/elevenlabs/elevenlabs-mcp (official MCP); https://elevenlabs.io/docs/eleven-api/guides/cookbooks/sound-effects (official SFX API).
+
+Map overhaul requirement: replace the current map-preview SVGs with new, distinct thematic SVG artwork for Dune, Snow and both Cells. Keep previews recognizable and consistent with each playable layout.

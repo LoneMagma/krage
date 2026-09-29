@@ -9,11 +9,13 @@ import {accountsConfigured,authClient,accountRequest} from './client';
 export type CloudSave={name:string;preferences:Partial<Settings>;profile:Profile};
 type Save={data:CloudSave;revision:number;decisionRequired?:boolean};
 type GuestSession={id:string;access_token:string;refresh_token:string;expires_at:number};
-export function useAccount(enabled:boolean,onLoad:(data:CloudSave)=>void,onIdentity:()=>void){
+export function useAccount(enabled:boolean,onLoad:(data:CloudSave)=>void,onIdentity:()=>void,onGuest:()=>void){
  const [session,setSession]=useState<Session|null>(null),[loading,setLoading]=useState(accountsConfigured),[error,setError]=useState(''),[decision,setDecision]=useState<Save|null>(null),[saving,setSaving]=useState(false),[connected,setConnected]=useState(false);
- const current=useRef<Session|null>(null),callbacks=useRef({onLoad,onIdentity}),generation=useRef(0),revision=useRef(-1),ready=useRef(false),queue=useRef<Promise<unknown>>(Promise.resolve());
+ const [localGuest,setLocalGuest]=useState(false);
+ const guestFallback=useRef(false);
+ const current=useRef<Session|null>(null),callbacks=useRef({onLoad,onIdentity,onGuest}),generation=useRef(0),revision=useRef(-1),ready=useRef(false),queue=useRef<Promise<unknown>>(Promise.resolve());
  const pending=useRef<{name?:string;preferences?:Partial<Settings>}>({}),timer=useRef<ReturnType<typeof setTimeout>|undefined>(undefined),initialize=useRef<(s:Session|null,force?:boolean)=>Promise<void>>(async()=>{});
- useEffect(()=>{callbacks.current={onLoad,onIdentity};});
+ useEffect(()=>{callbacks.current={onLoad,onIdentity,onGuest};});
  const apply=(result:Save,stamp:number)=>{if(stamp!==generation.current||result.revision<revision.current)return;revision.current=result.revision;callbacks.current.onLoad({...result.data,...(pending.current.name===undefined?{}:{name:pending.current.name}),preferences:{...result.data.preferences,...pending.current.preferences}});};
  const act=(action?:Record<string,unknown>)=>{
   const stamp=generation.current,id=current.current?.user.id;
@@ -42,10 +44,11 @@ export function useAccount(enabled:boolean,onLoad:(data:CloudSave)=>void,onIdent
   async function accept(next:Session|null,force=false){
    if(disposed)return;
    if(!next){
-    current.current=null;ready.current=false;setConnected(false);generation.current++;lastId='';setSession(null);setLoading(true);setDecision(null);clearTimeout(timer.current);pending.current={};callbacks.current.onIdentity();
-    try{creating??=client.auth.signInAnonymously().then(({data,error})=>{if(error)throw error;return data.session}).finally(()=>{creating=null});const guest=await creating;if(guest)await accept(guest);}catch(e){if(!disposed){setError(e instanceof Error?e.message:'Guest unavailable');setLoading(false);}}return;
+    if(current.current)callbacks.current.onIdentity();
+    current.current=null;ready.current=false;setConnected(false);generation.current++;lastId='';setSession(null);setLoading(true);setDecision(null);clearTimeout(timer.current);pending.current={};const guestGeneration=generation.current;
+    try{creating??=client.auth.signInAnonymously().then(({data,error})=>{if(error)throw error;return data.session}).finally(()=>{creating=null});const guest=await creating;if(guest&&guestGeneration===generation.current)await accept(guest);}catch{if(!disposed&&guestGeneration===generation.current&&!current.current){callbacks.current.onGuest();guestFallback.current=true;setLocalGuest(true);setError('Cloud guest saves unavailable. You can still play.');setLoading(false);}}return;
    }
-   current.current=next;setSession(next);if(next.user.id===lastId&&!force)return;
+   guestFallback.current=false;setLocalGuest(false);current.current=next;setSession(next);if(next.user.id===lastId&&!force)return;
    lastId=next.user.id;const stamp=++generation.current;ready.current=false;setConnected(false);revision.current=-1;setLoading(true);setDecision(null);clearTimeout(timer.current);pending.current={};callbacks.current.onIdentity();
    try{
     const savedText=localStorage.getItem('krage-pending-guest');
@@ -72,6 +75,7 @@ export function useAccount(enabled:boolean,onLoad:(data:CloudSave)=>void,onIdent
   const {data:{subscription}}=client.auth.onAuthStateChange((_event,next)=>{setTimeout(()=>void accept(next),0)});
   setAccountTokenProvider(async url=>{
    if(new URL(url).origin!==new URL(defaultRoomURL()).origin)return;
+   if(guestFallback.current&&!current.current)return;
    if(!ready.current)throw Error('Finish connecting your account first');await operations.current.flush();
    const {data,error}=await client.auth.getSession();if(error||!data.session)throw Error('Sign in again');return data.session.access_token;
   });
@@ -86,5 +90,5 @@ export function useAccount(enabled:boolean,onLoad:(data:CloudSave)=>void,onIdent
   if(useExisting){localStorage.removeItem('krage-pending-guest');await initialize.current(current.current,true);}
   else{const saved:GuestSession=JSON.parse(localStorage.getItem('krage-pending-guest')||'null');if(!saved)throw Error('Guest session unavailable');const {data,error}=await authClient()!.auth.setSession(saved);if(error)throw error;localStorage.removeItem('krage-pending-guest');await initialize.current(data.session,true);}
  };
- return {session,loading,error,decision,saving,configured:accountsConfigured,active:accountsConfigured,connected,act,preferences,flush,refresh:()=>ready.current?flush().then(()=>act()):initialize.current(current.current,true),preserveGuest,resolveExisting};
+ return {session,loading,error,decision,saving,configured:accountsConfigured,active:accountsConfigured&&!localGuest,connected,act,preferences,flush,refresh:()=>ready.current?flush().then(()=>act()):initialize.current(current.current,true),preserveGuest,resolveExisting};
 }

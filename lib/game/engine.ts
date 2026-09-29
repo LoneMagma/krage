@@ -1301,7 +1301,7 @@ export class Arena {
     this.gun.position.set(
       T.MathUtils.lerp(0.28, 0, this.adsLerp) + (bob - this.swayX)*(1-this.adsLerp),
       -0.28 - Math.abs(bob) * 0.65 - this.landing + this.swayY - reload * 0.25,
-      (weaponView.weapon===2 ? -0.58 : -.4) + this.gunKick * .18,
+      T.MathUtils.lerp(weaponView.weapon===2 ? -.72 : -.4,this.gun.userData.adsDistance??-.4,this.adsLerp) + this.gunKick * .18,
     );
     // The reload dip's rotation is tuned for hip-fire distance; scaled down
     // during ADS (where the gun already sits close to camera-center) so the

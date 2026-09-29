@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import './v07.css';
+import './v17.css';
 export const metadata: Metadata = {
   metadataBase: new URL('https://krage.pacify.site'),
   title: 'KRAGE',

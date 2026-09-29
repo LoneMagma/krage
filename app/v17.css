@@ -1,0 +1,157 @@
+/* KRAGE 1.7: the single visual owner for lobby controls and state screens.
+   Legacy files retain geometry; their competing surface/control colors were removed. */
+:root{--ui-bg:#141518;--ui-surface:#1b1c20f5;--ui-raised:#25262b;--ui-line:#ffffff20;--ui-text:#f1efe9;--ui-muted:#a4a4ab;--ui-action:#a83243;--ui-hover:#be3c4e;--ui-selected:#b84859;--ui-gold:#d5b574;--ui-danger:#ec9c9c;--ui-success:#b8d1bc;--ui-radius:8px;--orange:var(--ui-action);--text:var(--ui-text);--muted:var(--ui-muted);--line:var(--ui-line);--font-ui:Arial,Helvetica,sans-serif;--font-display:KrageDisplay,'Arial Narrow',sans-serif}
+.game-shell{height:100dvh;min-height:0;overflow:hidden;color:var(--ui-text);font-family:var(--font-ui)}
+.lobby-shell .menu-vignette{background:linear-gradient(90deg,#10111496,transparent 44%,#101114b5),linear-gradient(0deg,#101114b0,transparent 40%,#101114ba)}
+.lobby-shell .topbar{border-bottom:1px solid #ffffff12;gap:20px}
+.lobby-shell .topbar nav{background:#16171beb;border:1px solid var(--ui-line);border-radius:10px;box-shadow:none;padding:5px;gap:4px}
+.lobby-shell .nav-button{border:1px solid transparent;border-radius:6px;padding:12px 16px!important;background:transparent;color:var(--ui-muted);font:800 11px var(--font-ui);letter-spacing:.065em}
+.lobby-shell .nav-button:hover{color:var(--ui-text);background:#ffffff08}
+.lobby-shell .nav-button.active{color:var(--ui-text);border-color:#ffffff25;background:#343136;box-shadow:inset 0 -3px var(--ui-selected)}
+.lobby-shell .nav-button.active::after{display:none}
+.lobby-shell .nav-wallet{color:var(--ui-gold)!important}
+.lobby-shell .nav-wallet small{color:var(--ui-muted)}
+.claim-badge{background:var(--ui-gold)!important;color:#16171b!important;border-radius:4px}
+button{transition:background-color .14s,border-color .14s,color .14s,translate .1s}
+button:active:not(:disabled){translate:0 1px}
+button:disabled{cursor:not-allowed}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #e2c6ca;outline-offset:3px}
+/* Primary actions carry color. Secondary actions carry a visible edge. */
+.deploy-button,.account-submit,.arsenal-equip{background:var(--ui-action);border:1px solid #c64d5f;color:#fff5f2;box-shadow:none;text-shadow:none;border-radius:6px;font-family:var(--font-ui);font-weight:800;letter-spacing:.055em}
+.deploy-button:hover:not(:disabled),.account-submit:hover:not(:disabled),.arsenal-equip:hover:not(:disabled){background:var(--ui-hover);border-color:#dc6576;box-shadow:none;transform:none}
+.secondary-button,.practice-button,.back-to-play,.game-choice button,.mode-button,.party-settings-toggle,.party-leave,.skin-arrow,.account-actions button,.account-warning-actions button{background:var(--ui-raised);border:1px solid var(--ui-line);border-radius:6px;color:var(--ui-text);box-shadow:none;font-family:var(--font-ui)}
+.secondary-button:hover:not(:disabled),.back-to-play:hover,.game-choice button:hover:not(:disabled),.mode-button:hover,.party-settings-toggle:hover{background:#303137;border-color:#ffffff40}
+.game-choice button[aria-pressed=true],.mode-button.selected,.spawn-choice.selected{background:#a832431b;border:1px solid var(--ui-selected);color:var(--ui-text);box-shadow:inset 0 -2px var(--ui-selected)}
+.game-choice{gap:6px}.game-choice button{min-height:36px;padding:8px 12px}
+.section-tabs{border-bottom:1px solid var(--ui-line);gap:8px}
+.section-tabs button{background:transparent;border:0;border-bottom:2px solid transparent;color:var(--ui-muted);padding:10px 14px}
+.section-tabs button[aria-pressed=true]{color:var(--ui-text);border-bottom-color:var(--ui-selected);background:#ffffff05}
+.game-shell input:not([type=range]),.account-panel input{background:#111216;border:1px solid #ffffff24;border-radius:5px;color:var(--ui-text);box-shadow:none}
+.game-shell input::placeholder,.account-panel input::placeholder{color:#929299}
+.game-shell input[type=range]{accent-color:var(--ui-selected)}
+/* A compact launch surface: no match configuration or repeated previews. */
+.play-card{position:absolute;right:4%;top:50%;translate:0 -38%;width:320px;padding:26px;display:flex;flex-direction:column;gap:22px;pointer-events:auto;background:linear-gradient(140deg,#232428f5,#151619f5);border:1px solid #ffffff24;border-radius:10px;box-shadow:0 16px 45px #0003}
+.play-card>header{display:flex;align-items:center;gap:12px}
+.play-card h2{margin:0;font:900 36px/1 var(--font-display);letter-spacing:.025em}
+.play-card-mark{display:grid;place-items:center;background:#a8324320;color:#df9ba5;border:1px solid #b848594a;width:34px;height:34px;border-radius:5px;font:24px var(--font-ui)}
+.play-callsign{display:flex;flex-direction:column;gap:8px;font:800 10px var(--font-ui);letter-spacing:.12em;color:var(--ui-muted)}
+.play-callsign input{width:100%;height:42px;padding:10px 12px;font:700 15px var(--font-ui);letter-spacing:.025em}
+.play-card .play-online{width:100%;min-height:66px;padding:18px;display:flex;justify-content:space-between;align-items:center;font:900 18px var(--font-display);letter-spacing:.055em;border-radius:6px}
+.play-alternatives{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.play-alternatives button{min-height:44px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;background:#242529;border:1px solid #ffffff26;color:var(--ui-text);border-radius:5px;font:800 11px var(--font-ui);letter-spacing:.045em}
+.play-alternatives button:hover{background:#323338;border-color:#ffffff4d}
+.play-alternatives span{font-size:20px;color:var(--ui-muted)}
+.play-card>output{font-size:12px;color:var(--ui-danger);line-height:1.4}
+.lobby-shell:not([data-section=play]) .play-card{display:none}
+/* Existing character and map placement, with quiet, tangible selectors. */
+.map-switcher{background:#17181bdd;border:1px solid var(--ui-line);border-radius:8px;padding:6px}
+.map-switcher button,.character-toggle button,.party-map-picker button{display:grid;place-items:center;min-width:32px;min-height:32px;background:#ffffff08;color:var(--ui-text);border:1px solid #ffffff16;border-radius:5px}
+.map-switcher button:hover,.character-toggle button:hover{background:#ffffff18;border-color:#ffffff40}
+.character-toggle{border:1px solid var(--ui-line);border-radius:7px;background:#17181bed;padding:5px;gap:12px}
+.character-toggle strong{font:800 13px var(--font-display);letter-spacing:.09em}
+.hero-loadout{background:#1b1c20ed;border:1px solid #ffffff30;border-radius:6px;color:var(--ui-text)}
+.hero-loadout span{color:#cfcbd0!important;border-left:1px solid var(--ui-line);padding-left:10px}
+.lobby-shell .arena-tab{color:var(--ui-muted);border:0;background:transparent}
+.lobby-shell .arena-tab[aria-pressed=true]{color:var(--ui-text);background:#ffffff0c;border-radius:4px}
+/* Shared surfaces, headings and navigation across all substantial screens. */
+.lobby-section,.friend-lobby-panel,.account-panel,.spawn-panel,.pause-panel,.end-panel,.rift-dialog{background:var(--ui-surface);border:1px solid var(--ui-line);border-radius:10px;color:var(--ui-text);box-shadow:0 16px 50px #0004;font-family:var(--font-ui)}
+.lobby-section>header,.friend-lobby-panel>header,.account-panel>header{border-bottom:1px solid var(--ui-line);display:flex;align-items:center;justify-content:space-between;gap:16px}
+.lobby-section h2,.friend-lobby-panel h2,.account-panel h2,.spawn-panel h2,.pause-panel h2,.result-hero h2{font-family:var(--font-display);color:var(--ui-text);letter-spacing:.035em;line-height:1.05}
+.back-to-play{min-height:38px;padding:9px 14px;white-space:nowrap;font-size:11px;font-weight:800}
+.lobby-section-body{min-height:0}
+.practice-config{display:grid;gap:22px;max-width:780px;margin:auto;width:100%}
+.practice-config .section-label{margin-bottom:-14px;font-size:10px;color:var(--ui-muted)}
+.practice-config .mode-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.practice-config .mode-button{min-height:48px;display:flex;justify-content:center;gap:10px}
+.practice-config .match-duration{display:flex;gap:18px;align-items:center}
+.practice-config .practice-settings{border-top:1px solid var(--ui-line);padding-top:18px}
+.practice-config .bot-options{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin:0}
+.practice-config .deploy-button{min-height:52px;display:flex;justify-content:space-between;align-items:center;padding:15px 20px}
+.choice-setting>legend{color:var(--ui-muted);font-size:10px;letter-spacing:.09em}
+/* Locker selections and routine rewards stay in context. */
+.arsenal-weapons button{background:transparent;border:1px solid var(--ui-line);border-radius:6px;color:var(--ui-muted)}
+.arsenal-weapons button[aria-pressed=true]{border-color:var(--ui-selected);background:#a8324317;color:var(--ui-text)}
+.finish-swatches button{border:1px solid var(--ui-line);border-radius:5px}
+.finish-swatches button[aria-pressed=true]{border:2px solid var(--ui-text)}
+.arsenal-finish{border-top:1px solid var(--ui-line)}
+.arsenal-finish h3{color:var(--ui-text)}
+.reward-toast{background:var(--ui-surface);border:1px solid var(--ui-gold);border-radius:7px;box-shadow:0 8px 24px #0004;pointer-events:none;color:var(--ui-text)}
+.reward-toast strong{color:var(--ui-gold)}
+/* Results and recovery communicate state without dashboard styling. */
+.spawn-panel{width:min(570px,92vw)}
+.spawn-choice{border:1px solid var(--ui-line);border-radius:6px;background:#ffffff03;color:var(--ui-text)}
+.death-recap{border:0;border-left:3px solid var(--ui-danger);background:#df948808}
+.respawn-progress{accent-color:var(--ui-selected)}
+.respawn-progress::-webkit-progress-value{background:var(--ui-selected)}
+.end-panel{width:min(790px,92vw);padding:clamp(20px,4vw,38px)}
+.result-header{color:var(--ui-muted);font-size:12px;letter-spacing:.06em}
+.result-hero{padding:22px 0;gap:16px;border-bottom:1px solid var(--ui-line)}
+.outcome-victory .result-hero h2{color:var(--ui-success)}
+.outcome-defeat .result-hero h2{color:var(--ui-danger)}
+.result-hero strong{font-family:var(--font-display);font-variant-numeric:tabular-nums;color:var(--ui-text)}
+.result-actions{gap:10px;flex-wrap:wrap}.match-stats{border-color:var(--ui-line)}.match-stats span{color:var(--ui-muted)}
+.match-intro{background:#17181cf0;border:1px solid var(--ui-line);border-left:3px solid var(--ui-selected);border-radius:8px;box-shadow:none;pointer-events:none}
+.match-intro .match-start-title,.match-intro strong{font-family:var(--font-display);color:var(--ui-text);letter-spacing:.045em}
+.match-intro-details{border-top:1px solid var(--ui-line)}
+.connection-recovery{background:var(--ui-surface);border:1px solid var(--ui-line);border-left:3px solid var(--ui-selected);border-radius:6px;color:var(--ui-text)}
+.game-shell kbd,.account-panel kbd{display:inline-flex;align-items:center;justify-content:center;min-width:24px;padding:3px 6px;border:1px solid currentColor;border-radius:3px;background:#00000010;font:700 10px var(--font-ui);letter-spacing:.03em;opacity:.75;box-shadow:none}
+/* Account choices retain clear boundaries; chat stays easy to find. */
+.account-panel::backdrop{background:#09090cbf;backdrop-filter:blur(3px)}
+.account-panel header button{background:transparent;border:1px solid var(--ui-line);border-radius:4px;color:var(--ui-muted)}
+.account-panel p,.account-note,.account-identity small{color:var(--ui-muted)}
+.account-avatar{background:#a8324318;color:var(--ui-text);border:1px solid var(--ui-selected);border-radius:8px}
+.account-warning{background:#ffffff03;border:1px solid var(--ui-line)}
+.account-warning h3{font:900 24px var(--font-display)}
+.account-warning-actions{display:grid;gap:10px}.account-warning-actions button{min-height:44px;white-space:normal}
+.account-warning-actions button:last-child{background:var(--ui-action);color:#fff5f2}
+.chat-toggle{background:#222327eb;border:1px solid #ffffff38;border-radius:6px;color:var(--ui-text);min-height:44px;box-shadow:none;font-weight:800}
+.chat-toggle:hover{background:#34353a}.chat-box{background:#18191ef5;border:1px solid #ffffff28;border-radius:8px;color:var(--ui-text)}
+.chat-box nav{border-bottom:1px solid var(--ui-line)}
+.chat-box button{background:transparent;border:0;color:var(--ui-muted)}
+.chat-box button[aria-pressed=true]{background:#ffffff09;color:var(--ui-text)!important;border-bottom:2px solid var(--ui-selected)}
+.chat-messages b,.chat-toast b{color:#d1c9cd!important}
+.chat-toast{background:#17181cb8;border:0;border-radius:4px;color:var(--ui-text)}
+@media(max-height:760px){.lobby-shell .topbar{height:78px;padding-top:12px;padding-bottom:12px}.lobby-section{top:88px!important;bottom:42px!important;padding:16px 22px}.lobby-section>header{margin-bottom:12px;padding-bottom:12px}.play-card{padding:22px;gap:18px}.practice-config{gap:15px}.practice-config .practice-settings{padding-top:12px}.end-panel,.spawn-panel,.pause-panel{padding:18px}.result-hero{padding:12px 0}.result-hero h2{font-size:42px}.match-stats{padding:12px 0}.spawn-panel h2{margin:12px 0}.match-intro{top:17%;padding:14px 20px}}
+@media(max-width:1100px){.lobby-shell .topbar{gap:12px;padding-left:3%;padding-right:3%}.lobby-shell .nav-button{padding:10px 9px!important;font-size:10px}.play-card{right:3%;width:290px}.lobby-shell .brand-name{font-size:24px!important}.lobby-shell .topbar nav{gap:2px}.lobby-section{left:3%!important;right:3%!important}.result-actions>*{flex:1}}
+@media(max-width:750px){.lobby-shell .topbar{height:112px;align-items:flex-start}.lobby-shell .topbar nav{position:absolute;top:62px;left:3%;right:3%;width:auto;transform:none;justify-content:space-between}.lobby-shell .topbar-actions{margin-left:auto}.play-card{width:250px;top:auto;bottom:65px;translate:none;padding:18px;gap:14px}.play-card h2{font-size:28px}.play-card .play-online{min-height:54px;font-size:16px}.lobby-section{top:126px!important}.practice-config .bot-options{gap:12px}.practice-config .mode-button{min-height:40px;font-size:11px}.practice-config .mode-symbol{display:none}.practice-config .game-choice button{padding:6px;font-size:10px}.game-shell .chat-toggle{min-height:38px}}
+@media(prefers-reduced-motion:reduce){.game-shell *,.account-panel *{scroll-behavior:auto!important;transition:none!important;animation:none!important}.match-intro{opacity:1;translate:none}}
+
+.mission-list article{background:#ffffff03;border:1px solid var(--ui-line);border-radius:7px}
+.mission-list article.claimable{border-color:#d5b57465;background:#d5b57408}
+.mission-icon{background:#ffffff05;color:var(--ui-muted);border-radius:6px}
+.mission-reward strong{color:var(--ui-gold)}
+.mission-reward button{background:#28292f;border:1px solid var(--ui-line);border-radius:5px;color:var(--ui-muted);font-weight:800}
+.claimable .mission-reward button{background:var(--ui-gold);color:#18191b;border-color:var(--ui-gold)}
+.mission-progress progress{accent-color:var(--ui-gold)}
+.mission-progress progress::-webkit-progress-value{background:var(--ui-gold)}
+.mission-progress progress::-webkit-progress-bar{background:#ffffff0c}
+.mission-details h3{color:var(--ui-text)}
+.party-card,.room-directory-card{border-color:var(--ui-line);background:#ffffff03}
+.party-settings-toggle{min-height:42px;padding:10px 14px}
+.party-map-picker{background:#ffffff03;border:1px solid var(--ui-line);border-radius:6px}
+.account-panel header h2{font:900 24px var(--font-display)!important;letter-spacing:.04em!important}
+
+.lobby-shell .hero-actions button,.lobby-shell .nav-account{background:#202126;border:1px solid #ffffff28;border-radius:6px;color:var(--ui-text);box-shadow:none}
+.lobby-shell .hero-actions button:hover,.lobby-shell .nav-account:hover{background:#303137;border-color:#ffffff48}
+.practice-config .mode-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+.inspector-placeholder{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+.inspector-placeholder svg{width:70%;height:70%;opacity:.65}
+.lobby-shell:not([data-section=play]) .hero-actions{bottom:95px!important}
+@media(max-height:760px){.lobby-section{bottom:90px!important}.practice-config{gap:12px}.practice-config .mode-button{min-height:40px}.practice-config .bot-options{gap:15px}.practice-config .practice-settings{padding-top:10px}}
+
+.practice-back{margin-left:auto;background:transparent;color:var(--ui-muted);border:1px solid var(--ui-line);border-radius:4px;width:30px;height:30px;font-size:22px}
+.play-card:has(.practice-inline){gap:16px;translate:0 -43%}
+.play-card:has(.practice-inline) h2{font-size:27px}
+.practice-inline{display:grid;gap:12px}
+.practice-map{display:flex;gap:14px;align-items:center;border-bottom:1px solid var(--ui-line);padding-bottom:10px;font:800 13px var(--font-display)}
+.practice-map svg{width:58px;height:45px}
+.practice-step{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.practice-step>span{text-transform:uppercase;font:800 10px var(--font-ui);letter-spacing:.06em;color:var(--ui-muted)}
+.practice-step>div{display:grid;grid-template-columns:28px 108px 28px;align-items:center;gap:3px}
+.practice-step button{height:30px;border:1px solid var(--ui-line);border-radius:4px;background:#ffffff05;color:var(--ui-text);font-size:20px}
+.practice-step button:hover{background:#ffffff12}
+.practice-step strong{text-align:center;text-transform:uppercase;font:800 11px var(--font-ui)}
+.practice-start{display:flex;align-items:center;justify-content:space-between;min-height:48px;padding:12px;margin-top:4px}
+@media(max-height:700px){.practice-inline{gap:8px}.play-card:has(.practice-inline){padding:18px;gap:12px;top:51%;translate:0 -40%}.practice-map{padding-bottom:6px}.practice-map svg{height:32px}}
+
+.practice-map .map-diagram{width:58px;height:45px;min-height:0;max-height:45px;flex:none;padding:0;background:transparent}

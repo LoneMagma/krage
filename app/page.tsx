@@ -264,7 +264,7 @@ export default function Home() {
   const [ready, setReady] = useState(false),
     [error, setError] = useState(''),
     [modal, setModal] = useState<
-      'settings' | 'controls' | 'loadout' | 'locker' | 'challenges' | 'online' | null
+      'settings' | 'controls' | 'loadout' | 'locker' | 'challenges' | 'online' | 'practice' | null
     >(null),
     [snap, setSnap] = useState<Snapshot>({ ...EMPTY_SNAPSHOT }),
     [feed, setFeed] = useState<Feed[]>([]),
@@ -288,9 +288,10 @@ export default function Home() {
       setSettings(previous=>{const next={...previous,...data.preferences};arena.current?.setSettings(next);return next;});
     },
     ()=>{arena.current?.lobby();setProfile(newProfile());setPlayerName('PLAYER');setLastAward(0);setSettings(previous=>{const next={...DEFAULT_SETTINGS,quality:previous.quality};arena.current?.setSettings(next);return next;});},
+    ()=>{try{setProfile(loadProfile(localStorage.getItem("krage-practice-v1")));setPlayerName(localStorage.getItem("krage-player-name")||"PLAYER");}catch{}},
   );
   const handleMatchComplete=useEffectEvent((receipt:MatchReceipt)=>{
-    if(accountsConfigured){setLastAward(0);setTimeout(()=>void account.refresh().catch(()=>{}),1500);return;}
+    if(account.active){setLastAward(0);setTimeout(()=>void account.refresh().catch(()=>{}),1500);return;}
     setProfile(p=>recordMatch(p,receipt));setLastAward(receipt.eligible&&receipt.seconds>=30&&receipt.id?matchReward(receipt):0);
   });
   const accountBlocked=account.active&&(!account.connected||account.loading||!!account.decision);
@@ -450,21 +451,21 @@ export default function Home() {
   useEffect(() => {
     let timer:ReturnType<typeof setTimeout>;
     const refresh=()=>{
-      if(!accountsConfigured)setProfile(p=>refreshProfile(p));
+      if(!account.active)setProfile(p=>refreshProfile(p));
       clearTimeout(timer);
       const now=Date.now();timer=setTimeout(refresh,86400000-now%86400000+50);
     };
     const visible=()=>{if(document.visibilityState==='visible')refresh();};
     refresh();window.addEventListener('focus',refresh);document.addEventListener('visibilitychange',visible);
     return()=>{clearTimeout(timer);window.removeEventListener('focus',refresh);document.removeEventListener('visibilitychange',visible);};
-  }, []);
+  }, [account.active]);
   useEffect(() => {
-    if (profileLoaded&&!accountsConfigured) {
+    if (profileLoaded&&!account.active) {
       try {
         localStorage.setItem('krage-practice-v1', JSON.stringify(profile));
       } catch {}
     }
-  }, [profile, profileLoaded]);
+  }, [profile, profileLoaded, account.active]);
   useEffect(() => {
     if (ready)
       arena.current?.setCosmetics(
@@ -538,6 +539,8 @@ export default function Home() {
   };
   useEffect(()=>{
     const key=(e:KeyboardEvent)=>{
+      if(e.defaultPrevented||(e.target as HTMLElement)?.closest('dialog[open]'))return;
+      if((modal==='online'||modal==='practice')&&e.code==='Escape'){e.preventDefault();setModal(null);return;}
       if(e.repeat||(e.target as HTMLElement)?.closest('input,textarea,[contenteditable=true]'))return;
       if(modal==='loadout'){
         const i=['Digit1','Digit2','Digit3'].indexOf(e.code);
@@ -601,7 +604,7 @@ export default function Home() {
     }
   };
   return (
-    <main data-section={!inGame ? modal ?? 'play' : 'game'} className={'game-shell ' + (inGame ? 'match-shell' : 'lobby-shell')}>
+    <main data-section={!inGame ? modal==='practice'?'play':modal ?? 'play' : 'game'} className={'game-shell ' + (inGame ? 'match-shell' : 'lobby-shell')}>
       <div className="world" ref={mount} />
       {reward&&<output key={reward.id} className="reward-toast"><KrCredit/><div><small>{reward.title}</small>{reward.amount>0?<strong>+{reward.amount} KR</strong>:<strong>READY TO GO</strong>}</div></output>}
       {!inGame && (
@@ -611,7 +614,7 @@ export default function Home() {
             <Link href="/" aria-label="krage home" className="topbar-home">
               <KrageLogo />
             </Link>
-            <nav aria-label="Main navigation">{[['play','PLAY'],['online','LOBBY'],['locker','LOCKER'],['challenges','CHALLENGES'],['settings','SETTINGS']].map(([id,label])=><Button key={id} className={'nav-button '+((modal==='controls'?'settings':modal==='loadout'?'play':modal??'play')===id?'active':'')} onClick={()=>setModal(id==='play'?null:id as 'online'|'locker'|'challenges'|'settings')}>{label}{id==='challenges'&&claimable>0&&<b className="claim-badge">{claimable}</b>}</Button>)}</nav>
+            <nav aria-label="Main navigation">{[['play','PLAY'],['online','LOBBY'],['locker','LOCKER'],['challenges','CHALLENGES'],['settings','SETTINGS']].map(([id,label])=><Button key={id} aria-current={((modal==='controls'?'settings':modal==='loadout'||modal==='practice'?'play':modal??'play')===id)?'page':undefined} className={'nav-button '+((modal==='controls'?'settings':modal==='loadout'||modal==='practice'?'play':modal??'play')===id?'active':'')} onClick={()=>setModal(id==='play'?null:id as 'online'|'locker'|'challenges'|'settings')}>{label}{id==='challenges'&&claimable>0&&<b className="claim-badge">{claimable}</b>}</Button>)}</nav>
             <div className="topbar-actions">
               <AccountPanel account={account} />
               <button className="nav-wallet" onClick={()=>setModal('challenges')} aria-label="Credits and challenges"><KrCredit/><strong key={profile.balance}>{profile.balance.toLocaleString()}</strong><small>KR</small></button>
@@ -678,85 +681,28 @@ export default function Home() {
                 <button className="hero-loadout" aria-haspopup="dialog" onClick={() => setModal('loadout')}>LOADOUT <span>{GUNS[weapon].short}</span></button>
               </div>
             </div>
-            <section className="setup-panel match-setup">
-              <h2>QUICK PLAY</h2>
-              <div className="section-label">
-                <span>MODE</span>
-              </div>
-              <div className="mode-grid">
-                {modes.map((m, i) => (
-                  <Button
-                    key={m}
-                    aria-pressed={mode === i}
-                    className={'mode-button ' + (mode === i ? 'selected' : '')}
-                    onClick={() => setMode(i as Mode)}
-                  >
-                    <span className="mode-symbol">
-                      {['✳', 'Ⅰ', 'Ⅱ', 'Ⅲ'][i]}
-                    </span>
-                    <span>{m}</span>
-                  </Button>
-                ))}
-              </div>
-              <div className="match-duration"><span>PRACTICE TIME</span><GameChoice aria-label="Match duration" value={duration} onChange={value=>setDuration(+value)}>{[60,180,300,600].map(seconds=><option key={seconds} value={seconds}>{seconds/60} MIN</option>)}</GameChoice></div>
-              <details className="practice-settings">
-                <summary>Practice settings</summary>
-              <div className="bot-options">
-                <fieldset className="choice-setting">
-                  <legend>{mode === 0 ? 'OPPONENTS' : 'SQUADS'}</legend>
-                  {mode === 0 ? (
-                    <GameChoice
-                      aria-label="Bot count"
-                      value={bots}
-                      onChange={(value)=> setBots(+value)}
-                    >
-                      {[0, 1, 3, 5, 7].map((n) => (
-                        <option key={n} value={n}>
-                          {n === 0
-                            ? 'Solo warmup'
-                            : `${n} ${n === 1 ? 'bot' : 'bots'}`}
-                        </option>
-                      ))}
-                    </GameChoice>
-                  ) : (
-                    <span className="squad-size">
-                      {mode === 1
-                        ? 'You + 1 rival'
-                        : mode === 2
-                          ? '1 ally · 2 rivals'
-                          : '2 allies · 3 rivals'}
-                    </span>
-                  )}
-                </fieldset>
-                <fieldset className="choice-setting"><legend>BOT SKILL</legend><GameChoice
-                    aria-label="Bot difficulty"
-                    value={settings.difficulty}
-                    onChange={(value)=>
-                      updateSettings({
-                        ...settings,
-                        difficulty: value as Settings['difficulty'],
-                      })
-                    }
-                  >
-                    <option value="dummy">Targets</option>
-                    <option value="casual">Casual</option>
-                    <option value="normal">Regular</option>
-                    <option value="hard">Veteran</option>
-                  </GameChoice>
-                </fieldset>
-              </div>
-              </details>
+            <section className="play-card" aria-label="Play">
+              <header><span className="play-card-mark" aria-hidden="true"><Crosshair size={23}/></span><h2>{modal==='practice'?'PRACTICE':'PLAY'}</h2>{modal==='practice'&&<button className="practice-back" aria-label="Back to online play" onClick={()=>setModal(null)}>×</button>}</header>
+              {modal==='practice'?<div className="practice-inline">
+                <div className="practice-map"><MapDiagram id={map}/><strong>{maps[map].name}</strong></div>
+                <PracticeStep label="Mode" value={modes[mode]} onStep={d=>setMode(((mode+d+4)%4) as Mode)}/>
+                <PracticeStep label="Time" value={`${duration/60} MIN`} onStep={d=>{const values=[60,180,300,600];setDuration(values[(values.indexOf(duration)+d+4)%4]);}}/>
+                {mode===0&&<PracticeStep label="Bots" value={String(bots)} onStep={d=>{const values=[0,1,3,5,7];setBots(values[(values.indexOf(bots)+d+5)%5]);}}/>}
+                <PracticeStep label="Skill" value={{dummy:"TARGETS",casual:"CASUAL",normal:"REGULAR",hard:"VETERAN"}[settings.difficulty]} onStep={d=>{const values:Settings["difficulty"][]=["dummy","casual","normal","hard"];updateSettings({...settings,difficulty:values[(values.indexOf(settings.difficulty)+d+4)%4]});}}/>
+                <Button className="deploy-button practice-start" disabled={!ready||accountBlocked||!!snap.network?.lobby} onClick={start}>START PRACTICE <ArrowUpRight size={20}/></Button>
+              </div>:<>
+              <label className="play-callsign"><span>PLAYER</span><input aria-label="Your player name" value={playerName} maxLength={16} onChange={e=>savePlayerName(e.target.value)}/></label>
               <Button
-                className="deploy-button"
+                className="deploy-button play-online"
                 disabled={!ready || accountBlocked || snap.network?.status==='connecting' || !!snap.network?.lobby}
                 onClick={() => { enterFullscreen(); setModal(null); arena.current?.joinRoom({url:defaultRoomURL(),name:playerName,mode,map,primary:weapon,operator:OPERATORS.find(o=>o.id===profile.operator)?.variant??0,duration,weaponFinishes:[0,1,2,3].map(w=>weaponFinish(profile,w)),quickPlay:true}); }}
               >
-                {snap.network?.status==='connecting' ? 'JOINING…' : ready ? 'PLAY ONLINE' : 'LOADING…'}
+                {snap.network?.status==='connecting' ? 'JOINING…' : !ready ? 'LOADING…' : accountBlocked ? 'CONNECTING…' : 'PLAY ONLINE'}
                 <ArrowUpRight size={23} />
               </Button>
 
-              <div className="secondary-play-actions"><Button className="practice-button" disabled={!ready||accountBlocked} onClick={()=>setModal('online')}>LOBBY / CUSTOM</Button><Button className="practice-button" disabled={!ready || accountBlocked || !!snap.network?.lobby} onClick={start}>PRACTICE</Button></div>
-              <label className="lobby-player-name">PLAYER<input aria-label="Your player name" value={playerName} maxLength={16} onChange={e=>savePlayerName(e.target.value)}/></label>
+              <div className="play-alternatives"><button disabled={!ready||accountBlocked||!!snap.network?.lobby} onClick={()=>setModal('practice')}>PRACTICE <span aria-hidden="true">›</span></button><button disabled={!ready||accountBlocked} onClick={()=>setModal('online')}>LOBBY <span aria-hidden="true">›</span></button></div>
+              </>}
               {snap.network?.status==='failed'&&<output role="alert">{snap.network.message}</output>}
             </section>
           </section>
@@ -771,7 +717,7 @@ export default function Home() {
           <footer className="lobby-footer">
             <span className="version-link">
               <MousePointer2 size={14} />
-              <a href="https://github.com/lonemagma" target="_blank" rel="noreferrer">v1.6.0</a>
+              <a href="https://github.com/lonemagma" target="_blank" rel="noreferrer">v1.7.0</a>
             </span>
 
             <span className="project-credit"><strong>MADE IN INDIA</strong><span>A <a href="https://pacify.site" target="_blank" rel="noreferrer">pacify</a> project</span></span>
@@ -1104,8 +1050,8 @@ export default function Home() {
                   {snap.benchmark?.complete
                     ? 'Benchmark complete'
                     : snap.network
-                      ? 'PAUSED'
-                      : 'Match paused'}
+                      ? snap.network.removed ? 'REMOVED FROM ROOM' : snap.network.status==='failed' ? 'CONNECTION LOST' : snap.network.status==='reconnecting' ? 'RECONNECTING' : 'PAUSED'
+                      : 'PAUSED'}
                 </h2>
                 {snap.benchmark?.complete && (
                   <div className="performance-report">
@@ -1143,8 +1089,8 @@ export default function Home() {
                   <p className="online-pause-note">
                     {snap.network.status === 'connected'
                       ? snap.network.state === 'waiting'
-                        ? 'Share the room code with a friend. The round starts when they join.'
-                        : 'The round continues while this menu is open.'
+                        ? 'Waiting for players'
+                        : 'Match is still live'
                       : snap.network.message}
                   </p>
                 )}
@@ -1155,12 +1101,13 @@ export default function Home() {
                   }
                   onClick={() => {
                     setError('');
+                    if(snap.network?.removed){arena.current?.lobby();return;}
                     if(snap.network?.status==='failed'){arena.current?.rejoinRoom();return;}
                     if (snap.benchmark?.complete) start();
                     else arena.current?.resume();
                   }}
                 >
-                  {snap.network?.status==='failed'?'REJOIN MATCH':snap.network?.status==='reconnecting'?'RECONNECTING…':snap.benchmark?.complete ? 'START MATCH' : 'RESUME · ENTER'}
+                  {snap.network?.removed?'BACK TO LOBBY':snap.network?.status==='failed'?'REJOIN MATCH':snap.network?.status==='reconnecting'?'RECONNECTING…':snap.benchmark?.complete ? 'START MATCH' : <>RESUME <kbd>ENTER</kbd></>}
                   <ArrowUpRight size={22} />
                 </Button>
                 {snap.captureFailed && (
@@ -1290,7 +1237,7 @@ export default function Home() {
           </button>
         </div>
       )}
-      <ArenaChat name={playerName} room={chatRoom} visible boxVisible={!inGame||snap.phase==='paused'||inGameChat} team={mode>=2} forceOpen={inGameChat} onForceClose={()=>arena.current?.closeChat()} defaultChannel={chatRoom?(mode>=2?'team':'match'):undefined}/><LobbySection open={modal !== null && modal !== 'online'} playing={inGame} kind={modal ?? 'settings'} title={modal === 'loadout' ? 'LOADOUT' : (modal ?? '').toUpperCase()} onClose={()=>setModal(null)}>
+      <ArenaChat name={playerName} room={chatRoom} visible boxVisible={!inGame||snap.phase==='paused'||inGameChat} team={mode>=2} forceOpen={inGameChat} onForceClose={()=>arena.current?.closeChat()} defaultChannel={chatRoom?(mode>=2?'team':'match'):undefined}/><LobbySection open={modal !== null && modal !== 'online' && modal !== 'practice'} playing={inGame} kind={modal ?? 'settings'} title={modal === 'loadout' ? 'LOADOUT' : (modal ?? '').toUpperCase()} onClose={()=>setModal(null)}>
           {(modal === 'settings' || modal === 'controls') && <div className="section-tabs"><button aria-pressed={modal==='settings'} onClick={()=>setModal('settings')}>PREFERENCES</button><button aria-pressed={modal==='controls'} onClick={()=>setModal('controls')}>KEY BINDINGS</button></div>}
           {modal === 'settings' && (
             <>
@@ -1376,3 +1323,5 @@ export default function Home() {
     </main>
   );
 }
+
+function PracticeStep({label,value,onStep}:{label:string;value:string;onStep:(direction:number)=>void}){return <div className="practice-step"><span>{label}</span><div><button aria-label={`Previous ${label.toLowerCase()}`} onClick={()=>onStep(-1)}>‹</button><strong aria-live="polite">{value}</strong><button aria-label={`Next ${label.toLowerCase()}`} onClick={()=>onStep(1)}>›</button></div></div>;}

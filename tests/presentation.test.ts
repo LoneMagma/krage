@@ -710,10 +710,20 @@ await test('hit confirmation ignores shots and remote hits and preserves headsho
 await test('MICA bead aligns with center aim at every supported aspect ratio and finish',()=>{
  for(const aspect of [4/3,16/9,21/9])for(const finish of [0,4,5,6]){
   const gun=makeWeapon(2,true,finish),camera=new PerspectiveCamera(65,aspect,.01,10);
-  gun.position.set(0,-gun.userData.sightHeight,-.58);gun.updateMatrixWorld(true);
+  assert.ok(gun.userData.adsDistance<=-1);
+  gun.position.set(0,-gun.userData.sightHeight,gun.userData.adsDistance);gun.updateMatrixWorld(true);
   const marker=gun.getObjectByName('aim-reference');assert.ok(marker);
   const point=marker.getWorldPosition(new Vector3()).project(camera);
   assert.ok(Math.abs(point.x)<1e-8&&Math.abs(point.y)<1e-8);
   disposeObject(gun);
+ }
+});
+
+await test('MICA aimed view leaves target space clear beside and below the bead',async()=>{
+ const {Raycaster,Vector2}=await import('three');
+ for(const aspect of [4/3,16/9,21/9])for(const finish of [0,4,5,6]){
+ const gun=makeWeapon(2,true,finish),camera=new PerspectiveCamera(65,aspect,.01,10);gun.position.set(0,-gun.userData.sightHeight,gun.userData.adsDistance);gun.updateMatrixWorld(true);
+ for(const x of [-.03,.03]){const ray=new Raycaster();ray.setFromCamera(new Vector2(x,-.025),camera);assert.equal(ray.intersectObject(gun,true).length,0,'receiver must not obscure nearby target');}
+ disposeObject(gun);
  }
 });

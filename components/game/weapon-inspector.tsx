@@ -3,7 +3,7 @@ import { RotateCcw, Rotate3D } from 'lucide-react';
 import { WeaponGlyph } from './identity';
 export function WeaponInspector({weapon,finish}:{weapon:number;finish:number}) {
  const host=useRef<HTMLDivElement>(null),props=useRef({weapon,finish}),controller=useRef<{setModel:(w:number,f:number)=>void;rotate:(n:number)=>void;reset:()=>void}|null>(null);
- const [failed,setFailed]=useState(false);
+ const [failed,setFailed]=useState(false),[loading,setLoading]=useState(true);
  useEffect(()=>{props.current={weapon,finish};controller.current?.setModel(weapon,finish);},[weapon,finish]);
  useEffect(()=>{
   let stopped=false,cleanup=()=>{};
@@ -13,7 +13,7 @@ export function WeaponInspector({weapon,finish}:{weapon:number;finish:number}) {
    let gun:import('three').Group|null=null,raf=0,drag=false,x=0,y=0;
    scene.add(pivot);camera.position.z=4;renderer.setPixelRatio(Math.min(devicePixelRatio,1.25));renderer.domElement.tabIndex=0;renderer.domElement.setAttribute('aria-label','Rotate weapon with arrow keys or drag');el.appendChild(renderer.domElement);
    scene.add(new T.HemisphereLight('#f6f0e2','#293643',2.7));const key=new T.DirectionalLight('#fff1dc',3);key.position.set(-2,3,4);scene.add(key);const rim=new T.DirectionalLight('#8fcfda',2);rim.position.set(2,1,-3);scene.add(rim);
-   const draw=()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>{if(!stopped)renderer.render(scene,camera);});};
+   const draw=()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>{if(!stopped){renderer.render(scene,camera);setLoading(false);}});};
    const fit=()=>{const w=Math.max(1,el.clientWidth),h=Math.max(1,el.clientHeight);renderer.setSize(w,h);const size=new T.Box3().setFromObject(pivot).getSize(new T.Vector3()),aspect=w/h;const height=Math.max(size.y,size.x/aspect,.15)*(props.current.weapon===3?1.42:props.current.weapon===1?1.12:props.current.weapon===0?1.55:1.28);camera.left=-height*aspect/2;camera.right=height*aspect/2;camera.top=height/2;camera.bottom=-height/2;camera.updateProjectionMatrix();draw();};
    const reset=()=>{if(props.current.weapon===3)pivot.rotation.set(Math.PI/2,.18,-.28);else pivot.rotation.set(-.13,-Math.PI/2+.18,.05);fit();};
    const setModel=(w:number,f:number)=>{if(gun){pivot.remove(gun);G.disposeObject(gun);}gun=G.makeWeapon(w,false,f);gun.position.sub(new T.Box3().setFromObject(gun).getCenter(new T.Vector3()));pivot.add(gun);reset();};
@@ -28,5 +28,5 @@ export function WeaponInspector({weapon,finish}:{weapon:number;finish:number}) {
   }).catch(()=>{if(!stopped)setFailed(true);});
   return()=>{stopped=true;cleanup();};
  },[]);
- return <div className="weapon-inspector"><div className="inspector-canvas" ref={host}/>{failed&&<WeaponGlyph id={weapon} finish={finish}/>}<div className="inspector-controls"><button aria-label="Rotate weapon left" onClick={()=>controller.current?.rotate(-.3)}><Rotate3D size={17}/></button><button aria-label="Reset weapon view" onClick={()=>controller.current?.reset()}><RotateCcw size={17}/></button><button aria-label="Rotate weapon right" onClick={()=>controller.current?.rotate(.3)}><Rotate3D size={17}/></button></div></div>;
+ return <div className="weapon-inspector"><div className="inspector-canvas" ref={host}/>{(loading||failed)&&<div className="inspector-placeholder" aria-label={loading?"Loading weapon preview":"Weapon preview"}><WeaponGlyph id={weapon} finish={finish}/></div>}<div className="inspector-controls"><button aria-label="Rotate weapon left" onClick={()=>controller.current?.rotate(-.3)}><Rotate3D size={17}/></button><button aria-label="Reset weapon view" onClick={()=>controller.current?.reset()}><RotateCcw size={17}/></button><button aria-label="Rotate weapon right" onClick={()=>controller.current?.rotate(.3)}><Rotate3D size={17}/></button></div></div>;
 }

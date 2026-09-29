@@ -4,7 +4,7 @@ export const accountsConfigured=!!(process.env.NEXT_PUBLIC_SUPABASE_URL&&process
 let client:SupabaseClient|null=null;
 export function authClient(){
  if(!accountsConfigured)return null;
- return client??=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!,process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,{auth:{flowType:'pkce',detectSessionInUrl:true,persistSession:true,autoRefreshToken:true}});
+ return client??=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!,process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,{global:{fetch:(input,init)=>fetch(input,{...init,signal:AbortSignal.any([...(init?.signal?[init.signal]:[]),AbortSignal.timeout(10000)])})},auth:{flowType:'pkce',detectSessionInUrl:true,persistSession:true,autoRefreshToken:true}});
 }
 export async function accountRequest<T=unknown>(token:string,action?:Record<string,unknown>):Promise<T>{
  const url=new URL(defaultRoomURL());url.protocol=url.protocol==='wss:'?'https:':'http:';url.pathname='/account';url.search='';
