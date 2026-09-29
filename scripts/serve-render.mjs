@@ -37,7 +37,7 @@ const server = http.createServer((req, res) => {
         if (pathname.endsWith('/')) pathname += 'index.html';
 
         const filePath = path.normalize(path.join(root, pathname));
-        if (!filePath.startsWith(root)) {
+        if (!filePath.startsWith(root+path.sep)) {
             return send(res, 403, 'Forbidden');
         }
 

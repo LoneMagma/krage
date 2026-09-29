@@ -706,3 +706,14 @@ await test('hit confirmation ignores shots and remote hits and preserves headsho
  assert.equal(hitConfirmation([head,body])?.head,true);
  assert.deepEqual(hitConfirmation([head,body]),hitConfirmation([body,head]));
 });
+
+await test('MICA bead aligns with center aim at every supported aspect ratio and finish',()=>{
+ for(const aspect of [4/3,16/9,21/9])for(const finish of [0,4,5,6]){
+  const gun=makeWeapon(2,true,finish),camera=new PerspectiveCamera(65,aspect,.01,10);
+  gun.position.set(0,-gun.userData.sightHeight,-.58);gun.updateMatrixWorld(true);
+  const marker=gun.getObjectByName('aim-reference');assert.ok(marker);
+  const point=marker.getWorldPosition(new Vector3()).project(camera);
+  assert.ok(Math.abs(point.x)<1e-8&&Math.abs(point.y)<1e-8);
+  disposeObject(gun);
+ }
+});

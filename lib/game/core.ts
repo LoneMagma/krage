@@ -44,6 +44,11 @@ export const DEFAULT_SETTINGS: Settings = {
   slideKey: 'KeyC',
 };
 export const EQUIP_SECONDS = 0.3;
+export const BOT_NAMES = ['Rivet','Vex','Knox','Dash','Jett','Crux','Sparks','Rally'];
+export function damageFalloff(weapon:number,distance:number){
+ if(weapon===2)return distance<=8?1:distance<24?1-(distance-8)*.9/16:Math.max(0,.1*(30-distance)/6);
+ return weapon===0?clamp(1-(distance-12)/85,.65,1):1;
+}
 export const GUNS = [
   {
     name: 'ECHO / SMG',
@@ -51,7 +56,7 @@ export const GUNS = [
     mag: 35,
     damage: 20,
     head: 1.85,
-    interval: 0.084,
+    interval: 0.080,
     reload: 1.2,
     spread: 0.0007,
     recoil: 0.011,
@@ -65,7 +70,7 @@ export const GUNS = [
     mag: 25,
     damage: 32,
     head: 2.1,
-    interval: 0.12,
+    interval: 0.126,
     reload: 1.52,
     spread: 0.00015,
     recoil: 0.024,
@@ -80,10 +85,10 @@ export const GUNS = [
     damage: 17,
     head: 1.4,
     interval: 0.31,
-    reload: 1.64,
+    reload: 1.45,
     spread: 0.052,
     recoil: 0.048,
-    range: 42,
+    range: 30,
     pellets: 12,
     speed: 0.97,
   },
@@ -809,7 +814,7 @@ export class Match {
           : mode === 2
             ? 4
             : 6;
-    const names = ['YOU', 'Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon', 'Zeta', 'Eta'];
+    const names = ['YOU', ...BOT_NAMES];
     for (let i = 0; i < count; i++) {
       const team = mode < 2 ? i : i % 2;
       const a: Actor = {
@@ -1171,12 +1176,7 @@ export class Match {
             : undefined,
       });
       if (hit && this.enemy(a, hit) && hit.shield <= 0) {
-        const falloff =
-          a.weapon === 2
-            ? clamp(1 - Math.max(0, distance - 6) / 48, 0.25, 1)
-            : a.weapon === 0
-              ? clamp(1 - (distance - 12) / 85, 0.65, 1)
-              : 1;
+        const falloff = damageFalloff(a.weapon,distance);
         if(a.weapon===2&&distance<10&&!pushed.has(hit.id)){
           const force=2*(1-distance/20),horizontal=Math.hypot(d.x,d.z);
           if(horizontal>.01){hit.vel.x+=d.x/horizontal*force;hit.vel.z+=d.z/horizontal*force;}

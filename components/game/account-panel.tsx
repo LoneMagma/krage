@@ -21,18 +21,16 @@ export function AccountPanel({ account }: { account: ReturnType<typeof useAccoun
     [code, setCode] = useState(''),
     [sent, setSent] = useState(false),
     [busy, setBusy] = useState(false),
-    [message, setMessage] = useState(''),
-    [pendingAction, setPendingAction] = useState<(() => Promise<void>) | null>(null);
+    [message, setMessage] = useState('');
   const dialog = useRef<HTMLDialogElement>(null);
   const connected = account.session && !account.session.user.is_anonymous;
   const label = account.session?.user.email ?? '';
   useEffect(() => {
-    if (open) dialog.current?.showModal();
+    if (open||account.decision) dialog.current?.showModal();
     else {
       dialog.current?.close();
-      setPendingAction(null);
     }
-  }, [open]);
+  }, [open,account.decision]);
   async function run(fn: () => Promise<void>) {
     if (busy) return;
     setBusy(true);
@@ -59,48 +57,20 @@ export function AccountPanel({ account }: { account: ReturnType<typeof useAccoun
       <dialog
         ref={dialog}
         className="account-panel"
-        onCancel={() => setOpen(false)}
-        onClose={() => setOpen(false)}
+        onCancel={e=>{if(account.decision)e.preventDefault();else setOpen(false)}}
+        onClose={()=>setOpen(false)}
       >
         <header>
           <h2>{connected ? 'ACCOUNT' : 'SAVE YOUR PROGRESS'}</h2>
-          <button aria-label="Close account" onClick={() => setOpen(false)}>
+          <button disabled={!!account.decision} aria-label="Close account" onClick={() => setOpen(false)}>
             <X size={18} />
           </button>
         </header>
 
         {!account.configured ? (
           <p className="account-note">Account sign-in is not enabled yet.</p>
-        ) : pendingAction ? (
-          <div className="account-warning">
-            <p>
-              If the account you sign into already has its own saved progress, this
-              guest session's progress will <strong>not</strong> be merged — it will be
-              replaced and lost. Signing into a brand-new account keeps this guest
-              progress instead.
-            </p>
-            <div className="account-warning-actions">
-              <button
-                type="button"
-                className="account-linklike"
-                disabled={busy}
-                onClick={() => setPendingAction(null)}
-              >
-                CANCEL
-              </button>
-              <button
-                className="account-submit"
-                disabled={busy}
-                onClick={() => {
-                  const action = pendingAction;
-                  setPendingAction(null);
-                  void run(action);
-                }}
-              >
-                CONTINUE
-              </button>
-            </div>
-          </div>
+        ) : account.decision ? (
+          <div className="account-warning"><h3>EXISTING ACCOUNT FOUND</h3><p><strong>{account.decision.data.name}</strong> · {account.decision.data.profile.balance.toLocaleString()} KR · {account.decision.data.profile.lifetime.matches} matches</p><p>Continue with this account’s saved progress. Your current guest progress will not be merged and will no longer be active on this device.</p><div className="account-warning-actions"><button disabled={busy} onClick={()=>void run(async()=>{await account.resolveExisting(false)})}>KEEP PLAYING AS GUEST</button><button disabled={busy} onClick={()=>void run(async()=>{await account.resolveExisting(true)})}>USE ACCOUNT SAVE</button></div></div>
         ) : connected ? (
           <>
             <div className="account-identity">
@@ -130,7 +100,8 @@ export function AccountPanel({ account }: { account: ReturnType<typeof useAccoun
                 disabled={busy}
                 onClick={() =>
                   void run(async () => {
-                    const { error } = await client!.auth.signOut();
+                    await account.flush();
+                    const { error } = await client!.auth.signOut({scope:'local'});
                     if (error) throw error;
                     setOpen(false);
                   })
@@ -149,7 +120,7 @@ export function AccountPanel({ account }: { account: ReturnType<typeof useAccoun
               className="account-google"
               disabled={busy || account.loading}
               onClick={() =>
-                setPendingAction(() => async () => {
+                void run(async () => {
                   await account.preserveGuest();
                   const { error } = await client!.auth.signInWithOAuth({
                     provider: 'google',
@@ -170,7 +141,7 @@ export function AccountPanel({ account }: { account: ReturnType<typeof useAccoun
               onSubmit={(e) => {
                 e.preventDefault();
                 if (sent) {
-                  setPendingAction(() => async () => {
+                  void run(async () => {
                     await account.preserveGuest();
                     const { error } = await client!.auth.verifyOtp({
                       email,
@@ -195,7 +166,7 @@ export function AccountPanel({ account }: { account: ReturnType<typeof useAccoun
                 });
               }}
             >
-              <label>
+              <label>EMAIL
                 <input
                   type="email"
                   autoComplete="email"
@@ -207,7 +178,7 @@ export function AccountPanel({ account }: { account: ReturnType<typeof useAccoun
                 />
               </label>
               {sent && (
-                <label>
+                <label>VERIFICATION CODE
                   <input
                     autoComplete="one-time-code"
                     inputMode="numeric"
@@ -239,8 +210,9 @@ export function AccountPanel({ account }: { account: ReturnType<typeof useAccoun
             </form>
           </>
         )}
-        {(message || account.error) && <p role="status" className="account-status">{message || account.error}</p>}
-        {busy && <p role="status" className="account-status">WORKING…</p>}
+        {(message || account.error) && <output className="account-status">{message || account.error}</output>}
+        {account.error&&<button disabled={busy} onClick={()=>void run(async()=>{await account.refresh()})}>RETRY CONNECTION</button>}
+        {busy && <output className="account-status">WORKING…</output>}
       </dialog>
     </>
   );

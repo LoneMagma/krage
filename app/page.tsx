@@ -3,10 +3,11 @@ import { matchReward } from '@/lib/game/progression';
 import { ArenaChat } from '@/components/game/arena-chat';
 import { GameChoice } from '@/components/game/game-choice';
 import { AccountPanel } from '@/components/game/account-panel';
+import {accountsConfigured} from '@/lib/account/client';
 import { useAccount } from '@/lib/account/use-account';
 import { type RoomClient, defaultRoomURL } from '@/lib/game/room-client';
 import Link from 'next/link';
-import { useEffect, useRef, useState, type PointerEvent } from 'react';
+import { useEffect, useEffectEvent, useRef, useState, type PointerEvent } from 'react';
 import {
   ArrowUpRight,
   Crosshair,
@@ -49,6 +50,7 @@ import {
   refreshProfile,
   recordMatch,
   type Profile,
+  type MatchReceipt,
 } from '@/lib/game/progression';
 import { KeyBindings } from '@/components/game/key-bindings';
 import { weaponFinish } from '@/lib/game/progression';
@@ -258,7 +260,6 @@ export default function Home() {
     [settings, setSettings] = useState<Settings>({ ...DEFAULT_SETTINGS });
   const [duration,setDuration]=useState(300);
   const [playerName,setPlayerName] = useState('PLAYER');
-  const savePlayerName = (name: string) => { setPlayerName(name); try { localStorage.setItem('krage-player-name',name); } catch {} };
   const [choicesLoaded, setChoicesLoaded] = useState(false);
   const [ready, setReady] = useState(false),
     [error, setError] = useState(''),
@@ -272,6 +273,7 @@ export default function Home() {
     [frags, setFrags] = useState<{id:number;message:string}[]>([]),
     [touch, setTouch] = useState(false),
     [pauseSettings, setPauseSettings] = useState(false);
+  const mutationRef=useRef(false);const [accountBusy,setAccountBusy]=useState(false);
   const [profile, setProfile] = useState<Profile>(() => newProfile()),
     [profileLoaded, setProfileLoaded] = useState(false);
   const [reward,setReward]=useState<{id:number;title:string;amount:number}|null>(null);
@@ -279,6 +281,29 @@ export default function Home() {
   const [previewRotation,setPreviewRotation]=useState(0);
   const rotateCharacter=(delta:number)=>{arena.current?.rotateLobby(delta);setPreviewRotation(p=>(p+delta*180/Math.PI+360)%360);};
   const [chatRoom,setChatRoom]=useState<RoomClient|null>(null);
+  const account = useAccount(
+    ready&&profileLoaded,
+    data=>{
+      setProfile(data.profile);setPlayerName(data.name);
+      setSettings(previous=>{const next={...previous,...data.preferences};arena.current?.setSettings(next);return next;});
+    },
+    ()=>{arena.current?.lobby();setProfile(newProfile());setPlayerName('PLAYER');setLastAward(0);setSettings(previous=>{const next={...DEFAULT_SETTINGS,quality:previous.quality};arena.current?.setSettings(next);return next;});},
+  );
+  const handleMatchComplete=useEffectEvent((receipt:MatchReceipt)=>{
+    if(accountsConfigured){setLastAward(0);setTimeout(()=>void account.refresh().catch(()=>{}),1500);return;}
+    setProfile(p=>recordMatch(p,receipt));setLastAward(receipt.eligible&&receipt.seconds>=30&&receipt.id?matchReward(receipt):0);
+  });
+  const accountBlocked=account.active&&(!account.connected||account.loading||!!account.decision);
+  const cloudAction=async(action:{type:string;id:string;weapon?:number})=>{
+    if(mutationRef.current||accountBlocked)return;mutationRef.current=true;setAccountBusy(true);
+    const before=profile;
+    try{const result=await account.act(action);
+      const amount=result.data.profile.balance-before.balance;
+      arena.current?.audio.reward();setReward({id:Date.now(),title:action.type==='claim'?'REWARD CLAIMED':action.type==='buy'?'UNLOCKED':'EQUIPPED',amount:Math.max(0,amount)});
+    }catch(e){setError(e instanceof Error?e.message:'Save failed');}finally{mutationRef.current=false;setAccountBusy(false);}
+  };
+  const chooseOperator=(direction:number)=>{const id=OPERATORS[(OPERATORS.findIndex(o=>o.id===profile.operator)+OPERATORS.length+direction)%OPERATORS.length].id;if(account.active)void cloudAction({type:'equip',id});else setProfile(p=>({...p,operator:id}));};
+  const savePlayerName = (name: string) => { setPlayerName(name);account.preferences({name}); try { localStorage.setItem('krage-player-name',name); } catch {} };
   const claimable=claimableCount(profile);
   useEffect(()=>{if(!reward)return;const timer=setTimeout(()=>setReward(null),2300);return()=>clearTimeout(timer);},[reward]);
   const updateProfile=(next:Profile)=>{
@@ -353,7 +378,7 @@ export default function Home() {
         try {
           setSettings(restored);
           try {
-            setProfile(loadProfile(localStorage.getItem('krage-practice-v1')));
+            if(!accountsConfigured)setProfile(loadProfile(localStorage.getItem('krage-practice-v1')));
           } catch {
             setProfile(newProfile());
           }
@@ -370,10 +395,7 @@ export default function Home() {
             if (snapshot.network && snapshot.phase !== 'menu') setModal(null);
             if (snapshot.network?.removed) setModal(null);
           };
-          instance.onMatchComplete = (receipt) => {
-            setProfile((p) => recordMatch(p, receipt));
-            setLastAward(receipt.eligible&&receipt.seconds>=30&&receipt.id?matchReward(receipt):0);
-          };
+          instance.onMatchComplete = receipt=>handleMatchComplete(receipt);
           instance.onFeed = setFeed;
           instance.onError = setError;
           instance.onScoreboard = setBoard;
@@ -394,7 +416,7 @@ export default function Home() {
             if ([0,1,2,3].includes(saved.map)) { setMap(saved.map); instance.setMap(saved.map); }
             if ([0,1,2].includes(saved.weapon)) { setWeapon(saved.weapon); instance.setPrimaryPreview(saved.weapon); }
           } catch {}
-          try { savePlayerName(localStorage.getItem('krage-player-name') || `Player${Math.floor(1000+Math.random()*9000)}`); } catch {}
+          try { if(!accountsConfigured)setPlayerName(localStorage.getItem('krage-player-name') || `Player${Math.floor(1000+Math.random()*9000)}`); } catch {}
           setChoicesLoaded(true);
           setReady(true);
           if (new URLSearchParams(location.search).has('room')) setModal('online');
@@ -428,7 +450,7 @@ export default function Home() {
   useEffect(() => {
     let timer:ReturnType<typeof setTimeout>;
     const refresh=()=>{
-      setProfile(p=>refreshProfile(p));
+      if(!accountsConfigured)setProfile(p=>refreshProfile(p));
       clearTimeout(timer);
       const now=Date.now();timer=setTimeout(refresh,86400000-now%86400000+50);
     };
@@ -437,7 +459,7 @@ export default function Home() {
     return()=>{clearTimeout(timer);window.removeEventListener('focus',refresh);document.removeEventListener('visibilitychange',visible);};
   }, []);
   useEffect(() => {
-    if (profileLoaded) {
+    if (profileLoaded&&!accountsConfigured) {
       try {
         localStorage.setItem('krage-practice-v1', JSON.stringify(profile));
       } catch {}
@@ -467,7 +489,8 @@ export default function Home() {
       const audio = arena.current?.audio;
       audio?.start();
       if (event.type === 'pointerdown' && (event.target as Element)?.closest('button, select, summary')) audio?.click();
-      if (musicState.current.menu && musicState.current.volume > 0) void music.play().catch(() => {});
+      music.dataset.unlocked='true';
+      if (music.paused && musicState.current.menu && musicState.current.volume > 0) void music.play().catch(() => {});
     };
     document.addEventListener('pointerdown', interact);
     document.addEventListener('keydown', interact);
@@ -478,23 +501,17 @@ export default function Home() {
     if (!music) return;
     music.volume = Math.min(1, 0.4 * settings.volume);
     if (snap.phase !== 'menu' || settings.musicEnabled === false || settings.volume === 0) music.pause();
-    else void music.play().catch(() => {});
+    else if(music.paused&&music.dataset.unlocked==='true')void music.play().catch(() => {});
   }, [snap.phase, settings.volume, settings.musicEnabled]);
   const updateSettings = (s: Settings) => {
+    const preferences=Object.fromEntries(Object.entries(s).filter(([k,v])=>JSON.stringify(v)!==JSON.stringify(settings[k as keyof Settings])));
+    account.preferences({preferences});
     setSettings(s);
     arena.current?.setSettings(s);
     try {
       localStorage.setItem('krage-settings-v03', JSON.stringify(s));
     } catch {}
   };
-  const account = useAccount(
-    true,
-    (data) => {
-      setProfile(data.profile);
-      updateSettings({ ...settings, ...data.preferences });
-    },
-    () => {},
-  );
   const copyInvite = async () => {
     if (!snap.network?.room) return;
     const link = new URL(location.href); link.search = ''; link.searchParams.set('room', snap.network.room);
@@ -513,7 +530,7 @@ export default function Home() {
     setBoard(false);
     setPauseSettings(false);
     arena.current?.start(mode, map, bots, settings.difficulty, weapon);
-    if(arena.current)arena.current.match.time=arena.current.match.duration=duration;
+    if(arena.current){arena.current.match.time=arena.current.match.duration=duration;arena.current.match.player.name=playerName;}
   };
   const selectMap = (id: number) => {
     setMap(id);
@@ -656,7 +673,7 @@ export default function Home() {
               </section>
               <div className="hero-actions">
                 <div className="character-toggle" aria-label="Character">
-                  <button aria-label="Previous character" onClick={()=>setProfile(p=>({...p,operator:OPERATORS[(OPERATORS.findIndex(o=>o.id===p.operator)+OPERATORS.length-1)%OPERATORS.length].id}))}>‹</button><strong>{OPERATORS.find(o=>o.id===profile.operator)?.name.toUpperCase()}</strong><button aria-label="Next character" onClick={()=>setProfile(p=>({...p,operator:OPERATORS[(OPERATORS.findIndex(o=>o.id===p.operator)+1)%OPERATORS.length].id}))}>›</button>
+                  <button aria-label="Previous character" disabled={accountBusy||accountBlocked} onClick={()=>chooseOperator(-1)}>‹</button><strong>{OPERATORS.find(o=>o.id===profile.operator)?.name.toUpperCase()}</strong><button aria-label="Next character" disabled={accountBusy||accountBlocked} onClick={()=>chooseOperator(1)}>›</button>
                 </div>
                 <button className="hero-loadout" aria-haspopup="dialog" onClick={() => setModal('loadout')}>LOADOUT <span>{GUNS[weapon].short}</span></button>
               </div>
@@ -731,21 +748,21 @@ export default function Home() {
               </details>
               <Button
                 className="deploy-button"
-                disabled={!ready || snap.network?.status==='connecting' || !!snap.network?.lobby}
+                disabled={!ready || accountBlocked || snap.network?.status==='connecting' || !!snap.network?.lobby}
                 onClick={() => { enterFullscreen(); setModal(null); arena.current?.joinRoom({url:defaultRoomURL(),name:playerName,mode,map,primary:weapon,operator:OPERATORS.find(o=>o.id===profile.operator)?.variant??0,duration,weaponFinishes:[0,1,2,3].map(w=>weaponFinish(profile,w)),quickPlay:true}); }}
               >
                 {snap.network?.status==='connecting' ? 'JOINING…' : ready ? 'PLAY ONLINE' : 'LOADING…'}
                 <ArrowUpRight size={23} />
               </Button>
 
-              <div className="secondary-play-actions"><Button className="practice-button" disabled={!ready} onClick={()=>setModal('online')}>LOBBY / CUSTOM</Button><Button className="practice-button" disabled={!ready || !!snap.network?.lobby} onClick={start}>PRACTICE</Button></div>
+              <div className="secondary-play-actions"><Button className="practice-button" disabled={!ready||accountBlocked} onClick={()=>setModal('online')}>LOBBY / CUSTOM</Button><Button className="practice-button" disabled={!ready || accountBlocked || !!snap.network?.lobby} onClick={start}>PRACTICE</Button></div>
               <label className="lobby-player-name">PLAYER<input aria-label="Your player name" value={playerName} maxLength={16} onChange={e=>savePlayerName(e.target.value)}/></label>
               {snap.network?.status==='failed'&&<output role="alert">{snap.network.message}</output>}
             </section>
           </section>
           {modal === 'online' && <aside className="friend-lobby-panel" aria-label="Custom lobby">
             <header><h2>LOBBY</h2><button className="back-to-play" aria-label="Return to play" onClick={()=>setModal(null)}>← PLAY</button></header>
-            <RoomPanel weaponFinishes={[0,1,2,3].map(w=>weaponFinish(profile,w))} mode={mode} map={map} primary={weapon} operator={OPERATORS.find(o=>o.id===profile.operator)?.variant??0} name={playerName} onName={savePlayerName} ready={ready} info={snap.network}
+            <RoomPanel weaponFinishes={[0,1,2,3].map(w=>weaponFinish(profile,w))} mode={mode} map={map} primary={weapon} operator={OPERATORS.find(o=>o.id===profile.operator)?.variant??0} name={playerName} onName={savePlayerName} ready={ready&&!accountBlocked} info={snap.network}
               onConnect={options=>arena.current?.joinRoom(options)}
               onChange={change=>arena.current?.roomClient?.lobby(change)}
               onKick={id=>arena.current?.roomClient?.kick(id)} onStart={()=>arena.current?.roomClient?.startMatch()}
@@ -754,7 +771,7 @@ export default function Home() {
           <footer className="lobby-footer">
             <span className="version-link">
               <MousePointer2 size={14} />
-              <a href="https://github.com/lonemagma" target="_blank" rel="noreferrer">v1.5.0</a>
+              <a href="https://github.com/lonemagma" target="_blank" rel="noreferrer">v1.6.0</a>
             </span>
 
             <span className="project-credit"><strong>MADE IN INDIA</strong><span>A <a href="https://pacify.site" target="_blank" rel="noreferrer">pacify</a> project</span></span>
@@ -1319,9 +1336,9 @@ export default function Home() {
           {modal === 'controls' && (
             <KeyBindings settings={settings} onChange={updateSettings} />
           )}
-          {modal === 'challenges' && <Challenges profile={profile} onChange={updateProfile}/>}
+          {modal === 'challenges' && <Challenges profile={profile} onChange={updateProfile} onAction={account.active?cloudAction:undefined} busy={accountBusy||accountBlocked}/>}
           {modal === 'locker' && (
-            <Locker profile={profile} onChange={updateProfile} />
+            <Locker profile={profile} onChange={updateProfile} onAction={account.active?cloudAction:undefined} busy={accountBusy||accountBlocked}/>
           )}
           {modal === 'loadout' && (
             <div className="loadout-grid">

@@ -3,7 +3,7 @@ import { Check, Lock, Paintbrush } from 'lucide-react';
 import { WeaponInspector } from './weapon-inspector';
 import { CATALOG, equipWeaponFinish, purchase, weaponFinish, type Profile } from '@/lib/game/progression';
 import { WeaponGlyph } from './identity';
-export function Locker({profile,onChange}:{profile:Profile;onChange:(profile:Profile)=>void}) {
+export function Locker({profile,onChange,onAction,busy=false}:{profile:Profile;onChange:(profile:Profile)=>void;onAction?:(a:{type:string;id:string;weapon?:number})=>void;busy?:boolean}) {
  const [weapon,setWeapon]=useState(0),[selection,setSelection]=useState(()=>profile.weaponFinishes?.[0]??'finish-factory');
  const skins=CATALOG.filter(item=>'weapon' in item&&item.weapon===weapon).sort((a,b)=>a.cost-b.cost);
  const factory={id:'finish-factory',name:'Factory',variant:0,color:'#a7a8a1',cost:0};
@@ -15,7 +15,7 @@ export function Locker({profile,onChange}:{profile:Profile;onChange:(profile:Pro
   <div className="arsenal-weapons" aria-label="Choose weapon">{['ECHO','KILO','MICA','EDGE'].map((name,id)=><button key={name} aria-pressed={weapon===id} onClick={()=>chooseWeapon(id)}><WeaponGlyph id={id} finish={weaponFinish(profile,id)}/><strong>{name}</strong></button>)}</div>
   <div className="arsenal-inspection"><button className="skin-arrow previous" aria-label="Previous skin" onClick={()=>cycle(-1)}>‹</button><button className="skin-arrow next" aria-label="Next skin" onClick={()=>cycle(1)}>›</button><WeaponInspector weapon={weapon} finish={item.variant}/><div className="arsenal-weapon-name"><small>{['SUBMACHINE GUN','ASSAULT RIFLE','DOUBLE BARREL','BLADE'][weapon]}</small><strong>{['ECHO','KILO','MICA','EDGE'][weapon]}</strong></div></div>
   <div className="arsenal-finish"><div><small><Paintbrush size={13}/> {item.variant===0?'FACTORY':'note' in item?item.note:'STANDARD'}</small><h3>{item.name.split(' / ').at(-1)}</h3>{!owned&&<span className="skin-progress">{Math.min(profile.balance,item.cost).toLocaleString()} / {item.cost.toLocaleString()} KR</span>}</div><div className="finish-swatches" aria-label="Choose finish">{finishes.map(f=><button key={f.id} title={f.name.split(' / ').at(-1)} aria-label={f.name.split(' / ').at(-1)} aria-pressed={item.id===f.id} onClick={()=>setSelection(f.id)} style={{'--swatch':f.color} as React.CSSProperties}>{f.id!=='finish-factory'&&!profile.owned.includes(f.id)?<Lock size={12}/>:weaponFinish(profile,weapon)===f.variant?<Check size={14}/>:null}</button>)}</div>
-   <button className="arsenal-equip" disabled={equipped||(!owned&&profile.balance<item.cost)} onClick={()=>onChange(owned?equipWeaponFinish(profile,weapon,item.id):purchase(profile,item.id))}>{equipped?<><Check size={15}/> EQUIPPED</>:owned?'EQUIP':item.cost===0?'UNLOCK FREE':profile.balance<item.cost?`${item.cost-profile.balance} KR NEEDED`:`BUY · ${item.cost} KR`}</button>
+   <button className="arsenal-equip" disabled={busy||equipped||(!owned&&profile.balance<item.cost)} onClick={()=>onAction?onAction(owned?{type:'equip',id:item.id,weapon}:{type:'buy',id:item.id}):onChange(owned?equipWeaponFinish(profile,weapon,item.id):purchase(profile,item.id))}>{equipped?<><Check size={15}/> EQUIPPED</>:owned?'EQUIP':item.cost===0?'UNLOCK FREE':profile.balance<item.cost?`${item.cost-profile.balance} KR NEEDED`:`BUY · ${item.cost} KR`}</button>
   </div>
  </div>;
 }

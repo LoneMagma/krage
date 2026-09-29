@@ -106,7 +106,7 @@ export class RoomClient {
     this.lastMessage = Date.now();
     socket.onopen = async () => {
       if(this.socket!==socket||this.stopped){socket.close();return;}
-      const accessToken = await accountToken(address.href).catch(()=>undefined);
+      let accessToken:string|undefined;try{accessToken=await accountToken(address.href);}catch(e){this.stop();this.notify({status:'failed',message:e instanceof Error?e.message:'Sign in again'});return;}
       if(this.socket!==socket||this.stopped){socket.close();return;}
       socket.send(
         JSON.stringify(

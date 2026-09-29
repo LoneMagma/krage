@@ -3,7 +3,7 @@ import { LagHistory } from './lag-history.mjs';
 import { randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 const deriveKey = promisify(scrypt);
-import { Match, emptyInput } from '../.server-build/core.js';
+import { Match, emptyInput, BOT_NAMES } from '../.server-build/core.js';
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 export function sanitizeInput(message) {
   if (!message || !Number.isSafeInteger(message.seq) || message.seq < 0)
@@ -117,7 +117,7 @@ export class Room {
     actor.bot = true;
     actor.weaponFinishes=[0,0,0,0];
     actor.botDifficulty=this.public?['casual','normal','hard'][actor.id%3]:this.difficulty;
-    actor.name = ['Alpha','Beta','Gamma','Delta','Epsilon','Zeta','Eta','Theta'][actor.id];
+    actor.name = BOT_NAMES[actor.id % BOT_NAMES.length];
     actor.operator = this.mode >= 2 ? actor.team : actor.id % 2;
     actor.primary = actor.id % 3;
     actor.kills = actor.deaths = actor.score = actor.headshots = actor.hits = actor.shots = actor.meleeKills = 0;

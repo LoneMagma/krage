@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { KrCredit } from './identity';
 import { Check, Crosshair, Trophy, Swords, Flag } from 'lucide-react';
 import { challenges, claimChallenge, type Profile } from '@/lib/game/progression';
-export function Challenges({profile,onChange}:{profile:Profile;onChange:(profile:Profile)=>void}) {
+export function Challenges({profile,onChange,onAction,busy=false}:{profile:Profile;onChange:(profile:Profile)=>void;onAction?:(a:{type:string;id:string})=>void;busy?:boolean}) {
  const [period,setPeriod]=useState<'daily'|'weekly'>('daily');
  const [now,setNow]=useState(()=>Date.now());
  useEffect(()=>{const timer=setInterval(()=>setNow(Date.now()),30000);return()=>clearInterval(timer);},[]);
@@ -12,6 +12,6 @@ export function Challenges({profile,onChange}:{profile:Profile;onChange:(profile
  <div className="mission-list">{list.map(c=>{
  const progress=Math.min(c.target,profile[c.period][c.metric]),claimed=profile.claimed.includes(c.id),complete=progress>=c.target;
  const Icon=c.metric==='wins'?Trophy:c.metric==='meleeKills'?Swords:c.metric==='matches'?Flag:Crosshair;
- return <article key={c.id} className={claimed?'claimed':complete?'claimable':''}><div className="mission-icon">{claimed?<Check/>:<Icon/>}</div><div className="mission-details"><h3>{c.title}</h3><div className="mission-progress"><progress max={c.target} value={progress} aria-label={c.title}/><span>{progress}/{c.target}</span></div><small>{c.metric==='meleeKills'?'EDGE eliminations':c.metric==='kills'?'Eliminations':c.metric.toUpperCase()}</small></div><div className="mission-reward"><strong><KrCredit/> +{c.reward}</strong><button disabled={claimed||!complete} onClick={()=>onChange(claimChallenge(profile,c.id))}>{claimed?'CLAIMED':complete?'CLAIM':'IN PROGRESS'}</button></div></article>;
+ return <article key={c.id} className={claimed?'claimed':complete?'claimable':''}><div className="mission-icon">{claimed?<Check/>:<Icon/>}</div><div className="mission-details"><h3>{c.title}</h3><div className="mission-progress"><progress max={c.target} value={progress} aria-label={c.title}/><span>{progress}/{c.target}</span></div><small>{c.metric==='meleeKills'?'EDGE eliminations':c.metric==='kills'?'Eliminations':c.metric.toUpperCase()}</small></div><div className="mission-reward"><strong><KrCredit/> +{c.reward}</strong><button disabled={busy||claimed||!complete} onClick={()=>onAction?onAction({type:'claim',id:c.id}):onChange(claimChallenge(profile,c.id))}>{claimed?'CLAIMED':complete?'CLAIM':'IN PROGRESS'}</button></div></article>;
  })}</div></div>;
 }

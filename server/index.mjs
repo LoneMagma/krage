@@ -11,7 +11,7 @@ export function createArenaServer({
   const rooms = new Map(),
     peers = new Map();
   let pendingAuth = 0;
-  const accounts=createAccounts();
+  const accounts=createAccounts({onChange:(id,data)=>{for(const room of rooms.values())for(const slot of room.slots.values())if(slot.accountId===id)room.match.actors[slot.id].name=data.name;}});
   const http = createServer(async (req, res) => {
     if(await accounts.handle(req,res,origins))return;
     if (req.url === '/health') {
@@ -174,9 +174,11 @@ export function createArenaServer({
           }
         }
         else if (m.type === 'lobby') {
+          if(peer.lobbySaving)throw Error('Save in progress');peer.lobbySaving=true;try{
           const slot=peer.room?.slots.get(peer.token);
           if(slot?.accountId){const row=await accounts.get(slot.accountId);if(row.data.migratedTo)throw Error('Sign in again');Object.assign(m,accounts.cosmetics(row.data),{name:row.data.name});}
           peer.room?.lobbyChange(peer.token,m);
+          }finally{peer.lobbySaving=false;}
         }
         else if (m.type === 'rematch') peer.room?.rematch(peer.token);
         else if (m.type === 'start') peer.room?.startMatch(peer.token);
@@ -203,15 +205,17 @@ export function createArenaServer({
     let steps = 0;
     while (accumulator >= 1 / 120 && steps++ < 12) {
       for (const room of rooms.values()) {
-        room.step();
-        if(room.match.ended&&room.accountRewardRound!==room.roundId){
-          room.accountRewardRound=room.roundId;
+        if(!room.match.ended||room.accountRewardRound===room.roundId)room.step();
+        if(room.match.ended&&room.accountRewardRound!==room.roundId&&Date.now()>=(room.rewardRetryAt??0)){
+          room.rewardRetryAt=Date.now()+1000;
+          let queued=true;
           for(const [token,slot] of room.slots){
             if(!slot.accountId)continue;
             const a=room.match.actors[slot.id],seconds=room.match.elapsed-(slot.accountJoinedAt??0);
             const receipt={id:room.roundId,seconds,eligible:seconds>=30,kills:a.kills,headshots:a.headshots,meleeKills:a.meleeKills,matches:1,wins:room.snapshot(token).outcome==='victory'?1:0};
-            try{accounts.queue(slot.accountId,receipt);}catch{console.error('Account reward could not be queued');}
+            try{if(slot.rewardRound!==room.roundId){accounts.queue(slot.accountId,receipt);slot.rewardRound=room.roundId;}}catch{queued=false;console.error('Account reward could not be queued');}
           }
+          if(queued)room.accountRewardRound=room.roundId;
         }
       }
       accumulator -= 1 / 120;

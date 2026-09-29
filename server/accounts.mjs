@@ -1,7 +1,6 @@
 import {newProfile,refreshProfile,purchase,equipCosmetic,equipWeaponFinish,claimChallenge,recordMatch,CATALOG,weaponFinish} from '../.server-build/progression.js';
 import {mkdirSync,writeFileSync,renameSync,readdirSync,readFileSync,unlinkSync} from 'node:fs';
 import {join} from 'node:path';
-import {tmpdir} from 'node:os';
 import {createHash} from 'node:crypto';
 export function cleanPreferences(value){
  const p={};if(!value||typeof value!=='object'||Array.isArray(value))return p;
@@ -10,10 +9,11 @@ export function cleanPreferences(value){
  for(const k of ['musicEnabled','effectsEnabled','invertY'])if(typeof value[k]==='boolean')p[k]=value[k];
  if(['#eaffdf','#7bffff','#f9fa6d','#ff78c5'].includes(value.crosshair))p.crosshair=value.crosshair;
  for(const k of ['crouchKey','slideKey'])if(typeof value[k]==='string'&&/^(Key[A-Z]|Digit[0-9]|ShiftLeft|ControlLeft|AltLeft|Space|Arrow(Up|Down|Left|Right))$/.test(value[k]))p[k]=value[k];
- if(value.bindings&&typeof value.bindings==='object'&&!Array.isArray(value.bindings))p.bindings=Object.fromEntries(Object.entries(value.bindings).filter(([k,v])=>['forward','backward','left','right','jump','reload','melee','scoreboard','weapon1','weapon2','weapon3'].includes(k)&&typeof v==='string'&&/^[A-Za-z][A-Za-z0-9]{0,24}$/.test(v)));
+ if(value.bindings&&typeof value.bindings==='object'&&!Array.isArray(value.bindings))p.bindings=Object.fromEntries(Object.entries(value.bindings).filter(([k,v])=>['KeyW','KeyS','KeyA','KeyD','Space','KeyR','Digit1','Digit2','KeyQ','Tab','Mouse0','Mouse2','ShiftLeft','ControlLeft','AltLeft','KeyC','KeyV'].includes(k)&&typeof v==='string'&&/^[A-Za-z][A-Za-z0-9]{0,24}$/.test(v)));
  return p;
 }
 export function accountAction(data,action,now=Date.now()){
+ if(!action||typeof action!=='object'||Array.isArray(action))throw Error('Invalid action');
  let profile=refreshProfile(data.profile,now);let preferences=data.preferences??{},name=data.name;
  if(action.type==='buy'){
   const item=CATALOG.find(i=>i.id===action.id);if(!item)throw Error('Unknown item');
@@ -23,15 +23,17 @@ export function accountAction(data,action,now=Date.now()){
   if(!profile.owned.includes(action.id))throw Error('Skin not owned');
   const item=CATALOG.find(i=>i.id===action.id);if(!item)throw Error('Unknown item');
   if(action.weapon!==undefined){if(![0,1,2,3].includes(action.weapon)||item.kind!=='finish'||('weapon'in item&&item.weapon!==action.weapon))throw Error('Invalid weapon');profile=equipWeaponFinish(profile,action.weapon,item.id);}else profile=equipCosmetic(profile,item.id);
- }else if(action.type==='claim')profile=claimChallenge(profile,action.id,now);
+ }else if(action.type==='claim'){const next=claimChallenge(profile,action.id,now);if(!next.claimed.includes(action.id))throw Error('Challenge not complete or expired');profile=next;}
  else if(action.type==='preferences'){
-  preferences={...preferences,...cleanPreferences(action.preferences)};
-  if(typeof action.name==='string')name=action.name.replace(/[\x00-\x1f<>]/g,'').trim().slice(0,16)||'Player';
+  const patch=cleanPreferences(action.preferences);preferences={...preferences,...patch};
+  if(preferences.crouchKey&&preferences.crouchKey===preferences.slideKey)throw Error('Crouch and slide need different keys');
+  if(typeof action.name==='string')name=[...action.name].filter(c=>c.charCodeAt(0)>=32&&c!=='<'&&c!=='>').join('').trim().slice(0,16)||'Player';
  }else if(action.type!=='refresh')throw Error('Unsupported account action');
  return {...data,name,preferences,profile};
 }
-export function createAccounts({url=process.env.SUPABASE_URL,key=process.env.SUPABASE_PUBLISHABLE_KEY,secret=process.env.SUPABASE_SECRET_KEY,fetcher=fetch,outbox=process.env.KRAGE_ACCOUNT_OUTBOX||join(tmpdir(),'krage-account-outbox')}={}){
- const enabled=!!(url&&key&&secret);let draining=false;const cache=new Map();
+export function createAccounts({url=process.env.SUPABASE_URL,key=process.env.SUPABASE_PUBLISHABLE_KEY,secret=process.env.SUPABASE_SECRET_KEY,fetcher=fetch,onChange=()=>{},outbox=process.env.KRAGE_ACCOUNT_OUTBOX||'server/data/account-outbox'}={}){
+ const enabled=!!(url&&key&&secret);let draining=false;const cache=new Map(),retries=new Map();
+ if(enabled&&process.env.NODE_ENV==='production'&&!process.env.KRAGE_ACCOUNT_OUTBOX)throw Error('Set KRAGE_ACCOUNT_OUTBOX to a persistent volume before enabling production accounts');
  function ensureOutbox(){
   try{mkdirSync(outbox,{recursive:true,mode:0o700});return true;}
   catch(e){console.error('account outbox unavailable:',e.message||e);return false;}
@@ -60,20 +62,23 @@ export function createAccounts({url=process.env.SUPABASE_URL,key=process.env.SUP
  }
  async function mutate(id,fn,event=null){
   for(let attempt=0;attempt<5;attempt++){
-   const row=await get(id);if(row.data.migratedTo)throw Error('Guest save already connected. Sign in');const data=fn(row.data);
+   const row=await get(id);if(row.data.migratedTo){if(event){id=row.data.migratedTo;continue;}throw Error('Guest save already connected. Sign in');}const data=fn(row.data);
+   if(!event&&JSON.stringify(data)===JSON.stringify(row.data))return row;
    const result=await request('/rest/v1/rpc/krage_commit',{method:'POST',body:{p_user:id,p_revision:row.revision,p_data:data,p_event:event}});
-   if(result)return result;
+   if(result){onChange(id,result.data);return result;}
   }throw Error('Account changed on another device. Try again');
  }
  function queue(id,receipt){
-  if(!enabled||!ensureOutbox())return;
+  if(!enabled)return;if(!ensureOutbox())throw Error('Reward storage unavailable');
   const file=join(outbox,createHash('sha256').update(id+receipt.id).digest('hex')+'.json');
   writeFileSync(file+'.tmp',JSON.stringify({id,receipt}),{mode:0o600});renameSync(file+'.tmp',file);void drain();
  }
  async function drain(){
   if(!enabled||draining)return;draining=true;
-  try{if(!ensureOutbox())return;for(const file of readdirSync(outbox).filter(f=>f.endsWith('.json')).slice(0,20)){
-   try{const job=JSON.parse(readFileSync(join(outbox,file),'utf8'));await mutate(job.id,data=>({...data,profile:recordMatch(data.profile,job.receipt)}),'match:'+job.receipt.id);unlinkSync(join(outbox,file));}catch{break;}
+  try{if(!ensureOutbox())return;const now=Date.now();for(const file of readdirSync(outbox).filter(f=>f.endsWith('.json')&&(!retries.has(f)||retries.get(f).after<=now)).slice(0,20)){
+   let job;try{job=JSON.parse(readFileSync(join(outbox,file),'utf8'));if(!job.id||!job.receipt?.id)throw Error('Invalid receipt');}catch{renameSync(join(outbox,file),join(outbox,file+'.invalid'));continue;}
+   try{await mutate(job.id,data=>({...data,profile:recordMatch(data.profile,job.receipt)}),'match:'+job.receipt.id);unlinkSync(join(outbox,file));retries.delete(file);}
+   catch{const attempts=(retries.get(file)?.attempts??0)+1;retries.set(file,{attempts,after:now+Math.min(300000,1000*2**Math.min(attempts,9))});console.error('Account reward deferred; retained for retry');}
   }}finally{draining=false;}
  }
  const rates=new Map();let active=0;
@@ -86,7 +91,8 @@ export function createAccounts({url=process.env.SUPABASE_URL,key=process.env.SUP
   if(req.method==='OPTIONS'){res.writeHead(204);res.end();return true;}
   if(req.url!=='/account'){res.writeHead(404);res.end('{}');return true;}
   let counted=false;try{
-   const ip=req.socket.remoteAddress,now=Date.now(),rate=rates.get(ip);if(active>=16||(rate&&rate.until>now&&rate.count>=90)){res.writeHead(429);res.end(JSON.stringify({error:'Please wait a moment'}));return true;}if(rate&&rate.until>now)rate.count++;else{if(rates.size>2000)rates.clear();rates.set(ip,{count:1,until:now+60000});}active++;counted=true;req.setTimeout(10000);
+   const bearer=req.headers.authorization?.replace(/^Bearer /,'');
+   const ip=typeof bearer==='string'?createHash('sha256').update(bearer).digest('hex'):req.socket.remoteAddress,now=Date.now(),rate=rates.get(ip);if(active>=16||(rate&&rate.until>now&&rate.count>=90)){res.writeHead(429);res.end(JSON.stringify({error:'Please wait a moment'}));return true;}if(rate&&rate.until>now)rate.count++;else{if(rates.size>2000)rates.clear();rates.set(ip,{count:1,until:now+60000});}active++;counted=true;req.setTimeout(10000,()=>req.destroy());
    if(!enabled){res.writeHead(503);res.end(JSON.stringify({error:'Accounts are not configured yet'}));return true;}
    if(!['GET','POST'].includes(req.method)){res.writeHead(405);res.end('{}');return true;}
    const user=await verify(req.headers.authorization?.replace(/^Bearer /,''));let result;

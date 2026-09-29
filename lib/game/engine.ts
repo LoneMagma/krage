@@ -1299,7 +1299,7 @@ export class Arena {
     this.swayX = T.MathUtils.damp(this.swayX, 0, 12, dt);
     this.swayY = T.MathUtils.damp(this.swayY, 0, 12, dt);
     this.gun.position.set(
-      T.MathUtils.lerp(0.28, 0, this.adsLerp) + bob - this.swayX,
+      T.MathUtils.lerp(0.28, 0, this.adsLerp) + (bob - this.swayX)*(1-this.adsLerp),
       -0.28 - Math.abs(bob) * 0.65 - this.landing + this.swayY - reload * 0.25,
       (weaponView.weapon===2 ? -0.58 : -.4) + this.gunKick * .18,
     );
@@ -1309,13 +1309,13 @@ export class Arena {
     const reloadTiltScale = 1 - this.adsLerp * 0.75;
     this.gun.rotation.set(
       this.gunKick * 0.16 - reload * 0.6 * reloadTiltScale,
-      -this.swayX * 0.4 + this.gunKick * (weaponView.weapon===0?0.018:weaponView.weapon===1?-0.028:0.008),
-      -reload * 0.7 * reloadTiltScale + (-(p.slideBlend ?? 0) * 0.12) + bob * 0.5,
+      -this.swayX * 0.4*(1-this.adsLerp) + this.gunKick * (weaponView.weapon===0?0.018:weaponView.weapon===1?-0.028:0.008),
+      -reload * 0.7 * reloadTiltScale + ((-(p.slideBlend ?? 0) * 0.12) + bob * 0.5)*(1-this.adsLerp),
     );
     // Raise the sights to the center of the view in ADS.
     this.gun.position.y = T.MathUtils.lerp(
       this.gun.position.y,
-      weaponView.weapon===2 ? -0.14 : -0.184,
+      -(this.gun.userData.sightHeight??.184),
       this.adsLerp * (1 - equip.lower),
     );
     this.gun.position.y -= equip.lower * 0.62;

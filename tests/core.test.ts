@@ -694,7 +694,7 @@ await test('respawns avoid occupied and recently fatal positions',()=>{
  for(let n=0;n<25;n++)m.spawn(a);assert.ok(m.recentSpawns.length<=16);
 });
 await test('MICA remains pellet based with stronger useful range, EDGE bonus is reduced',async()=>{
- const {GUNS}=await import('../lib/game/core.js');assert.equal(GUNS[2].damage,17);assert.equal(GUNS[2].range,42);assert.equal(GUNS[2].pellets,12);assert.ok(GUNS[3].speed<=1.06);
+ const {GUNS}=await import('../lib/game/core.js');assert.equal(GUNS[2].damage,17);assert.equal(GUNS[2].range,30);assert.equal(GUNS[2].pellets,12);assert.ok(GUNS[3].speed<=1.06);
  const {m,a,b}=duel();m.map.blocks=[];a.weapon=a.primary=2;a.ammo[2]=2;a.pitch=0;b.pos=v(-5,0,-18);m.random=()=>0;
  m.shoot(a);assert.equal(b.alive,false);
 });
@@ -864,4 +864,14 @@ await test('actual fired rays lose accuracy while running, sliding and airborne 
   const still=rms(0),run=rms(1);assert.ok(run>still*(weapon===2?2:20));assert.ok(rms(2)>run*1.4);assert.ok(rms(3)>run*1.3);
   if(weapon<2)assert.ok(still<.001,'stationary fire should be nearly pinpoint');
  }
+});
+
+await test('MICA retains close damage then rapidly loses lethality; cadence stays distinct',async()=>{
+ const {damageFalloff,GUNS,BOT_NAMES}=await import('../lib/game/core.js');
+ assert.equal(damageFalloff(2,8),1);assert.ok(damageFalloff(2,16)<.56);
+ assert.ok(damageFalloff(2,24)<=.101);assert.equal(damageFalloff(2,30),0);
+ assert.equal(GUNS[2].reload,1.45);assert.equal(GUNS[2].pellets,12);
+ assert.ok(GUNS[0].interval<.084&&GUNS[1].interval>.12);
+ assert.equal(new Set(BOT_NAMES).size,BOT_NAMES.length);
+ const {m,a,b}=duel();a.weapon=a.primary=2;a.ammo[2]=2;m.map.blocks=[];b.pos=v(a.pos.x,0,a.pos.z-3);a.pitch=-Math.atan2(.6,3);m.shoot(a);assert.equal(b.alive,false);
 });

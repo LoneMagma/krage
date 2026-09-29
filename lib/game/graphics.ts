@@ -967,6 +967,8 @@ export function makeWeapon(index: number, firstPerson = true, finish = 0) {
     }
   }
   batchPart(g);
+  g.userData.sightHeight=index===2?.075:.184;
+  const aimReference=new T.Object3D();aimReference.name='aim-reference';aimReference.position.set(0,g.userData.sightHeight,index===2?-.83:-.56);g.add(aimReference);
   g.userData.weapon = index;
   g.userData.finish = finish;
   return g;

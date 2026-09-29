@@ -1,7 +1,7 @@
 # Accounts and Capture the Flag
 
-## Accounts: next foundation, not a cosmetic login button
-Use Supabase Auth with Google OAuth and email/password with required email verification and password reset. An email OTP is also viable if avoiding passwords. Keep guest play available; offer account upgrade to preserve progress. OAuth client, allowed redirect URLs, Supabase project and production SMTP must be configured before live integration.
+## Accounts: implemented foundation, deployment verification required
+v1.6 uses Supabase Google OAuth and verified email codes, with anonymous guest saves and server-controlled progression. See RELEASE-1.6.0.md for migration and deployment requirements. Keep guest play available; offer account upgrade to preserve progress. OAuth client, allowed redirect URLs, Supabase project and production SMTP must be configured before live integration.
 
 - Identity: stable auth user UUID. Room service verifies access tokens (issuer, audience, signature, expiry), never a client-supplied user ID. Refresh/reconnect retains the player ID. Do not expose email to room peers.
 - Durable profile: display name, equipped character/finishes and preferences keyed by user ID. Fetch on login/reconnect, debounce field-level preference patches, use revision checks to avoid an old device overwriting a newer update. Keep device-specific graphics settings local by default.
