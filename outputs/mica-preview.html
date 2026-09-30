@@ -1,0 +1,4 @@
+<!doctype html><style>body{margin:0}canvas{display:block}</style><script type="importmap">{"imports":{"three":"../node_modules/three/build/three.module.js","three/addons/":"../node_modules/three/examples/jsm/"}}</script><script type="module">
+import * as T from 'three';import{makeWeapon}from'../.test-build/lib/game/graphics.js';
+const r=new T.WebGLRenderer({antialias:true});r.setSize(innerWidth,innerHeight);document.body.append(r.domElement);const s=new T.Scene();s.background=new T.Color('#89999f');s.add(new T.HemisphereLight('#fff','#455560',3));const c=new T.PerspectiveCamera(65,innerWidth/innerHeight,.01,10),g=makeWeapon(2,true);g.position.set(0,-g.userData.sightHeight,g.userData.adsDistance);s.add(g);r.render(s,c);
+</script>

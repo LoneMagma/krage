@@ -1,3 +1,9 @@
+## Map pass update
+Dune and Snow route/art passes are combined in 1.10.0. Next: human playtesting of routes, spawn pressure and sightlines, then targeted corrections and release hardening. Do not repeat the historical map scopes below as separate builds.
+
+## Combined build update
+The planned 1.9 movement and 1.10 character/weapon scopes are delivered together as 1.9.0. Next is the Dune layout graybox and player route testing, followed by Snow. The original breakdown remains below for rationale.
+
 # KRAGE: next builds after 1.6
 
 Planning only. Based on the user's priorities in convo.txt, checked against the current code. The quoted assistant's claims are suggestions, not verified findings or permission to implement new features.

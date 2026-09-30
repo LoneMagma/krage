@@ -1,0 +1,2 @@
+[256908:256908:0930/185635.079113:ERROR:gpu/command_buffer/service/gl_utils.cc:430] [.WebGL-0x3bc400142000]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+666394 bytes written to file outputs/v110-map-1.png

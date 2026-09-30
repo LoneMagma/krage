@@ -1,4 +1,4 @@
-import { locomotionSample } from './locomotion.js';
+import { GAIT_FREQUENCY, locomotionSample } from './locomotion.js';
 import {buildBackdrop} from './maps/backdrops.js';
 import {buildFacility} from './maps/facility-render.js';
 import { buildDuneEnvironment } from './maps/dune-render.js';
@@ -916,6 +916,12 @@ export function makeWeapon(index: number, firstPerson = true, finish = 0) {
     }
     for(const z of [-.43,-.40]){const ring=cylinder(g,0,.02,z,.034,.014,accent,8);ring.rotation.x=Math.PI/2;}
   }
+  if(index===0){
+    for(const side of [-1,1])armor(g,side*.068,-.022,-.035,.009,.035,.19,metal);
+    armor(g,.072,.025,.10,.02,.02,.065,dark);
+  }
+  if(index===1){armor(g,.076,-.01,.035,.015,.035,.12,dark);armor(g,0,-.074,-.37,.065,.018,.15,wood);}
+  if(index===2){for(const side of [-1,1])armor(g,side*.098,-.022,.04,.012,.06,.16,metal);}
   // The shoulder stock belongs behind the first-person camera, not in the sightline.
   if(firstPerson&&index===2)for(const part of g.children.slice()){if(part instanceof T.Mesh&&part.position.z>.23){g.remove(part);disposeObject(part);}}
   if (firstPerson) {
@@ -930,13 +936,24 @@ export function makeWeapon(index: number, firstPerson = true, finish = 0) {
     armor(g, 0.04, -0.15, 0.12, 0.12, 0.11, 0.17, '#293b39');
     for(let i=0;i<3;i++)armor(g,.097,-.17+i*.025,.085,.024,.02,.07,'#465650');
     armor(g,.038,-.205,.19,.13,.018,.055,'#182b2d');
-    armor(g, 0.05, -0.22, 0.3, 0.14, 0.15, 0.35, '#56625e');
+    if(index!==2)armor(g, 0.05, -0.22, 0.3, 0.14, 0.15, 0.35, '#56625e');
+    else {
+      const from=new T.Vector3(.04,-.2,.18),to=new T.Vector3(.25,-1.65,.65),mid=from.clone().add(to).multiplyScalar(.5);
+      const forearm=armor(g,mid.x,mid.y,mid.z,.10,.11,from.distanceTo(to),'#56625e');
+      forearm.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),to.sub(from).normalize());
+    }
     }
     if (index !== 3) {
       armor(hands, -0.07, -0.12, -0.35, 0.11, 0.11, 0.17, '#293b39');
       for(let i=0;i<3;i++)armor(hands,-.025,-.1,-.4+i*.04,.07,.024,.023,'#465650');
-      const arm = armor(hands, -0.18, -0.24, -0.2, 0.14, 0.15, 0.36, '#56625e');
-      arm.rotation.y = -0.55;
+      if(index===2){
+        const from=new T.Vector3(-.08,-.16,-.34),to=new T.Vector3(-.5,-1.65,.5),mid=from.clone().add(to).multiplyScalar(.5);
+        const arm=armor(hands,mid.x,mid.y,mid.z,.10,.11,from.distanceTo(to),'#56625e');
+        arm.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),to.sub(from).normalize());
+      }else{
+        const arm = armor(hands, -0.18, -0.24, -0.2, 0.14, 0.15, 0.36, '#56625e');
+        arm.rotation.y = -0.55;
+      }
     }
   }
   if (index === 2) {
@@ -968,10 +985,15 @@ export function makeWeapon(index: number, firstPerson = true, finish = 0) {
       magazine.add(part);
     }
   }
+  // Smaller first-person shotgun silhouette; world and locker size stay unchanged.
+  const viewScale = firstPerson && index === 2 ? .72 : 1;
+  g.scale.setScalar(viewScale);
   batchPart(g);
-  g.userData.sightHeight=index===2?.145:.184;
+  g.userData.sightHeight=(index===2?.145:.184)*viewScale;
   g.userData.adsDistance=index===2?-1.02:-.4;
-  const aimReference=new T.Object3D();aimReference.name='aim-reference';aimReference.position.set(0,g.userData.sightHeight,index===2?-.83:-.56);g.add(aimReference);
+  const aimReference=new T.Object3D();aimReference.name='aim-reference';aimReference.position.set(0,index===2?.145:.184,index===2?-.83:-.56);g.add(aimReference);
+  g.userData.supportGrip = index===0 ? [-.055,-.10,-.27] : index===1 ? [-.065,-.11,-.40] : [-.065,-.11,-.35];
+  g.userData.triggerGrip = [.04,-.14,.1];
   g.userData.weapon = index;
   g.userData.finish = finish;
   return g;
@@ -1123,10 +1145,10 @@ export function avatar(color: string, variant = 0, finish = 0): Avatar {
       if(style===1){box(part,0,.03,.17,.37,.31,.09,hair);box(part,-.155,.1,-.14,.09,.22,.06,hair);box(part,.13,.19,-.17,.11,.10,.035,hair);}
       if(style===2){box(part,0,.07,.17,.41,.39,.07,shirt);for(const x of [-.09,.09])box(part,x,.12,-.188,.12,.07,.015,accent);box(part,.205,.27,0,.03,.17,.04,'#35464c');}
     }else if(i===1){
-      box(part,0,0,0,.49,.54,.28,shirt);box(part,0,-.20,0,.5,.1,.30,pants);
+      box(part,0,0,0,[.49,.45,.47,.46,.52][style],.54,[.28,.26,.30,.28,.32][style],shirt);box(part,0,-.20,0,.5,.1,.30,pants);
       box(part,0,.14,-.15,.31,.11,.025,color);
       for(const x of [-.15,.15])box(part,x,-.07,-.17,.13,.14,.06,accent);
-      box(part,0,.02,.185,.32,.36,.1,pants);
+      box(part,0,.02,.185,[.32,.23,.36,.27,.34][style],[.36,.31,.28,.4,.34][style],[.1,.08,.14,.09,.12][style],pants);
       if(style===0){box(part,-.19,.12,.25,.12,.17,.12,'#2c3e36');box(part,-.19,.25,.25,.018,.16,.018,'#263434');}
       if(style===1){box(part,.28,.13,.02,.10,.20,.27,accent);box(part,-.16,-.23,-.14,.13,.16,.08,pants);}
       if(style===2){box(part,0,.16,.26,.34,.24,.13,pants);box(part,0,.05,-.178,.25,.07,.028,accent);}
@@ -1141,10 +1163,10 @@ export function avatar(color: string, variant = 0, finish = 0): Avatar {
     }else if(i<6){
       box(part,0,0,0,.20,length*.98,.22,i===2||i===4?shirt:skin);
       if(i===3||i===5)box(part,0,-length*.37,0,.215,.13,.235,pants);
-      else box(part,0,length*.3,0,.215,.10,.235,accent);
+      else {box(part,0,length*.3,0,style===4?.25:.215,style===1?.065:.10,style===2?.27:.235,accent);if(style===0&&i===2)box(part,-.11,0,0,.055,.16,.14,pants);}
     }else{
       box(part,0,0,0,.22,length,.24,pants);
-      if(i===7||i===9)box(part,0,-length*.33,-.045,.235,.17,.34,'#27333a');
+      if(i===7||i===9){box(part,0,-length*.33,-.045,style===4?.25:.235,style===3?.21:.17,style===1?.30:.34,'#27333a');if(style===2)box(part,0,-length*.13,-.13,.18,.07,.035,accent);}
       else box(part,0,-length*.28,-.13,.16,.13,.035,shirt);
     }
     batchPart(part);
@@ -1238,7 +1260,10 @@ export function animateAvatar(model: Avatar, a: Actor, time: number, frameDt = 1
   };
   const dt = Math.max(0.001, Math.min(0.05, frameDt));
   if (memory.spawn !== a.spawnId || time-memory.time > 0.25) {
-    memory.planted.fill(false); memory.velocity.copy(a.vel); memory.lean.set(0,0,0);
+    memory.planted.fill(false); memory.velocity.copy(a.vel); memory.travel.copy(a.vel); memory.lean.set(0,0,0);
+    memory.air=a.grounded?0:1;memory.hips=0;
+    for(let i=0;i<points.length;i++){memory.previousJoints[i].copy(points[i]);memory.jointVelocity[i].set(0,0,0);}
+    memory.footTargets[0].set(-.15,.08,0);memory.footTargets[1].set(.15,.08,0);
   }
   memory.spawn=a.spawnId; memory.time=time;
   const ax=(a.vel.x-memory.velocity.x)/dt, az=(a.vel.z-memory.velocity.z)/dt;
@@ -1250,7 +1275,7 @@ export function animateAvatar(model: Avatar, a: Actor, time: number, frameDt = 1
   const leanZ=Math.sin(a.yaw)*memory.lean.x+Math.cos(a.yaw)*memory.lean.z;
   memory.air += ((a.grounded ? 0 : 1) - memory.air) * blend;
   const compression=(a.landingCompression??0)*0.13 + .035*Math.min(1,speed/2)*(1-stance)*(a.grounded?1:0);
-  const air=a.grounded?0:Math.max(0,Math.min(1,(a.vel.y+9)/18));
+  const air=Math.max(0,Math.min(1,(a.vel.y+9)/18));
   for (const i of [0,1,2,3,4,5,6,7,8,9,12]) {
     points[i].y-=compression;
     points[i].x+=leanX*(i===0?1:0.6);
@@ -1279,7 +1304,7 @@ export function animateAvatar(model: Avatar, a: Actor, time: number, frameDt = 1
       if(!memory.planted[index]) memory.feet[index].copy(target).applyAxisAngle(new T.Vector3(0,1,0),a.yaw).add(a.pos);
       target.copy(memory.feet[index]).sub(a.pos).applyAxisAngle(new T.Vector3(0,1,0),-a.yaw);
       // Release a plant if a turn or correction would overextend the leg.
-      if(target.distanceTo(points[hip])>0.775 || Math.abs(target.x-points[hip].x)>.32) { memory.planted[index]=false; target.set(RIG_POINTS[foot][0],0.08,0); }
+      if(target.distanceTo(points[hip])>0.775 || Math.abs(target.x-points[hip].x)>.36) { memory.planted[index]=false; target.set(RIG_POINTS[foot][0],0.08,0); }
       else memory.planted[index]=true;
     } else {
       memory.planted[index]=false;
@@ -1292,7 +1317,7 @@ export function animateAvatar(model: Avatar, a: Actor, time: number, frameDt = 1
   }
   const breath = Math.sin(time * 2) * 0.006;
   const gaitWeight=Math.min(1,speed/3)*(1-memory.air)*(1-slideBlend);
-  const gaitBob=Math.cos(a.stride*13.8)*.012*gaitWeight;
+  const gaitBob=Math.cos(a.stride*GAIT_FREQUENCY*2)*.012*gaitWeight;
   for(const i of [0,1,2,3,6]){points[i].y+=gaitBob;points[i].z+=forward*.018*gaitWeight;}
   const flinch = a.hp < 100 ? Math.max(0, 1 - (time - a.lastDamage) * 9) : 0;
   points[0].z += flinch * 0.07;
@@ -1310,9 +1335,10 @@ export function animateAvatar(model: Avatar, a: Actor, time: number, frameDt = 1
   );
   const edge=edgePose(a);
   points[8].x+=edge.x*.7;points[8].y+=edge.y*.7;points[8].z+=edge.z*.7;
+  if(a.weapon===3){points[5].set(-.32,.86-stance*.5-compression,-.03);}
   if(a.weapon!==3){
     const rotation=new T.Euler(a.pitch*.7-reload*.4,0,-reload*.3);
-    for(const [hand,grip] of [[5,[-.065,-.11,-.35]],[8,[.04,-.14,.1]]] as const){
+    for(const [hand,grip] of [[5,a.weapon===0?[-.055,-.10,-.27]:a.weapon===1?[-.065,-.11,-.40]:[-.065,-.11,-.35]],[8,[.04,-.14,.1]]] as const){
       points[hand].set(grip[0],grip[1],grip[2]).multiplyScalar(.65).applyEuler(rotation).add(new T.Vector3(.2,1.1-stance*.65-compression+breath+aimLift*.5,-.3+a.fired*.2));
     }
   }
@@ -1347,8 +1373,8 @@ export function poseLobbyAvatar(model:Avatar,time:number){
  gun.position.set(.16,1.1+breath,-.28);gun.rotation.set(-.04,-.20,-.05);
  const points=model.joints;
  for(const i of [0,1,2,3,6,9,10,11,12,13,14])points[i].set(...RIG_POINTS[i] as [number,number,number]);
- for(const [shoulder,elbow,hand,grip] of [[3,4,5,[-.065,-.11,-.35]],[6,7,8,[.04,-.14,.1]]] as const){
-   const target=new T.Vector3(...grip).multiplyScalar(.65).applyEuler(gun.rotation).add(gun.position);
+ for(const [shoulder,elbow,hand,grip] of [[3,4,5,gun.userData.supportGrip as [number,number,number]],[6,7,8,gun.userData.triggerGrip as [number,number,number]]] as const){
+   const target=gun.userData.weapon===3&&hand===5 ? new T.Vector3(-.32,.86,-.03) : new T.Vector3(...grip).multiplyScalar(.65).applyEuler(gun.rotation).add(gun.position);
    const upper=new T.Vector3(...RIG_POINTS[shoulder]).distanceTo(new T.Vector3(...RIG_POINTS[elbow]));
    const lower=new T.Vector3(...RIG_POINTS[elbow]).distanceTo(new T.Vector3(...RIG_POINTS[hand]));
    const solved=solveLimb(points[shoulder],target,upper,lower,{x:shoulder===3?-.35:.35,y:-.25,z:-.1});

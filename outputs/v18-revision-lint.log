@@ -1,0 +1,4 @@
+
+> krage-arena@1.8.0 lint
+> oxlint app lib/game lib/account components/game tests server
+

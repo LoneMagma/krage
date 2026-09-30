@@ -4907,7 +4907,7 @@ button:focus-visible, summary:focus-visible, input:focus-visible, select:focus-v
 /* Combat feedback stays above the weapon, away from the center aiming ray. */
 .frag-stack { position:absolute; left:58%; top:58%; width:min(300px,38vw); display:flex; flex-direction:column; gap:7px; pointer-events:none; }
 .frag-stack .frag-notice { position:relative; inset:auto; width:100%; max-width:none; display:flex; align-items:baseline; gap:12px; padding:0!important; margin:0; transform:none; font-size:20px; animation:frag-stagger .24s both cubic-bezier(.16,1,.3,1); }
-.frag-stack .frag-notice b { font-size:24px; color:#ffe4ab; animation:point-pop .28s .07s both ease-out; }
+.frag-stack .frag-notice b { font-size:24px; color:#ffe4ab; animation:point-pop .28s both ease-out; }
 .reload-notice { left:58%; top:76%; bottom:auto; right:auto; width:min(240px,36vw); padding:10px 0!important; background:transparent!important; border:0!important; box-shadow:none!important; transform:none; font:800 19px var(--font-display); text-shadow:0 2px 4px #000; }
 .reload-notice span { font:12px var(--font-ui); margin-left:12px; }
 .reload-notice i { position:absolute; bottom:0; left:0; height:3px; background:#d8f4f3; box-shadow:0 0 8px #8dd4d080; transition:width .08s linear; }

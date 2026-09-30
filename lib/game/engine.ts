@@ -1,5 +1,7 @@
+import { FOOTSTEP_DISTANCE } from './locomotion';
+import { ReloadCues } from './audio-cues';
 import { hitConfirmation } from './weapon-feedback';
-import { cameraMotion } from './motion';
+import { WeaponInertia, cameraMotion } from './motion';
 import { NetworkState, type RoomSnapshot } from './network-state';
 import {
   RoomClient,
@@ -242,6 +244,9 @@ export class Arena {
       this.completedRound=null;
       this.match = this.network.match;
       this.resetEffects();
+      this.audio.stopResult();
+      this.reloadCues.reset();
+      this.weaponInertia.reset();
       this.lastDeath = null;
       this.feed = [];
       this.onFeed([]);
@@ -349,7 +354,8 @@ export class Arena {
   benchmarkPriorDrag = false;
   renderCalls = 0;
   renderTriangles = 0;
-  reloadPhase = 'ready';
+  reloadCues = new ReloadCues();
+  weaponInertia = new WeaponInertia();
   damageAngle = 0;
   keys = new Set<string>();
   crouchControl = new CrouchControl();
@@ -427,7 +433,8 @@ export class Arena {
     this.sun = new T.DirectionalLight('#fff0d3', 2.5);
     this.sun.position.set(-18, 32, 12);
     this.sun.castShadow = true;
-    this.sun.shadow.mapSize.set(1024, 1024);
+    this.sun.shadow.mapSize.set(2048, 2048);
+    this.sun.shadow.radius = 2;
     Object.assign(this.sun.shadow.camera, {
       left: -26,
       right: 26,
@@ -607,13 +614,15 @@ export class Arena {
     this.themeLight.color.set(palette.light);
     this.themeLight.groundColor.set(palette.bounce);
     this.sun.color.set(palette.sun);
-    this.sun.intensity = foundry ? 2.8 : 2.35;
-    this.themeLight.intensity = foundry ? 1.65 : 1.9;
-    this.sun.position.set(foundry ? -22 : 18, 38, 16);
-    this.sun.shadow.camera.left = this.match.map.id===0 ? -42 : -34;
-    this.sun.shadow.camera.right = this.match.map.id===0 ? 42 : 34;
-    this.sun.shadow.camera.top = this.match.map.id===0 ? 38 : 30;
-    this.sun.shadow.camera.bottom = this.match.map.id===0 ? -38 : -30;
+    this.sun.intensity = this.match.map.id<2 ? (foundry?2.35:1.95) : (foundry?2.8:2.35);
+    this.themeLight.intensity = this.match.map.id<2 ? (foundry?1.55:1.65) : (foundry?1.65:1.9);
+    this.sun.position.set(foundry ? -28 : 22, 52, 24);
+    const shadowExtent=Math.hypot(this.match.map.width,this.match.map.depth)*.5+4;
+    this.sun.shadow.camera.far=145;
+    this.sun.shadow.camera.left = -shadowExtent;
+    this.sun.shadow.camera.right = shadowExtent;
+    this.sun.shadow.camera.top = shadowExtent;
+    this.sun.shadow.camera.bottom = -shadowExtent;
     this.sun.shadow.camera.updateProjectionMatrix();
   }
   setCosmetics(operator: number, finish: number, weaponFinishes = [finish, finish, finish, finish]) {
@@ -848,6 +857,8 @@ export class Arena {
     if(this.roomClient){const options={...this.roomClient.options,room:undefined,quickPlay:true};this.joinRoom(options);}
   }
   lobby() {
+    this.audio.stopResult();
+    this.reloadCues.reset();
     const wasOnline = !!this.network;
     this.disconnectRoom();
     this.phase = 'menu';
@@ -1289,18 +1300,15 @@ export class Arena {
       (1 - this.adsLerp * 0.8);
     const pose = weaponPose(weaponView),
       reload = pose.lower;
-    if (
-      pose.phase !== this.reloadPhase &&
-      ['open', 'feed', 'close'].includes(pose.phase)
-    )
-      this.audio.reloadPhase(pose.phase, weaponView.weapon);
-    this.reloadPhase = pose.phase;
+    for (const cue of this.reloadCues.update(weaponView.weapon, weaponView.reload, GUNS[weaponView.weapon].reload, p.alive))
+      this.audio.reloadPhase(cue, weaponView.weapon);
     this.landing = T.MathUtils.damp(this.landing, 0, 16, dt);
     this.swayX = T.MathUtils.damp(this.swayX, 0, 12, dt);
     this.swayY = T.MathUtils.damp(this.swayY, 0, 12, dt);
+    const inertia=this.weaponInertia.update(Math.cos(p.yaw)*p.vel.x-Math.sin(p.yaw)*p.vel.z,Math.sin(p.yaw)*p.vel.x+Math.cos(p.yaw)*p.vel.z,dt,this.adsLerp,this.settings.cameraMotion??.65);
     this.gun.position.set(
-      T.MathUtils.lerp(0.28, 0, this.adsLerp) + (bob - this.swayX)*(1-this.adsLerp),
-      -0.28 - Math.abs(bob) * 0.65 - this.landing + this.swayY - reload * 0.25,
+      inertia.x + T.MathUtils.lerp(0.28, 0, this.adsLerp) + (bob - this.swayX)*(1-this.adsLerp),
+      -0.28 + inertia.y - Math.abs(bob) * 0.65 - this.landing + this.swayY - reload * 0.25,
       T.MathUtils.lerp(weaponView.weapon===2 ? -.72 : -.4,this.gun.userData.adsDistance??-.4,this.adsLerp) + this.gunKick * .18,
     );
     // The reload dip's rotation is tuned for hip-fire distance; scaled down
@@ -1378,18 +1386,18 @@ export class Arena {
       );
     }
     if(p.slide<=0||!p.alive||this.phase!=='playing')this.slideSoundPlayed=false;
-    else if(p.slide<=.34&&!this.slideSoundPlayed){this.slideSoundPlayed=true;this.audio.slide(this.surfaceAt(p.pos));}
+    else if(!this.slideSoundPlayed){this.slideSoundPlayed=true;this.audio.slide(this.surfaceAt(p.pos));}
     if (p.grounded && speed > 1.3 && p.alive && p.slide === 0) {
       this.footTime += speed * dt;
-      if (this.footTime >= 1.65) {
+      if (this.footTime >= FOOTSTEP_DISTANCE) {
         this.audio.step(this.surfaceAt(p.pos), p.crouched);
-        this.footTime = 0;
+        this.footTime %= FOOTSTEP_DISTANCE;
       }
     } else this.footTime = 0;
     for (const actor of this.match.actors) {
-      if (!actor.bot || !actor.alive || !actor.grounded || actor.slide > 0)
+      if (actor.id === p.id || !actor.alive || !actor.grounded || actor.slide > 0)
         continue;
-      const stride = Math.floor(actor.stride / 1.65);
+      const stride = Math.floor(actor.stride / FOOTSTEP_DISTANCE);
       if (this.botFootsteps.get(actor.id) !== stride) {
         this.botFootsteps.set(actor.id, stride);
         const spatial = this.soundPosition(actor.pos);
@@ -1531,7 +1539,6 @@ export class Arena {
           const now = this.match.elapsed;
           this.comboCount = now >= this.lastFragTime && now - this.lastFragTime <= 4 ? this.comboCount + 1 : 1;
           this.lastFragTime = now;
-          this.audio.kill(this.comboCount);
           const combo = this.comboCount >= 4 ? `${this.comboCount}× MULTIKILL` : this.comboCount === 3 ? 'TRIPLE KILL' : this.comboCount === 2 ? 'DOUBLE KILL' : '';
           const title = combo || (e.head ? 'HEADSHOT' : e.weapon === 3 ? (e.attack === 'stab' ? 'SKEWERED' : 'CUTTHROAT') : killer.streak >= 10 ? 'DOMINATING' : killer.streak >= 5 ? 'UNSTOPPABLE' : killer.streak >= 3 ? 'ON FIRE' : 'ELIMINATED');
           this.onFrag(`${title}${combo && e.head ? ' · HEADSHOT' : ''} +${e.head ? 150 : 100}`);

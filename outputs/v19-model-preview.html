@@ -1,0 +1,4 @@
+<!doctype html><style>body{margin:0;background:#17252c}canvas{display:block}</style><script type="importmap">{"imports":{"three":"../node_modules/three/build/three.module.js","three/addons/":"../node_modules/three/examples/jsm/"}}</script><script type="module">
+import * as T from 'three';import{avatar,poseLobbyAvatar}from'../.test-build/lib/game/graphics.js';
+const r=new T.WebGLRenderer({antialias:true});r.setSize(innerWidth,innerHeight);document.body.append(r.domElement);const s=new T.Scene();s.background=new T.Color('#17252c');s.add(new T.HemisphereLight('#ffffff','#53616a',3));const c=new T.PerspectiveCamera(40,innerWidth/innerHeight,.01,40);c.position.set(0,2.6,10);c.lookAt(0,1,0);for(let i=0;i<5;i++){const m=avatar('#bc4e5d',i);poseLobbyAvatar(m,0);m.group.position.x=(i-2)*1.5;m.group.rotation.y=Math.PI+.25;s.add(m.group);}r.render(s,c);
+</script>

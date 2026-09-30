@@ -7,7 +7,7 @@ import {accountsConfigured} from '@/lib/account/client';
 import { useAccount } from '@/lib/account/use-account';
 import { type RoomClient, defaultRoomURL } from '@/lib/game/room-client';
 import Link from 'next/link';
-import { useEffect, useEffectEvent, useRef, useState, type PointerEvent } from 'react';
+import { useEffect, useLayoutEffect, useEffectEvent, useRef, useState, type PointerEvent } from 'react';
 import {
   ArrowUpRight,
   Crosshair,
@@ -315,6 +315,13 @@ export default function Home() {
     else {arena.current?.audio.equip(weapon);setReward({id:Date.now(),title:'EQUIPPED',amount:0});}
   };
   const fragSequence = useRef(0);
+  const soundedFrag = useRef(0);
+  useLayoutEffect(() => {
+    const latest = frags.at(-1);
+    if (!latest || latest.id <= soundedFrag.current) return;
+    soundedFrag.current = latest.id;
+    arena.current?.audio.kill();
+  }, [frags]);
   const fragTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
       undefined,
     ),
@@ -717,7 +724,7 @@ export default function Home() {
           <footer className="lobby-footer">
             <span className="version-link">
               <MousePointer2 size={14} />
-              <a href="https://github.com/lonemagma" target="_blank" rel="noreferrer">v1.7.0</a>
+              <a href="https://github.com/lonemagma" target="_blank" rel="noreferrer">v1.10.0</a>
             </span>
 
             <span className="project-credit"><strong>MADE IN INDIA</strong><span>A <a href="https://pacify.site" target="_blank" rel="noreferrer">pacify</a> project</span></span>
@@ -844,7 +851,7 @@ export default function Home() {
                 <path d="M-15-15-8-8M15-15 8-8M-15 15-8 8M15 15 8 8" />
               </svg>
             </div>
-            {frags.length>0 && snap.alive && <div className="frag-stack" aria-live="polite">{frags.map((notice,i)=><div className="frag-notice" key={notice.id} style={{animationDelay:`${i*45}ms`}}><strong>{notice.message.replace(/ \+\d+$/, '')}</strong><b>{notice.message.match(/\+\d+$/)?.[0]}</b></div>)}</div>}
+            {frags.length>0 && snap.alive && <div className="frag-stack" aria-live="polite">{frags.map((notice)=><div className="frag-notice" key={notice.id}><strong>{notice.message.replace(/ \+\d+$/, '')}</strong><b>{notice.message.match(/\+\d+$/)?.[0]}</b></div>)}</div>}
             {snap.shield > 0 && snap.alive && (
               <div className="spawn-notice">
                 SPAWN PROTECTED · FIRING ENDS PROTECTION

@@ -15,7 +15,7 @@ export function buildDuneEnvironment(map:ArenaMap,sky:T.Object3D){
    const broad=Math.sin(tau*u)*Math.cos(tau*v)+.5*Math.cos(tau*(2*u+v));
    let value=237+(grain-.5)*8;
    if(kind==='sand')value=232+broad*5+Math.sin(tau*(8*v+.23*Math.sin(tau*u)))*3+(grain-.5)*12;
-   if(kind==='plaster')value=234+broad*7+(grain-.5)*10-(grain<.018?16:0);
+   if(kind==='plaster')value=234+broad*5+(grain-.5)*7-(grain<.012?12:0);
    if(kind==='stone'){
     const row=Math.floor(y/32),px=(x+(row%2)*32)%64,py=y%32;
     const edge=Math.min(px,64-px,py,32-py),tile=noise(Math.floor((x+(row%2)*32)/64)%2,row);
@@ -32,10 +32,11 @@ export function buildDuneEnvironment(map:ArenaMap,sky:T.Object3D){
   const t=new T.DataTexture(data,size,size);t.name='dune-'+kind;t.wrapS=t.wrapT=T.RepeatWrapping;t.magFilter=T.LinearFilter;t.minFilter=T.LinearMipmapLinearFilter;t.generateMipmaps=true;t.anisotropy=4;t.needsUpdate=true;t.colorSpace=T.SRGBColorSpace;textures.push(t);return t;
  };
  const tiles=new Map(['sand','plaster','stone','wood','metal','cloth','paving'].map(k=>[k,texture(k)]));
- const mat=(color:string,surface='plaster')=>{const key=color+surface;let m=surfaces.get(key);if(!m){m=new T.MeshLambertMaterial({color,map:tiles.get(surface),vertexColors:true});surfaces.set(key,m);materials.push(m);}return m;};
+ const mat=(color:string,surface='plaster',decal=false)=>{const key=color+surface+decal;let m=surfaces.get(key);if(!m){m=new T.MeshLambertMaterial({color,map:tiles.get(surface),vertexColors:true});if(decal){m.polygonOffset=true;m.polygonOffsetFactor=-1;m.polygonOffsetUnits=-2;m.depthWrite=false;m.userData.decal=true;}surfaces.set(key,m);materials.push(m);}return m;};
  let distant=false;
  const add=(geometry:T.BufferGeometry,x:number,y:number,z:number,color:string,surface='plaster',rotation?:T.Euler)=>{
   if(distant){x*=1.23;z*=1.23;y-=1;}
+  const decal=geometry.type==='PlaneGeometry';
   const g=geometry.index?geometry.toNonIndexed():geometry; if(g!==geometry)geometry.dispose();
   if(rotation)g.applyMatrix4(new T.Matrix4().makeRotationFromEuler(rotation));g.translate(x,y,z);
   const position=g.getAttribute('position'),normal=g.getAttribute('normal'),uv=g.getAttribute('uv'),colors=[];
@@ -44,7 +45,7 @@ export function buildDuneEnvironment(map:ArenaMap,sky:T.Object3D){
    if(uv)uv.setXY(i,(nx>.5?position.getZ(i):position.getX(i))*.5,(Math.abs(ny)>.5?position.getZ(i):position.getY(i))*.5);
    const shade=Math.min(1,.84+Math.max(0,position.getY(i))*.035+Math.max(0,ny)*.10);colors.push(shade,shade,shade);
   }
-  g.setAttribute('color',new T.Float32BufferAttribute(colors,3));const m=mat(color,surface);if(!buckets.has(m))buckets.set(m,[]);buckets.get(m)!.push(g);
+  g.setAttribute('color',new T.Float32BufferAttribute(colors,3));const m=mat(color,surface,decal);if(!buckets.has(m))buckets.set(m,[]);buckets.get(m)!.push(g);
  };
  const box=(x:number,y:number,z:number,w:number,h:number,d:number,c:string,s='plaster',r?:T.Euler)=>add(new T.BoxGeometry(w,h,d),x,y,z,c,s,r);
  const paving=(x:number,y:number,z:number,w:number,d:number,c:string)=>add(new T.PlaneGeometry(w,d),x,y,z,c,'paving',new T.Euler(-Math.PI/2,0,0));
@@ -107,6 +108,10 @@ export function buildDuneEnvironment(map:ArenaMap,sky:T.Object3D){
    for(const side of [-1,1])box(b.x+side*(b.w/2-.4),b.y-.24,b.z,.16,.35,b.d,'#776449','wood');
   }
  }
+ // Flush route surfaces distinguish shade, workshop and open sand without extra obstacles.
+ paving(-3,.032,2,4,5,'#b5a789');
+ paving(-3,.034,11,3.5,6,'#c5b391');
+ paving(-9,.036,22,3.5,7,'#b5a789');
  // Six reusable prop families: pumps, valves, lamps, conduits, market goods and machinery.
  pipe(-1,1.52,-10,.65,3.9,'#506f68','x');pipe(-2.5,1.5,-8.4,.17,1.3,'#ac8d58','z');
  add(new T.TorusGeometry(.36,.065,6,12),-2.5,1.5,-7.72,'#b07841','metal');
@@ -151,7 +156,7 @@ export function buildDuneEnvironment(map:ArenaMap,sky:T.Object3D){
  box(-10,10.7,-32.98,4.2,.6,.06,'#d1bb94','metal');
  for(let i=0;i<10;i++){box(-6.65,.6+i*.9,-36.8,.07,.07,.85,'#826d53','metal');}
  box(-6.65,4.8,-37.23,.07,9.6,.07,'#826d53','metal');box(-6.65,4.8,-36.37,.07,9.6,.07,'#826d53','metal');
- for(const [material,parts] of buckets){const geometry=mergeGeometries(parts);parts.forEach(p=>p.dispose());if(geometry){const mesh=new T.Mesh(geometry,material);mesh.castShadow=mesh.receiveShadow=true;group.add(mesh);}}
+ for(const [material,parts] of buckets){const geometry=mergeGeometries(parts);parts.forEach(p=>p.dispose());if(geometry){const mesh=new T.Mesh(geometry,material);mesh.castShadow=!material.userData.decal;mesh.receiveShadow=true;mesh.renderOrder=material.userData.decal?1:0;group.add(mesh);}}
  group.userData.mapMaterials=materials;group.userData.mapTextures=textures;group.userData.areas=DUNE_AREAS;
  return group;
 }

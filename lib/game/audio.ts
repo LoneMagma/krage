@@ -12,6 +12,8 @@ export class AudioSystem {
   sampleIndex = 0;
   effects = new Map<string, AudioBuffer>();
   effectIndex = 0;
+  resultSources = new Set<AudioBufferSourceNode>();
+  stopResult() { for (const source of this.resultSources) { try { source.stop(); } catch {} } this.resultSources.clear(); }
   /** Prepared user assets use the same master volume and bounded voice pool. */
   effect(name: string, volume=1, pan=0, rate=1, cutoff=12000) {
     const buffer=this.effects.get(name),ctx=this.ctx;
@@ -22,7 +24,8 @@ export class AudioSystem {
     source.buffer=buffer;source.playbackRate.value=rate;gain.gain.value=volume;stereo.pan.value=pan;
     filter.type='lowpass';filter.frequency.value=cutoff;
     source.connect(filter);filter.connect(gain);gain.connect(stereo);stereo.connect(this.master);
-    source.onended=()=>{this.voices--;source.disconnect();filter.disconnect();gain.disconnect();stereo.disconnect();};
+    if(name==='victory'||name==='defeat')this.resultSources.add(source);
+    source.onended=()=>{this.resultSources.delete(source);this.voices--;source.disconnect();filter.disconnect();gain.disconnect();stereo.disconnect();};
     source.start();return true;
   }
   reward() { if(!this.effect('reward',0.7))this.tone(330,.15,.06,'triangle',440); }
@@ -30,9 +33,9 @@ export class AudioSystem {
   loadSamples() {
     if (!this.ctx || this.sampleLoad) return this.sampleLoad;
     const ctx = this.ctx;
-    const effects=['edge-slash','edge-stab','edge-hit','headshot','confirm','slide','victory','defeat','reward','step-0','step-1','step-2','land','hit','click',...['echo','kilo','mica'].flatMap(w=>['open','feed','close'].map(p=>`${w}-reload-${p}`))];
+    const effects=['edge-slash','edge-stab','edge-hit','headshot','confirm','slide','victory','defeat','reward','step-0','step-1','step-2','land','hit','click','equip','jump','spawn','impact-stone','impact-metal',...['echo','kilo','mica'].flatMap(w=>['open','feed','close'].map(p=>`${w}-reload-${p}`))];
     const decode=async(name:string)=>{
-      const response=await fetch(`/audio/v07/${name}.wav`,{signal:this.sampleAbort.signal});
+      const response=await fetch(`/audio/v18/${name}.wav`,{signal:this.sampleAbort.signal});
       if(!response.ok)throw new Error(`Audio: ${response.status}`);
       return ctx.decodeAudioData(await response.arrayBuffer());
     };
@@ -250,17 +253,22 @@ export class AudioSystem {
     this.burst(0.09,0.065,520);
   }
   jump() {
+    if(this.effect('jump',.35))return;
     this.burst(0.045, 0.045, 1500);
     this.tone(130, 0.055, 0.02, 'sine', 80);
   }
   slide(surface: 'metal' | 'stone') {
+    if(this.effect('slide',.38,0,surface==='metal'?1.04:1,1800))return;
     this.burst(.29,.045,surface==='metal'?1150:850);
   }
   spawn() {
+    this.stopResult();
+    if(this.effect('spawn',.4))return;
     this.tone(300, 0.16, 0.04, 'sine', 620);
   }
 
   equip(weapon: number) {
+    if(this.effect('equip',.35,0,[1.15,1,.84,1.3][weapon]??1))return;
     this.burst(0.065, 0.065, weapon === 3 ? 4300 : 1600);
     this.tone(weapon === 3 ? 900 : 240, 0.06, 0.018, 'triangle', 150);
   }
@@ -271,7 +279,7 @@ export class AudioSystem {
     volume = 1,
   ) {
     const gain = (crouch ? 0.35 : 1) * volume;
-    if(this.effect(`step-${this.effectIndex++%3}`,0.39*gain,pan,surface==='metal'?1.06:1))return;
+    if(this.effect(`step-${this.effectIndex++%3}`,0.35*gain,pan,surface==='metal'?1.06:1))return;
     this.foot = 1 - this.foot;
     this.burst(
       surface === 'metal' ? 0.075 : 0.045,
@@ -290,15 +298,17 @@ export class AudioSystem {
   }
   land(speed: number, metal: boolean) {
     const force = Math.min(1, speed / 12);
-    if(this.effect('land',0.8*force,0,.78,metal?2400:1100))return;
+    if(this.effect('land',0.65*force,0,1,metal?2400:1100))return;
     this.burst(0.13, 0.12 * force, metal ? 1700 : 600);
     this.tone(85, 0.1, 0.06 * force, 'sine', 35);
   }
   impact(metal: boolean, pan: number, volume: number) {
+    if(this.effect(metal?'impact-metal':'impact-stone',volume*.16,pan))return;
     this.burst(metal ? 0.07 : 0.045, volume * 0.045, metal ? 5300 : 1600, pan);
     if (metal) this.tone(1600, 0.07, volume * 0.012, 'sine', 950, pan);
   }
   result(win: boolean) {
+    this.stopResult();
     if(this.effect(win?'victory':'defeat',win?0.65:0.38))return;
     const notes = win ? [523.25, 659.25, 783.99, 1046.5] : [392, 311.13, 261.63, 196];
     notes.forEach((note, i) => {
@@ -307,6 +317,7 @@ export class AudioSystem {
     this.tone(win ? 130.81 : 98, 0.9, 0.09, 'sine', win ? 130.81 : 49);
   }
   dispose() {
+    this.stopResult();
     this.sampleAbort.abort();
     this.samples.clear();
     this.effects.clear();

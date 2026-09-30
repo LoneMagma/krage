@@ -875,3 +875,20 @@ await test('MICA retains close damage then rapidly loses lethality; cadence stay
  assert.equal(new Set(BOT_NAMES).size,BOT_NAMES.length);
  const {m,a,b}=duel();a.weapon=a.primary=2;a.ammo[2]=2;m.map.blocks=[];b.pos=v(a.pos.x,0,a.pos.z-3);a.pitch=-Math.atan2(.6,3);m.shoot(a);assert.equal(b.alive,false);
 });
+
+await test('rebuilt Dune courtyard and offset service doors connect without jump requirements',()=>{
+ const map=makeMap(0),nav=new Navigation(map);
+ for(const p of [v(-3,0,2),v(-3,0,12.6),v(-9,0,19.4),v(-19,0,9)]){
+  assert.ok(!map.blocks.some(b=>Math.abs(p.x-b.x)<b.w/2+.34&&Math.abs(p.z-b.z)<b.d/2+.34&&b.y-b.h/2<1.85&&b.y+b.h/2>.01),'new route blocked '+JSON.stringify(p));
+  assert.ok(nav.path(map.spawns[0],p).length>0);
+ }
+});
+await test('Snow exterior stairs reach the maintenance door and gallery with a standing collider',()=>{
+ const m=new Match(0,1,0),a=m.player;a.pos=v(-21.5,0,-.5);a.yaw=0;
+ const input=emptyInput();input.forward=1;step(m,2.3,input);
+ assert.ok(Math.abs(a.pos.y-3)<.01,JSON.stringify(a.pos));
+ a.pos=v(-21.5,3,-13);a.vel=v();a.yaw=-Math.PI/2;step(m,1.5,input);
+ assert.ok(a.pos.x>-15.5&&Math.abs(a.pos.y-3)<.02,JSON.stringify(a.pos));
+ const nav=new Navigation(m.map);assert.ok(nav.path(m.map.spawns[0],v(-21.5,3,-13)).length>0);
+ assert.equal(hasLOS(v(-11,1.6,23),v(-11,20,23),m.map.blocks),true,'maintenance yard remains open sky');
+});

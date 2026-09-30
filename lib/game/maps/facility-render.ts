@@ -8,33 +8,34 @@ export function buildFacility(map:ArenaMap,sky?:T.Object3D){
  const textures:T.Texture[]=[],materials:T.Material[]=[],cache=new Map<string,T.Material>(),buckets=new Map<T.Material,T.BufferGeometry[]>();
  const tex=(surface:string)=>{const data=new Uint8Array(128*128*4);for(let y=0;y<128;y++)for(let x=0;x<128;x++){
   let hash=Math.imul(x+y*128+13,1597334677);hash=Math.imul(hash^(hash>>>16),2246822507);const noise=((hash^(hash>>>13))>>>0)%11;let c=235+noise;
-  if(surface==='snow')c=231+noise+Math.sin(x*Math.PI/64)*Math.cos(y*Math.PI/64)*5;
-  if(surface==='metal')c=(x%64<2||y%64<2)?158:229+noise;
+  if(surface==='snow'){const drift=Math.sin(x*Math.PI/64+Math.sin(y*Math.PI/64)*.8);c=233+noise*.45+drift*5+Math.sin((x+y)*Math.PI/16)*1.5;}
+  if(surface==='metal'){const edge=Math.min(x%64,64-x%64,y%64,64-y%64);c=edge<1?188:edge<3?213:229+noise*.45;}
   if(surface==='concrete'){const seam=x%64<1||y%64<1;c=seam?204:227+noise+Math.sin(x*Math.PI/32)*Math.cos(y*Math.PI/32)*3;}
   if(surface==='wood')c=222+noise+Math.sin(x*Math.PI/4+Math.sin(y*Math.PI/64)) *5-(x%32<2?19:0);
   if(surface==='brick')c=(y%32<2||(x+(Math.floor(y/32)%2)*32)%64<2)?179:225+noise;
   if(surface==='frost')c=228+noise*.45+7*Math.sin(x*Math.PI/64+Math.sin(y*Math.PI/64)*2)+4*Math.cos((x-y)*Math.PI/32);
-  if(surface==='cladding')c=y%64<1?192:231+noise*.4-(y%64<4?5:0);
+  if(surface==='cladding'){const rib=x%32;c=y%64<1?192:rib<2?207:rib<4?222:234+noise*.4;}
   if(surface==='ice'){const vein=Math.abs(Math.sin(x*Math.PI/64+Math.sin(y*Math.PI/64)*1.5));c=219+noise*.35+Math.sin((x+y)*Math.PI/64)*8+(vein<.035?15:0);}
   if(surface==='rubber')c=((x+y)%12<2)?199:228+noise;
   data.set([c,c,c,255],(x+y*128)*4);
  }const t=new T.DataTexture(data,128,128);t.name=surface;t.wrapS=t.wrapT=T.RepeatWrapping;t.generateMipmaps=true;t.minFilter=T.LinearMipmapLinearFilter;t.magFilter=T.LinearFilter;t.anisotropy=4;t.colorSpace=T.SRGBColorSpace;t.needsUpdate=true;textures.push(t);return t;};
  const tiles={snow:tex('snow'),metal:tex('metal'),rubber:tex('rubber'),concrete:tex('concrete'),brick:tex('brick'),frost:tex('frost'),wood:tex('wood'),cladding:tex('cladding'),ice:tex('ice')};
- const material=(color:string,surface:keyof typeof tiles,glow=false)=>{const key=color+surface+glow;let m=cache.get(key);if(!m){m=glow?new T.MeshBasicMaterial({color}):new T.MeshLambertMaterial({color,map:tiles[surface]});cache.set(key,m);materials.push(m);}return m;};
+ const material=(color:string,surface:keyof typeof tiles,glow=false,decal=false)=>{const key=color+surface+glow+decal;let m=cache.get(key);if(!m){m=glow?new T.MeshBasicMaterial({color}):new T.MeshLambertMaterial({color,map:tiles[surface]});if(decal){m.polygonOffset=true;m.polygonOffsetFactor=-1;m.polygonOffsetUnits=-2;m.depthWrite=false;m.userData.decal=true;}cache.set(key,m);materials.push(m);}return m;};
  let distant=false;
  const add=(g:T.BufferGeometry,x:number,y:number,z:number,c:string,s:keyof typeof tiles='metal',r?:T.Euler,glow=false)=>{
   if(distant){x*=1.2;z*=1.2;y-=1;}
+  const decal=g.type==='PlaneGeometry';
   const geo=g.index?g.toNonIndexed():g;if(geo!==g)g.dispose();if(r)geo.applyMatrix4(new T.Matrix4().makeRotationFromEuler(r));geo.translate(x,y,z);
   const p=geo.getAttribute('position'),n=geo.getAttribute('normal'),uv=geo.getAttribute('uv');for(let i=0;i<p.count;i++)uv?.setXY(i,(Math.abs(n.getX(i))>.5?p.getZ(i):p.getX(i))*.4,(Math.abs(n.getY(i))>.5?p.getZ(i):p.getY(i))*.4);
-  const m=material(c,s,glow);if(!buckets.has(m))buckets.set(m,[]);buckets.get(m)!.push(geo);
+  const m=material(c,s,glow,decal);if(!buckets.has(m))buckets.set(m,[]);buckets.get(m)!.push(geo);
  };
  const box=(x:number,y:number,z:number,w:number,h:number,d:number,c:string,s:keyof typeof tiles='metal',glow=false)=>add(new T.BoxGeometry(w,h,d),x,y,z,c,s,undefined,glow);
  const floor=(x:number,z:number,w:number,d:number,c:string,s:keyof typeof tiles='rubber',height=.012)=>add(new T.PlaneGeometry(w,d),x,height,z,c,s,new T.Euler(-Math.PI/2,0,0));
  box(0,-.2,0,indoor?map.width:190,.4,indoor?map.depth:190,indoor?(small?'#bdc7d1':'#c8c4ae'):'#deebf1',indoor?'concrete':'snow');
- if(!indoor){floor(-6,-6,23.3,23.3,'#a6b0ae','concrete');floor(-8,23,19,7,'#596d79');floor(19,5,11,42,'#abc9ce','ice');}
+ if(!indoor){floor(-6,-6,23.3,23.3,'#a6b0ae','concrete');floor(-8,23,19,7,'#9caeb6','concrete');floor(19,5,11,42,'#abc9ce','ice');}
  for(const b of map.blocks){
   const wall=['panel','boundary','building','wall'].includes(b.kind??'');
-  box(b.x,b.y,b.z,b.w,b.h,b.d,!indoor&&wall?(b.kind==='boundary'?'#b0bec2':'#b9c8c9'):b.color,b.kind==='rock'?'frost':b.kind==='crate'?'wood':wall?(indoor?(small?'concrete':'brick'):b.kind==='boundary'?'concrete':'cladding'):'metal',b.kind==='ceiling');
+  box(b.x,b.y,b.z,b.w,b.h,b.d,!indoor&&wall?(b.kind==='boundary'?'#b0bec2':'#b9c8c9'):b.color,b.kind==='snowbank'?'snow':b.kind==='rock'?'frost':b.kind==='crate'?'wood':wall?(indoor?(small?'concrete':'brick'):b.kind==='boundary'?'concrete':'cladding'):'metal',b.kind==='ceiling');
   if(['panel','boundary','building','wall'].includes(b.kind??'')){
    // Painted lower band and flush panel joints, no false walkable ledges.
    const band=indoor?(small?'#547f9c':'#5b9989'):'#cd8052';
@@ -72,8 +73,12 @@ export function buildFacility(map:ArenaMap,sky?:T.Object3D){
   for(const x of [-17.1,5.1]){floor(x,-6,1.4,4.8,'#526774','rubber',.018);floor(x,-6,.08,4.6,'#d7ba7c','metal',.022);}
   for(const x of [-10.1,-1.9])floor(x,1.9,.075,4.5,'#d7ba7c','metal',.018);
   // Warm readable hangar and tunnel fixtures; inexpensive emissive strips.
-  for(const x of [-13,1])box(x,7.58,-6,.35,.035,18,'#d6f0ef','metal',true);
-  box(-8,3.57,23,16,.035,.3,'#f2cca0','metal',true);
+  for(const x of [-13,1])box(x,7.58,-6,.35,.035,18,'#f2dfbc','metal',true);
+  for(const z of [-9,-3])floor(-6,z,5.8,.08,'#d7ba7c','metal',.02);
+  // Ground paint guides the uncovered yard; no unsupported lights or roof remain.
+  for(const x of [-18,2])floor(x,23,.12,6,'#d7ba7c','metal',.019);
+  floor(-17.75,-13,4.45,2.8,'#879da5','rubber',3.006);
+  for(const z of [-14.3,-11.7])floor(-17.75,z,4.45,.09,'#d7ba7c','metal',3.012);
   distant=true;
   // Mountain amphitheatre and glacier shelves stay outside the playable boundary.
   for(let i=0;i<18;i++){
@@ -94,6 +99,6 @@ export function buildFacility(map:ArenaMap,sky?:T.Object3D){
   add(new T.SphereGeometry(4,12,6,0,Math.PI*2,0,Math.PI/2),37,14,-24,'#d9e5eb','metal',new T.Euler(.7,0,0));
   box(37,17,-24,.16,2,.16,'#dd946b');
  }
- for(const [m,parts] of buckets){const geo=mergeGeometries(parts);parts.forEach(p=>p.dispose());if(geo){const mesh=new T.Mesh(geo,m);mesh.castShadow=mesh.receiveShadow=true;group.add(mesh);}}
+ for(const [m,parts] of buckets){const geo=mergeGeometries(parts);parts.forEach(p=>p.dispose());if(geo){const mesh=new T.Mesh(geo,m);mesh.castShadow=!m.userData.decal;mesh.receiveShadow=true;mesh.renderOrder=m.userData.decal?1:0;group.add(mesh);}}
  group.userData.mapMaterials=materials;group.userData.mapTextures=textures;return group;
 }

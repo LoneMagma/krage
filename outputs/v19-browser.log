@@ -1,0 +1,2 @@
+[221693:221693:0930/180732.156782:ERROR:gpu/command_buffer/service/gl_utils.cc:430] [.WebGL-0x159c00145a00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+46101 bytes written to file outputs/v19-models.png

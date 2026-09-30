@@ -2,7 +2,7 @@ import type { ArenaMap, Block, Vec } from '../core.js';
 /** Dune: two overlapping ground loops, two limited terraces and a broken pipe route. */
 export const DUNE_AREAS = [
   {name:'PUMP',x:0,z:-10}, {name:'MARKET',x:-24,z:1},
-  {name:'SERVICE',x:-6,z:16}, {name:'TERRACE',x:18,z:-16}, {name:'YARD',x:21,z:17},
+  {name:'SERVICE',x:-6,z:16}, {name:'RESERVOIR',x:18,z:-16}, {name:'YARD',x:21,z:17},
 ] as const;
 export function makeDune():ArenaMap {
  const blocks:Block[]=[];
@@ -22,9 +22,18 @@ export function makeDune():ArenaMap {
  };
  room(-4,-24,12,8,4.5,'#c4ac82'); // Pump house, north loop passes through both entrances.
  room(-26,0,10,12,3.8,'#bfa47b'); // Market workshop with a true north/south interior.
- add(-6,2.65,3,10,5.3,9,'building','#b49068'); // Mid divider prevents an all-map angle.
+ // Utility courtyard: an L-shaped workshop blocks cross-map fire, two wide exits connect the loops.
+ add(-9,2.65,3,4,5.3,9,'building','#b49068');
+ add(-4,2.65,6,6,5.3,3,'building','#b49068');
+ add(-3,.6,0,2.6,1.2,2,'stone','#bbad8e');
  // Covered service route has two large exits and a distinct cool interior.
- add(-6,1.8,12.6,16,3.6,.6,'plaster','#aa9577');add(-6,1.8,19.4,16,3.6,.6,'plaster','#aa9577');
+ // Offset north/south doors connect the shaded service lane to the courtyard and spawn exits.
+ for(const [z,door] of [[12.6,-3],[19.4,-9]]){
+  const left=door-2-(-14),right=2-(door+2);
+  if(left>0)add(-14+left/2,1.8,z,left,3.6,.6,'plaster','#aa9577');
+  if(right>0)add(door+2+right/2,1.8,z,right,3.6,.6,'plaster','#aa9577');
+  add(door,3.25,z,4,.7,.6,'lintel','#aa9577');
+ }
  add(-6,3.72,16,16,.24,7.4,'roof','#bda985');
  // Terrace roofs have usable ground-level underpasses and no central sniper perch.
  for(const [x,z,w,d] of [[18,-16,12,8],[17,0,10,6]]){
@@ -49,9 +58,9 @@ export function makeDune():ArenaMap {
  // Pump machinery is short enough to rotate around; its full-height riser breaks mid sight.
  add(-1,1.1,-10,5.5,2.2,3.2,'pump','#62817b');add(1.1,2.3,-10,1.2,4.6,1.5,'tank','#5e7770');
  add(6,1.05,-19,3.2,2.1,2.8,'crate','#917453');add(-14,.65,-17,3,1.3,2,'stone','#bbad8e');
- add(-15,1.75,-7,5,3.5,.7,'plaster','#c3a87c'); // Offset market entrance.
+ // The former freestanding wall at the market approach blocked flow without protecting a spawn.
  // Market counters and fabric shade, separated to keep the interior loop open.
- for(const [x,z] of [[-18,1],[-19,9],[-31,-9]]){
+ for(const [x,z] of [[-18,1],[-31,-9]]){
   add(x,.55,z,3,1.1,1.5,'stall','#84674b');add(x,3.3,z,3.8,.10,2.8,'canopy','#487d78');
   for(const side of [-1,1])add(x+side*1.7,1.6,z+1.1,.12,3.2,.12,'timber','#695441');
  }
@@ -60,7 +69,8 @@ export function makeDune():ArenaMap {
  // Excavation machinery anchors the yard; the ground crossing stays unobstructed.
  add(25,.65,14,5,1.3,3.6,'machine','#ad793e');add(25,1.8,15,2.6,2.4,2.5,'machine','#b5834b');
  add(9,1.6,24,5.5,3.2,3,'hopper','#826d53');
- add(30,1.1,5,3,2.2,2,'crate','#8c765c');
+ // Reservoir equipment is grounded on the existing terrace, not a floating decorative tank.
+ add(20.5,3.75,-17,2.6,1.9,2.6,'tank','#62817b');
  // Collision for substantial rendered protrusions. Small flush trims stay cosmetic.
  const fixtures:Block[]=[];
  const fixture=(x:number,y:number,z:number,w:number,h:number,d:number)=>fixtures.push({x,y,z,w,h,d,kind:'detail-collision',color:'#936b48'});

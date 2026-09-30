@@ -22,3 +22,20 @@ export function cameraMotion(a: Actor, ads: number, amount: number, _time: numbe
   return {roll:gain*clamp(-lateral*0.0016*(1+(a.slideBlend??0)*0.4),-0.012,0.012),
     fov:gain*clamp((Math.hypot(a.vel.x,a.vel.z)-3)*0.18,0,1)};
 }
+
+/** Cosmetic weapon lag only: never changes camera, ray direction or movement. */
+export class WeaponInertia {
+  x=0; y=0; lateral=0; forward=0; initialized=false;
+  reset(){this.x=this.y=this.lateral=this.forward=0;this.initialized=false;}
+  update(lateral:number,forward:number,dt:number,ads:number,amount:number){
+    const step=clamp(dt,.001,.05);
+    if(!this.initialized){this.lateral=lateral;this.forward=forward;this.initialized=true;}
+    const ax=(lateral-this.lateral)/step,az=(forward-this.forward)/step;
+    this.lateral=lateral;this.forward=forward;
+    const blend=1-Math.exp(-step*16);
+    this.x+=(clamp(-ax*.0003-lateral*.001,-.015,.015)-this.x)*blend;
+    this.y+=(clamp(az*.0002,-.01,.01)-this.y)*blend;
+    const gain=clamp(amount,0,1)*(1-clamp(ads,0,1));
+    return gain===0 ? {x:0,y:0} : {x:this.x*gain,y:this.y*gain};
+  }
+}

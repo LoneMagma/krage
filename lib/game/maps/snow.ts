@@ -9,7 +9,15 @@ export function makeSnow():ArenaMap{
  for(const side of [-1,1]){
   for(const offset of [-7.25,7.25])add(-6+offset,3.8,-6+side*12,9.5,7.6,.7);
   add(-6,5.6,-6+side*12,5,4,.7,'lintel');
-  for(const offset of [-7.25,7.25])add(-6+side*12,3.8,-6+offset,.7,7.6,9.5);
+  for(const offset of [-7.25,7.25]){
+   if(side===-1&&offset<0){
+    // Elevated western maintenance door links the exterior catwalk to the gallery.
+    add(-18,1.45,-13,.7,2.9,3.6);
+    add(-18,6.6,-13,.7,2,3.6,'lintel');
+    add(-18,3.8,-16.4,.7,7.6,3.2);
+    add(-18,3.8,-9.85,.7,7.6,2.7);
+   }else add(-6+side*12,3.8,-6+offset,.7,7.6,9.5);
+  }
   add(-6+side*12,5.6,-6,.7,4,5,'lintel');
  }
  add(-6,7.85,-6,25,.5,25,'roof','#b1c4cf');
@@ -22,13 +30,21 @@ export function makeSnow():ArenaMap{
  add(-6,2.86,-13,19,.28,5,'platform','#6f8793');
  for(const x of [-14,2])for(let i=0;i<10;i++)add(x,(i+1)*.15,-2-(i+.5)*.85,3,(i+1)*.3,.85,'step','#82969f');
  for(const x of [-11,0])add(x,3.5,-10.6,5,1,.3,'cover','#9dafb4');
+ // Exposed maintenance catwalk: third gallery approach, with a ground route beneath.
+ add(-21.5,2.86,-12.5,3,.28,6,'platform','#6f8793');
+ add(-17.75,2.86,-13,4.5,.28,3,'platform','#6f8793');
+ for(let i=0;i<10;i++)add(-21.5,(i+1)*.15,-1-(i+.5)*.85,3,(i+1)*.3,.85,'step','#82969f');
+ add(-22.9,3.5,-13,.2,1,4.5,'cover','#9dafb4');
  // Eastern freight apron: staggered containers, with a wide switchback around them.
  add(19,1.5,-22,13,3,5,'cargo','#cb794c');add(23,1.5,1,5,3,12,'cargo','#476a80');
  add(14,1.1,17,8,2.2,4,'cargo','#be7954');add(25,.7,25,3,1.4,3,'crate','#607f90');
  add(16,1.7,-6,3,3.4,3,'generator','#374d5d');
- // Covered southern service passage, perpendicular to the hall rather than a desert alley.
- add(-8,1.8,19,20,3.6,.7);add(-8,1.8,27,20,3.6,.7);
- add(-8,3.8,23,20,.4,8.7,'roof','#6b8494');
+ // Open maintenance yard replaces the linear covered tunnel. Offset machinery creates two exits.
+ add(-15,1.35,20,5,2.7,3,'cargo','#476a80');
+ add(-2,1.05,25,4,2.1,3,'generator','#536c7c');
+ // Low retaining banks frame the eastern snow-cut route without imposing movement friction.
+ add(29,.65,1,1.2,1.3,18,'snowbank','#dce8ed');
+ add(18,.65,9,1.2,1.3,8,'snowbank','#dce8ed');
  add(-6,1,14,5,2,3,'generator','#536c7c');
  // Rock retaining buttresses shape the western route without hidden colliders.
  for(const [x,z,w,d] of [[-26,-25,8,7],[-26,4,7,8],[-25,30,8,6],[5,31,7,5]])add(x,2,z,w,4,d,'rock','#8a9ba4');
@@ -36,7 +52,7 @@ export function makeSnow():ArenaMap{
  add(27,1.05,-30,3,2.1,2,'generator','#7797a8');
  add(-22,.55,14,2.5,1.1,2,'crate','#c28859');
  const spawns:Vec[]=[[-16,-30],[12,-30],[28,-13],[28,12],[18,30],[-15,32],[-28,16],[-28,-16],[-11,23],[-12,-4],[1,1],[9,8]].map(([x,z])=>({x,y:0,z}));
- return{id:1,name:'SNOW',width:64,depth:72,blocks,spawns,patrol:[...spawns,{x:-6,y:3,z:-13},{x:19,y:0,z:9},{x:-24,y:0,z:18}]};
+ return{id:1,name:'SNOW',width:64,depth:72,blocks,spawns,patrol:[...spawns,{x:-6,y:3,z:-13},{x:19,y:0,z:9},{x:-24,y:0,z:18},{x:-21.5,y:3,z:-13},{x:-7,y:0,z:23},{x:27,y:0,z:9}]};
 }
 /** Small indoor Snow successor: retains the raised central fight and crouch route. */
 export function makeCellII():ArenaMap{

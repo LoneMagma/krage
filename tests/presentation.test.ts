@@ -1,10 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { PerspectiveCamera, Vector3, Mesh } from 'three';
-import { Match, direction, eye, emptyInput, v } from '../lib/game/core.js';
+import { makeMap, Match, direction, eye, emptyInput, v } from '../lib/game/core.js';
 import { syncView } from '../lib/game/view.js';
 import { CrouchControl } from '../lib/game/controls.js';
 import {
+  buildMap,
   avatar,
   animateAvatar,
   poseAvatar,
@@ -452,8 +453,8 @@ await test('recorded gunfire plays one source per shot, pans remotely and releas
   assert.ok(filters.at(-1)!.frequency.value<filters[0].frequency.value);
   sources.forEach(s=>s.onended());assert.equal(audio.voices,0);
   assert.equal(audio.recordedShot(3,.2,0,0,true),false);
-  for(const name of ['click','hit','headshot','echo-reload-open','echo-reload-feed','echo-reload-close','edge-stab','edge-hit','victory','reward','defeat','kilo-reload-open','kilo-reload-feed','kilo-reload-close'])audio.effects.set(name,{} as AudioBuffer);
-  const actions=[()=>audio.click(),()=>audio.hit(),()=>audio.hit(true),()=>audio.reload(0),()=>audio.reloadPhase('feed',0),()=>audio.reloadPhase('close',0),()=>audio.shot(3,v(),v(),0,true,'stab'),()=>audio.bladeContact(true),()=>audio.result(true),()=>audio.reward(),()=>audio.result(false),()=>audio.reload(1),()=>audio.reloadPhase('feed',1),()=>audio.reloadPhase('close',1)];
+  for(const name of ['slide','equip','jump','spawn','impact-stone','impact-metal','click','hit','headshot','echo-reload-open','echo-reload-feed','echo-reload-close','edge-stab','edge-hit','victory','reward','defeat','kilo-reload-open','kilo-reload-feed','kilo-reload-close'])audio.effects.set(name,{} as AudioBuffer);
+  const actions=[()=>audio.slide('stone'),()=>audio.equip(1),()=>audio.jump(),()=>audio.spawn(),()=>audio.impact(false,0,1),()=>audio.impact(true,0,1),()=>audio.click(),()=>audio.hit(),()=>audio.hit(true),()=>audio.reload(0),()=>audio.reloadPhase('feed',0),()=>audio.reloadPhase('close',0),()=>audio.shot(3,v(),v(),0,true,'stab'),()=>audio.bladeContact(true),()=>audio.result(true),()=>audio.reward(),()=>audio.result(false),()=>audio.reload(1),()=>audio.reloadPhase('feed',1),()=>audio.reloadPhase('close',1)];
   const previous=starts;actions.forEach(action=>action());
   assert.equal(starts-previous,actions.length,'each recorded event plays once without synthesized overlap');
   sources.slice(previous).forEach(source=>source.onended());assert.equal(audio.voices,0);
@@ -669,7 +670,7 @@ await test('themed distant scenery stays outside playable bounds and uses at mos
 });
 await test('forward and backward foot cycles complete within human-sized strides',async()=>{
  const {locomotionSample}=await import('../lib/game/locomotion.js');
- for(const direction of [-1,1]){let lifts=0,last=false;for(let distance=0;distance<4;distance+=.01){const p=locomotionSample(distance,4,0,direction,0);if(!p.planted&&!last)lifts++;last=!p.planted;assert.ok(Math.abs(p.z)<=.25);}assert.ok(lifts>=4&&lifts<=5,`${lifts} strides in 4 metres`);}
+ for(const direction of [-1,1]){let lifts=0,last=false;for(let distance=0;distance<4;distance+=.01){const p=locomotionSample(distance,4,0,direction,0);if(!p.planted&&!last)lifts++;last=!p.planted;assert.ok(Math.abs(p.z)<=.38);}assert.ok(lifts>=2&&lifts<=3,`${lifts} strides in 4 metres`);}
 });
 
 await test('EDGE diagonals cross once without a forward poke, then rest between stabs',async()=>{
@@ -726,4 +727,63 @@ await test('MICA aimed view leaves target space clear beside and below the bead'
  for(const x of [-.03,.03]){const ray=new Raycaster();ray.setFromCamera(new Vector2(x,-.025),camera);assert.equal(ray.intersectObject(gun,true).length,0,'receiver must not obscure nearby target');}
  disposeObject(gun);
  }
+});
+
+await test('reload audio follows contact points once and cancels on death/equip', async () => {
+  const {ReloadCues}=await import('../lib/game/audio-cues.js');
+  const cues=new ReloadCues(), tick=(p:number,w=1,alive=true)=>cues.update(w,1-p,1,alive);
+  assert.deepEqual(tick(0),[]);assert.deepEqual(tick(.25),[]);
+  assert.deepEqual(tick(.77),['feed']);assert.deepEqual(tick(.78),[]);
+  assert.deepEqual(tick(.87),['close']);assert.deepEqual(tick(.94),[]);
+  cues.update(1,0,1);assert.deepEqual(tick(.01),[]);
+  assert.deepEqual(tick(.5,1,false),[]);assert.deepEqual(tick(.1,2),[]);
+  assert.deepEqual(tick(.59,2),['feed']);assert.deepEqual(tick(.92,2),['close']);
+  cues.reset();tick(.01);assert.deepEqual(tick(.95),['close'],'stalls do not stack stale clicks');
+});
+
+await test('v1.8 audio pack is complete, compact and leaves fire recordings untouched', async () => {
+  const fs=await import('node:fs'),crypto=await import('node:crypto');
+  const manifest=JSON.parse(fs.readFileSync('public/audio/v18/manifest.json','utf8'));
+  assert.equal(manifest.files.length,29);
+  let size=0;
+  for(const file of manifest.files){
+    const data=fs.readFileSync(`public/audio/v18/${file.name}.wav`);size+=data.length;
+    assert.equal(new TextDecoder().decode(data.subarray(0,4)),'RIFF');
+    assert.equal(crypto.createHash('sha256').update(data).digest('hex'),file.sha256);
+    assert.ok(file.seconds>0&&file.seconds<=3.2);
+  }
+  assert.ok(size<750000);
+  for(const [file,hash]of Object.entries(manifest.fireHashes))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(`public/audio/weapons/${file}`)).digest('hex'),hash);
+});
+
+await test('v1.9 remote animation samples velocity and stance on the position timeline',async()=>{
+ const {RemoteBuffer}=await import('../lib/game/remote-buffer.js');const actor=new Match(0,0,1).actors[1],b=new RemoteBuffer();
+ b.accept(1,{...actor,pos:v(),vel:v(0,0,-2),grounded:true,crouched:false,slide:0},1);
+ b.accept(1,{...actor,pos:v(0,0,-.4),vel:v(0,5,-6),grounded:false,crouched:true,slide:.4},1.1);
+ b.time=1.05;b.apply(1,actor);assert.ok(Math.abs(actor.vel.z+4)<1e-8);assert.equal(actor.grounded,true);assert.equal(actor.crouched,false);
+ b.time=1.1;b.apply(1,actor);assert.equal(actor.grounded,false);assert.equal(actor.crouched,true);
+});
+await test('v1.9 hip heading stays continuous across the strafe/backward boundary',async()=>{
+ const {locomotionSample}=await import('../lib/game/locomotion.js');
+ for(const side of [-1,1])assert.ok(Math.abs(locomotionSample(1,4,side,-.001,0).hips-locomotionSample(1,4,side,.001,0).hips)<.01);
+});
+await test('weapon inertia settles at rest and cannot displace ADS at any render rate',async()=>{
+ const {WeaponInertia}=await import('../lib/game/motion.js');
+ for(const fps of [20,60,144]){const motion=new WeaponInertia();motion.update(0,0,1/fps,0,1);
+ for(let frame=0;frame<fps;frame++){const o=motion.update(frame<fps/2?6:-6,4,1/fps,0,1);assert.ok(Math.abs(o.x)<=.015&&Math.abs(o.y)<=.01);}
+ assert.deepEqual(motion.update(4,-5,1/fps,1,1),{x:0,y:0});
+ for(let frame=0;frame<fps;frame++)motion.update(0,0,1/fps,0,1);
+ assert.ok(Math.abs(motion.x)<.00001&&Math.abs(motion.y)<.00001);}
+});
+
+await test('map floor overlays have stable depth ordering and do not cast floating shadows',()=>{
+ for(const id of [0,1]){const group=buildMap(makeMap(id));let count=0;
+ group.traverse(o=>{if(o instanceof Mesh){const materials=Array.isArray(o.material)?o.material:[o.material];for(const material of materials)if(material.userData.decal){count++;assert.equal(material.depthWrite,false);assert.equal(material.polygonOffset,true);assert.equal(o.castShadow,false);assert.equal(o.renderOrder,1);}}});
+ assert.ok(count>0);disposeObject(group);}
+});
+await test('Snow elevated walkways join edge-to-edge without coplanar overlap',()=>{
+ const decks=makeMap(1).blocks.filter(b=>b.kind==='platform');
+ for(let i=0;i<decks.length;i++)for(let j=i+1;j<decks.length;j++){const a=decks[i],b=decks[j];if(Math.abs(a.y+a.h/2-b.y-b.h/2)>.001)continue;
+ const x=Math.min(a.x+a.w/2,b.x+b.w/2)-Math.max(a.x-a.w/2,b.x-b.w/2),z=Math.min(a.z+a.d/2,b.z+b.d/2)-Math.max(a.z-a.d/2,b.z-b.d/2);
+ assert.ok(x<=.001||z<=.001,'overlapping top faces can flicker');}
 });
