@@ -1309,7 +1309,7 @@ export class Arena {
     this.gun.position.set(
       inertia.x + T.MathUtils.lerp(0.28, 0, this.adsLerp) + (bob - this.swayX)*(1-this.adsLerp),
       -0.28 + inertia.y - Math.abs(bob) * 0.65 - this.landing + this.swayY - reload * 0.25,
-      T.MathUtils.lerp(weaponView.weapon===2 ? -.72 : -.4,this.gun.userData.adsDistance??-.4,this.adsLerp) + this.gunKick * .18,
+      T.MathUtils.lerp(weaponView.weapon===2 ? -.58 : -.4,this.gun.userData.adsDistance??-.4,this.adsLerp) + this.gunKick * .18,
     );
     // The reload dip's rotation is tuned for hip-fire distance; scaled down
     // during ADS (where the gun already sits close to camera-center) so the
@@ -1344,7 +1344,7 @@ export class Arena {
     if (hinge) hinge.rotation.x = -pose.hinge * 0.65;
     for (const name of ['shell-left','shell-right']) {
       const shell = this.gun.getObjectByName(name);
-      if (shell) shell.position.z = -0.015 + pose.magazine * 0.16;
+      if (shell) { shell.visible=pose.hinge>.18; shell.position.z = -0.015 + pose.magazine * 0.16; }
     }
     const bolt = this.gun.getObjectByName('bolt');
     if (bolt)

@@ -6,7 +6,7 @@ export function MapDiagram({ id }: { id: number }) {
  const map=maps[id]??maps[0], [ground,wall,edge,accent]=palettes[map.id];
  const offset=`translate(${map.width/2} ${map.depth/2})`;
  return <svg className={'map-diagram diagram-'+map.id} viewBox={`-2 -2 ${map.width+4} ${map.depth+4}`} aria-label={`${map.name} arena layout`}>
-  <title>{map.name}: {map.id===0?'pump courtyard, market and reservoir':map.id===1?'warehouse, exterior gallery and snow route':'compact arena'}</title>
+  <title>{`${map.name}: ${map.id===0?'pump courtyard, market and reservoir':map.id===1?'warehouse, exterior gallery and snow route':'compact arena'}`}</title>
   <rect width={map.width} height={map.depth} rx="2" fill={ground}/>
   <g transform={offset}>
    {map.id===0&&<g fill="none" stroke={accent} strokeWidth="3" opacity=".35"><path d="M-26 -13V10L-17 16H4L11 7V-10L8 -16H-18Z"/><path d="M-3 0V16H-9V26"/></g>}

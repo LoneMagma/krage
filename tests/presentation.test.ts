@@ -708,10 +708,10 @@ await test('hit confirmation ignores shots and remote hits and preserves headsho
  assert.deepEqual(hitConfirmation([head,body]),hitConfirmation([body,head]));
 });
 
-await test('MICA bead aligns with center aim at every supported aspect ratio and finish',()=>{
+await test('MICA reference aim axis stays centered across aspect ratios and finishes',()=>{
  for(const aspect of [4/3,16/9,21/9])for(const finish of [0,4,5,6]){
   const gun=makeWeapon(2,true,finish),camera=new PerspectiveCamera(65,aspect,.01,10);
-  assert.ok(gun.userData.adsDistance<=-1);
+  assert.equal(gun.userData.adsDistance,-.58);assert.equal(gun.userData.sightHeight,.14);assert.equal(gun.scale.x,1);
   gun.position.set(0,-gun.userData.sightHeight,gun.userData.adsDistance);gun.updateMatrixWorld(true);
   const marker=gun.getObjectByName('aim-reference');assert.ok(marker);
   const point=marker.getWorldPosition(new Vector3()).project(camera);
@@ -786,4 +786,15 @@ await test('Snow elevated walkways join edge-to-edge without coplanar overlap',(
  for(let i=0;i<decks.length;i++)for(let j=i+1;j<decks.length;j++){const a=decks[i],b=decks[j];if(Math.abs(a.y+a.h/2-b.y-b.h/2)>.001)continue;
  const x=Math.min(a.x+a.w/2,b.x+b.w/2)-Math.max(a.x-a.w/2,b.x-b.w/2),z=Math.min(a.z+a.d/2,b.z+b.d/2)-Math.max(a.z-a.d/2,b.z-b.d/2);
  assert.ok(x<=.001||z<=.001,'overlapping top faces can flicker');}
+});
+
+await test('ZIP MICA keeps compact arms and independently animated reload parts',async()=>{
+ const {Box3}=await import('three');
+ for(const finish of [0,4,5,6]){
+  const gun=makeWeapon(2,true,finish);gun.updateMatrixWorld(true);
+  const bounds=new Box3().setFromObject(gun);
+  assert.ok(bounds.min.y>-.4,'reference arms must not extend far below the gun');
+  for(const name of ['barrel-hinge','support-hand','shell-left','shell-right'])assert.ok(gun.getObjectByName(name));
+  disposeObject(gun);
+ }
 });

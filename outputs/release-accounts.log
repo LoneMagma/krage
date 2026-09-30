@@ -1,0 +1,22 @@
+
+> krage-arena@1.10.0 test:accounts
+> npm run build:server && node --test tests/accounts.test.mjs
+
+
+> krage-arena@1.10.0 build:server
+> tsc -p tsconfig.server.json
+
+Account reward deferred; retained for retry
+✔ claim is persisted, repeat claims cannot credit twice, and forged rewards are rejected (44.483729ms)
+✔ concurrent purchases cannot overspend or double-charge one item (65.302062ms)
+✔ actual binding codes survive preference patches; protected values and device quality do not (6.851339ms)
+✔ outbox processes later rewards after a failed or migrated guest receipt and deduplicates (17.749548ms)
+✔ HTTP account endpoint verifies auth, rejects other origins and persists across requests (259.29083ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1252.720194

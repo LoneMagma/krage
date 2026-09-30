@@ -776,7 +776,7 @@ export function makeWeapon(index: number, firstPerson = true, finish = 0) {
     armor(g, 0, 0.085, -0.56, 0.035, 0.09, 0.05, metal);
     armor(g, 0, 0.146, -0.56, 0.013, 0.065, 0.03, dark);
     armor(g, 0, 0.184, -0.56, 0.012, 0.009, 0.018, '#d9e8b0');
-    }else{armor(g,0,.052,-.63,.018,.012,.43,metal);armor(g,0,.093,-.83,.018,.074,.024,dark);armor(g,0,.135,-.83,.023,.02,.02,'#ead5ac');}
+    }else{armor(g,0,.052,-.63,.018,.012,.43,metal);if(firstPerson){armor(g,0,.065,-.83,.023,.02,.02,'#ead5ac');}else{armor(g,0,.093,-.83,.018,.074,.024,dark);armor(g,0,.135,-.83,.023,.02,.02,'#ead5ac');}}
     armor(g, 0.07, 0.02, -0.04, 0.02, 0.06, 0.17, '#69807d');
     if (index === 0)
       armor(g, -0.065, -0.005, -0.16, 0.009, 0.032, 0.13, '#ef7548');
@@ -921,9 +921,7 @@ export function makeWeapon(index: number, firstPerson = true, finish = 0) {
     armor(g,.072,.025,.10,.02,.02,.065,dark);
   }
   if(index===1){armor(g,.076,-.01,.035,.015,.035,.12,dark);armor(g,0,-.074,-.37,.065,.018,.15,wood);}
-  if(index===2){for(const side of [-1,1])armor(g,side*.098,-.022,.04,.012,.06,.16,metal);}
-  // The shoulder stock belongs behind the first-person camera, not in the sightline.
-  if(firstPerson&&index===2)for(const part of g.children.slice()){if(part instanceof T.Mesh&&part.position.z>.23){g.remove(part);disposeObject(part);}}
+  if(index===2&&!firstPerson){for(const side of [-1,1])armor(g,side*.098,-.022,.04,.012,.06,.16,metal);}
   if (firstPerson) {
     const hands = new T.Group();
     hands.name = 'support-hand';
@@ -936,24 +934,13 @@ export function makeWeapon(index: number, firstPerson = true, finish = 0) {
     armor(g, 0.04, -0.15, 0.12, 0.12, 0.11, 0.17, '#293b39');
     for(let i=0;i<3;i++)armor(g,.097,-.17+i*.025,.085,.024,.02,.07,'#465650');
     armor(g,.038,-.205,.19,.13,.018,.055,'#182b2d');
-    if(index!==2)armor(g, 0.05, -0.22, 0.3, 0.14, 0.15, 0.35, '#56625e');
-    else {
-      const from=new T.Vector3(.04,-.2,.18),to=new T.Vector3(.25,-1.65,.65),mid=from.clone().add(to).multiplyScalar(.5);
-      const forearm=armor(g,mid.x,mid.y,mid.z,.10,.11,from.distanceTo(to),'#56625e');
-      forearm.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),to.sub(from).normalize());
-    }
+    armor(g, 0.05, -0.22, 0.3, 0.14, 0.15, 0.35, '#56625e');
     }
     if (index !== 3) {
       armor(hands, -0.07, -0.12, -0.35, 0.11, 0.11, 0.17, '#293b39');
       for(let i=0;i<3;i++)armor(hands,-.025,-.1,-.4+i*.04,.07,.024,.023,'#465650');
-      if(index===2){
-        const from=new T.Vector3(-.08,-.16,-.34),to=new T.Vector3(-.5,-1.65,.5),mid=from.clone().add(to).multiplyScalar(.5);
-        const arm=armor(hands,mid.x,mid.y,mid.z,.10,.11,from.distanceTo(to),'#56625e');
-        arm.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),to.sub(from).normalize());
-      }else{
-        const arm = armor(hands, -0.18, -0.24, -0.2, 0.14, 0.15, 0.36, '#56625e');
-        arm.rotation.y = -0.55;
-      }
+      const arm = armor(hands, -0.18, -0.24, -0.2, 0.14, 0.15, 0.36, '#56625e');
+      arm.rotation.y = -0.55;
     }
   }
   if (index === 2) {
@@ -985,13 +972,10 @@ export function makeWeapon(index: number, firstPerson = true, finish = 0) {
       magazine.add(part);
     }
   }
-  // Smaller first-person shotgun silhouette; world and locker size stay unchanged.
-  const viewScale = firstPerson && index === 2 ? .72 : 1;
-  g.scale.setScalar(viewScale);
   batchPart(g);
-  g.userData.sightHeight=(index===2?.145:.184)*viewScale;
-  g.userData.adsDistance=index===2?-1.02:-.4;
-  const aimReference=new T.Object3D();aimReference.name='aim-reference';aimReference.position.set(0,index===2?.145:.184,index===2?-.83:-.56);g.add(aimReference);
+  g.userData.sightHeight=index===2?(firstPerson?.14:.145):.184;
+  g.userData.adsDistance=index===2?-.58:-.4;
+  const aimReference=new T.Object3D();aimReference.name='aim-reference';aimReference.position.set(0,g.userData.sightHeight,index===2?-.83:-.56);g.add(aimReference);
   g.userData.supportGrip = index===0 ? [-.055,-.10,-.27] : index===1 ? [-.065,-.11,-.40] : [-.065,-.11,-.35];
   g.userData.triggerGrip = [.04,-.14,.1];
   g.userData.weapon = index;

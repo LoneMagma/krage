@@ -20,3 +20,9 @@ Measured static geometry in the headless renderer: Dune 83 meshes / 11,282 trian
 127 core/presentation tests plus 38 room tests cover spawn clearance, navigation, actual standing-collider stair traversal, gallery connection, existing skill jumps, material depth settings and non-overlapping deck surfaces. Both overview renders were inspected. Lint, TypeScript and the production build pass. A live human match is still needed to judge route popularity, spawn pressure and weapon balance; no playtest telemetry is implied.
 
 Deploy frontend AND room server together: ROOM_PROTOCOL is now 23 because collision layouts changed. Retain existing account/environment configuration and persistence. No account migration or new dependency. Source ZIP excludes secrets and build caches.
+
+## MICA reference restoration
+Replaced the rejected first-person overhaul with the supplied 9964e640 ZIP’s low bead, original stock/hand geometry, full scale and camera pose (depth -0.58, ADS height -0.14). Current skin palettes, other weapons, world models and deployment repair remain intact.
+
+## Render room deployment repair
+The root frontend lock references an unavailable vite-plugin-dynamic-import 1.7.0 tarball. Dockerfile.rooms now installs the dedicated server/package.json and server/package-lock.json (ws, TypeScript and Node types only), then compiles the shared simulation. The frontend dependency graph is unchanged. Verified an empty-directory npm ci, server compilation and a launched /health response with protocol 23. Redeploy the room service using Dockerfile.rooms and refresh the client after it becomes healthy.

@@ -1,0 +1,3 @@
+[405342:405356:0930/232521.323427:ERROR:gpu/ipc/client/command_buffer_proxy_impl.cc:285] ContextResult::kTransientFailure: Failed to send GpuControl.CreateCommandBuffer.
+[405278:405278:0930/232523.087613:ERROR:gpu/command_buffer/service/gl_utils.cc:430] [.WebGL-0x2e2400141a00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+35846 bytes written to file outputs/mica-reference.png

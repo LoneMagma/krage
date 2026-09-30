@@ -1,5 +1,7 @@
-## v1.4.0: deploy frontend and rooms together
-This build requires **protocol 21**. Reload existing tabs after both deployments. `/health` must report protocol 21. Matches remain in server memory; restarting the room process ends them.
+Current verification and rollout checklist: [RELEASE-CHECK.md](RELEASE-CHECK.md).
+
+## v1.10.0: deploy frontend and rooms together
+This build requires **protocol 23**. Reload existing tabs after both deployments. `/health` must report protocol 23. Matches remain in server memory; restarting the room process ends them.
 
 For players in India, test a **Singapore room-server service**. The existing service region has not been verified. Render cannot move an existing service between regions: create a replacement, set `KRAGE_ORIGINS`, then rebuild the frontend with that service's `NEXT_PUBLIC_ROOM_URL`. Keep one room instance until room routing exists. See [Render regions](https://render.com/docs/regions).
 
@@ -25,7 +27,7 @@ Play Online joins Quick Play. Lobby contains Create Lobby and Join Lobby.
 2. Set `NEXT_PUBLIC_ROOM_URL=wss://YOUR-ROOM-HOST/play` when building the frontend. Authenticate Wrangler with your Cloudflare account, then run `npm run deploy:web`. This builds and publishes the existing Workers frontend.
 3. Set the room server's `KRAGE_ORIGINS` to the exact deployed frontend origin. Quick Play pools all players into the global rotation; map, mode and time choices apply to custom/practice matches. For private games, open **LOBBY**, create a lobby and share its code.
 
-Use one room-server instance for this small deployment: rooms live in memory and restart with the server. The container does not require a database for matches. Quick Play joins public rooms and fills vacancies with server bots; private room codes remain available. Cosmetics remain device-local. Keep the frontend and room server on the same release.
+Use one room-server instance for this small deployment: rooms live in memory and restart with the server. The container does not require a database for matches. Quick Play joins public rooms and fills vacancies with server bots; private room codes remain available. Guest cosmetics remain device-local; configured verified accounts synchronize through the account service. Keep the frontend and room server on the same release.
 
 
 ## Current Render deployment
@@ -40,8 +42,8 @@ Redeploy both the frontend and Node room service for this update; old tabs must 
 ## Controller update (protocol 4)
 Redeploy both services and refresh tabs. Camera sway in Settings controls roll, velocity FOV and landing roll vibration; 0 disables those effects. The small shared landing eye dip remains in the controller to preserve shot alignment.
 
-## Friend lobby update (protocol 5)
-Redeploy both frontend and rooms service together. Verify `/health` reports protocol 5, Play Online enters Quick Play, and two devices can create/join a friend room, change loadouts, ready up and start. Check remembered names after refresh.
+## Friend lobby update (protocol 23)
+Redeploy both frontend and rooms service together. Verify `/health` reports protocol 23, Play Online enters Quick Play, and two devices can create/join a friend room, change loadouts, ready up and start. Check remembered names after refresh.
 
 ## EDGE and lobby update (protocol 6)
 Deploy the frontend and rooms service together, then reload open tabs. `/health` must report protocol 6. Check left-click slash/right-click stab on two clients and verify no duplicate impact sounds. The lobby now uses persistent sections and a WebGL weapon inspector; confirm it on target mobile and desktop devices.
