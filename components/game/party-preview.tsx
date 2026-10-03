@@ -1,3 +1,4 @@
+import {PlayerAvatar} from './player-avatar';
 import { Plus, ChevronLeft, ChevronRight, Crown, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { WireActor } from '@/lib/game/network-state';
@@ -60,7 +61,7 @@ export function PartyPreview({players,capacity=players.length,you,hostId,onInvit
       onKeyDown={e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();angles.current.set(p.id,(angles.current.get(p.id)??.38)+(e.key==='ArrowLeft'?-.25:.25));}}}>
        {failed&&p.name.slice(0,1)}
      </button>
-     <div className="party-card-caption"><strong>{hostId===p.id&&<Crown size={12}/>} {p.name}{p.id===you&&<small> YOU</small>}</strong><span>{!p.connected?'RECONNECTING':p.ready?'READY':'CHOOSING'}</span></div>
+     <div className="party-card-caption"><strong>{hostId===p.id&&<Crown size={12}/>} <PlayerAvatar name={p.name}/>{p.name}{p.id===you&&<small> YOU</small>}</strong><span>{!p.connected?'RECONNECTING':p.ready?'READY':'CHOOSING'}</span></div>
      {hostId===you&&p.id!==you&&onKick&&<button className="party-kick" title={confirm===p.id?'Confirm removal':'Remove player'} aria-label={`${confirm===p.id?'Confirm remove':'Remove'} ${p.name}`} onClick={()=>{if(confirm===p.id){onKick(p.id);setConfirm(null);}else setConfirm(p.id);}} onBlur={()=>setConfirm(null)}>{confirm===p.id?'REMOVE?':<X size={14}/>}</button>}
     </div>:<button key={'empty'+i} className="party-slot-empty" onClick={onInvite} disabled={!onInvite}><Plus size={24}/><span>{inviteLabel}</span></button>;
    })}

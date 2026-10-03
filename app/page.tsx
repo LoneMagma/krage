@@ -1,4 +1,8 @@
 'use client';
+import {MapPicker} from '@/components/game/map-picker';
+import {PlayerAvatar} from '@/components/game/player-avatar';
+import {enterGameDisplay} from '@/lib/game/mobile-display';
+
 import { matchReward } from '@/lib/game/progression';
 import { ArenaChat } from '@/components/game/arena-chat';
 import { GameChoice } from '@/components/game/game-choice';
@@ -7,7 +11,8 @@ import {accountsConfigured} from '@/lib/account/client';
 import { useAccount } from '@/lib/account/use-account';
 import { type RoomClient, defaultRoomURL } from '@/lib/game/room-client';
 import Link from 'next/link';
-import { useEffect, useLayoutEffect, useEffectEvent, useRef, useState, type PointerEvent } from 'react';
+import {TouchControls} from '@/components/game/touch-controls';
+import { useCallback, useEffect, useLayoutEffect, useEffectEvent, useRef, useState } from 'react';
 import {
   ArrowUpRight,
   Crosshair,
@@ -88,7 +93,7 @@ function Scoreboard({ snap, mode }: { snap: Snapshot; mode: number }) {
                     mode >= 2 && a.team === 0 ? 'team-dot ally' : 'team-dot'
                   }
                 />
-                {a.name}
+                <PlayerAvatar name={a.name}/>{a.name}
                 {a.bot && <small>BOT</small>}
               </td>
               <td>{a.kills}</td>
@@ -272,6 +277,7 @@ export default function Home() {
     [inGameChat, setInGameChat] = useState(false),
     [frags, setFrags] = useState<{id:number;message:string}[]>([]),
     [touch, setTouch] = useState(false),
+    [touchEditor,setTouchEditor]=useState(false),[resumeTouch,setResumeTouch]=useState(false),[mapChoosing,setMapChoosing]=useState(false),
     [pauseSettings, setPauseSettings] = useState(false);
   const mutationRef=useRef(false);const [accountBusy,setAccountBusy]=useState(false);
   const [profile, setProfile] = useState<Profile>(() => newProfile()),
@@ -324,10 +330,7 @@ export default function Home() {
   }, [frags]);
   const fragTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
       undefined,
-    ),
-    joystick = useRef<{ id: number; x: number; y: number } | null>(null),
-    lookPointer = useRef<{ id: number; x: number; y: number } | null>(null),
-    [stick, setStick] = useState({ x: 0, y: 0 });
+    );
   useEffect(() => {
     let cancelled = false;
     let instance: Arena | undefined;
@@ -525,10 +528,7 @@ export default function Home() {
     const link = new URL(location.href); link.search = ''; link.searchParams.set('room', snap.network.room);
     try { await navigator.clipboard.writeText(link.href); } catch { setError(link.href); }
   };
-  const enterFullscreen = () => {
-    if (!document.fullscreenElement)
-      void document.documentElement.requestFullscreen?.().catch(() => {});
-  };
+  const enterFullscreen = () => {void enterGameDisplay();};
   const start = () => {
     enterFullscreen();
     setError('');
@@ -568,51 +568,16 @@ export default function Home() {
     minutes = Math.floor(totalSeconds / 60),
     seconds = totalSeconds % 60;
   const teamGame = activeMode >= 2;
-  const fullscreen = () => {
-    if (document.fullscreenElement)
-      void document.exitFullscreen().catch(() => {});
-    else
-      void document.documentElement
-        .requestFullscreen?.()
-        .catch(() =>
-          setError(
-            'Fullscreen is unavailable in this preview. Open the game in a full browser tab.',
-          ),
-        );
-  };
-  const touchAction = (
-    name: 'fire' | 'jump' | 'slide' | 'ads' | 'crouch',
-    value: boolean,
-  ) => {
-    if (arena.current) arena.current.touch[name] = value;
-  };
-  const stickDown = (e: PointerEvent<HTMLDivElement>) => {
-    e.currentTarget.setPointerCapture(e.pointerId);
-    joystick.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
-  };
-  const stickMove = (e: PointerEvent<HTMLDivElement>) => {
-    const j = joystick.current;
-    if (!j || j.id !== e.pointerId) return;
-    const dx = e.clientX - j.x,
-      dy = e.clientY - j.y,
-      l = Math.max(45, Math.hypot(dx, dy));
-    setStick({ x: (dx / l) * 35, y: (dy / l) * 35 });
-    if (arena.current) {
-      arena.current.touch.forward = -dy / l;
-      arena.current.touch.right = dx / l;
-    }
-  };
-  const stickEnd = () => {
-    joystick.current = null;
-    setStick({ x: 0, y: 0 });
-    if (arena.current) {
-      arena.current.touch.forward = 0;
-      arena.current.touch.right = 0;
-    }
-  };
+  const openTouchEditor=()=>{setResumeTouch(snap.phase==='playing');if(snap.phase==='playing')arena.current?.pause();setTouchEditor(true);};
+  const closeTouchEditor=()=>{setTouchEditor(false);if(resumeTouch)arena.current?.resume();};
+  const getTouchArena = useCallback(()=>arena.current!,[]);
+  const fullscreen = () => {if(document.fullscreenElement)void document.exitFullscreen().catch(()=>{});else void enterGameDisplay();};
   return (
-    <main data-section={!inGame ? modal==='practice'?'play':modal ?? 'play' : 'game'} className={'game-shell ' + (inGame ? 'match-shell' : 'lobby-shell')}>
+    <main data-section={!inGame ? modal==='practice'?'play':modal ?? 'play' : 'game'} className={'game-shell ' + (touch?'touch-device ':'') + (inGame ? 'match-shell' : 'lobby-shell')}>
       <div className="world" ref={mount} />
+      {touchEditor&&<TouchControls getArena={getTouchArena} editor onClose={closeTouchEditor}/>}
+      {mapChoosing&&<div className="map-picker-overlay"><section aria-label="Select arena"><header><strong>CHOOSE MAP</strong><button onClick={()=>setMapChoosing(false)} aria-label="Close map selection">×</button></header><MapPicker value={map} onChange={id=>{selectMap(id);setMapChoosing(false)}}/></section></div>}
+      {touch&&<div className="rotate-phone">↻<strong>ROTATE TO PLAY</strong><span>Landscape gives you room to aim.</span><button onClick={enterFullscreen}>ENTER LANDSCAPE</button></div>}
       {reward&&<output key={reward.id} className="reward-toast"><KrCredit/><div><small>{reward.title}</small>{reward.amount>0?<strong>+{reward.amount} KR</strong>:<strong>READY TO GO</strong>}</div></output>}
       {!inGame && (
         <>
@@ -647,10 +612,7 @@ export default function Home() {
                         {['PUMP SETTLEMENT','ALPINE RELAY','TRAINING YARD','DUEL YARD'][map]}
                       </span>
                     </h1>
-                    <div className="map-switcher">
-                      <button aria-label="Previous map" onClick={()=>selectMap((map+maps.length-1)%maps.length)}>‹</button>
-                      <MapDiagram id={map} />
-                      <button aria-label="Next map" onClick={()=>selectMap((map+1)%maps.length)}>›</button>
+                    <div className="map-switcher"><button className="map-select-trigger" onClick={()=>setMapChoosing(true)} aria-label="Choose map"><MapDiagram id={map}/><span>CHANGE MAP ▾</span></button>
                     </div>
                   </div>
                   <button type="button"
@@ -665,21 +627,7 @@ export default function Home() {
 
                   </button>
                 </div>
-                <div className="arena-tabs" aria-label="Choose arena">
-                  {maps.map((m, i) => (
-                    <button
-                      key={m.id}
-                      className={'arena-tab arena-tone-' + i}
-                      aria-pressed={map === i}
-                      onClick={() => selectMap(i)}
-                    >
-                      <strong>{m.name}</strong>
-                      <small>
-                        {['SETTLEMENT / LINKED FLANKS','HALL / FREIGHT / GALLERY','OPEN / TRAINING','COMPACT / DUELS'][i]}
-                      </small>
-                    </button>
-                  ))}
-                </div>
+
               </section>
               <div className="hero-actions">
                 <div className="character-toggle" aria-label="Character">
@@ -691,14 +639,14 @@ export default function Home() {
             <section className="play-card" aria-label="Play">
               <header><span className="play-card-mark" aria-hidden="true"><Crosshair size={23}/></span><h2>{modal==='practice'?'PRACTICE':'PLAY'}</h2>{modal==='practice'&&<button className="practice-back" aria-label="Back to online play" onClick={()=>setModal(null)}>×</button>}</header>
               {modal==='practice'?<div className="practice-inline">
-                <div className="practice-map"><MapDiagram id={map}/><strong>{maps[map].name}</strong></div>
+                <button className="practice-map" onClick={()=>setMapChoosing(true)} aria-label="Choose practice map"><MapDiagram id={map}/><strong>{maps[map].name} ▾</strong></button>
                 <PracticeStep label="Mode" value={modes[mode]} onStep={d=>setMode(((mode+d+4)%4) as Mode)}/>
                 <PracticeStep label="Time" value={`${duration/60} MIN`} onStep={d=>{const values=[60,180,300,600];setDuration(values[(values.indexOf(duration)+d+4)%4]);}}/>
                 {mode===0&&<PracticeStep label="Bots" value={String(bots)} onStep={d=>{const values=[0,1,3,5,7];setBots(values[(values.indexOf(bots)+d+5)%5]);}}/>}
                 <PracticeStep label="Skill" value={{dummy:"TARGETS",casual:"CASUAL",normal:"REGULAR",hard:"VETERAN"}[settings.difficulty]} onStep={d=>{const values:Settings["difficulty"][]=["dummy","casual","normal","hard"];updateSettings({...settings,difficulty:values[(values.indexOf(settings.difficulty)+d+4)%4]});}}/>
                 <Button className="deploy-button practice-start" disabled={!ready||accountBlocked||!!snap.network?.lobby} onClick={start}>START PRACTICE <ArrowUpRight size={20}/></Button>
               </div>:<>
-              <label className="play-callsign"><span>PLAYER</span><input aria-label="Your player name" value={playerName} maxLength={16} onChange={e=>savePlayerName(e.target.value)}/></label>
+              <label className="play-callsign"><span><PlayerAvatar name={playerName}/> PLAYER</span><input aria-label="Your player name" value={playerName} maxLength={16} onChange={e=>savePlayerName(e.target.value)}/></label>
               <Button
                 className="deploy-button play-online"
                 disabled={!ready || accountBlocked || snap.network?.status==='connecting' || !!snap.network?.lobby}
@@ -716,7 +664,7 @@ export default function Home() {
           {modal === 'online' && <aside className="friend-lobby-panel" aria-label="Custom lobby">
             <header><h2>LOBBY</h2><button className="back-to-play" aria-label="Return to play" onClick={()=>setModal(null)}>← PLAY</button></header>
             <RoomPanel weaponFinishes={[0,1,2,3].map(w=>weaponFinish(profile,w))} mode={mode} map={map} primary={weapon} operator={OPERATORS.find(o=>o.id===profile.operator)?.variant??0} name={playerName} onName={savePlayerName} ready={ready&&!accountBlocked} info={snap.network}
-              onConnect={options=>arena.current?.joinRoom(options)}
+              onConnect={options=>{enterFullscreen();arena.current?.joinRoom(options)}}
               onChange={change=>arena.current?.roomClient?.lobby(change)}
               onKick={id=>arena.current?.roomClient?.kick(id)} onStart={()=>arena.current?.roomClient?.startMatch()}
               onLeave={()=>{arena.current?.disconnectRoom();setModal(null);}} />
@@ -724,7 +672,7 @@ export default function Home() {
           <footer className="lobby-footer">
             <span className="version-link">
               <MousePointer2 size={14} />
-              <a href="https://github.com/lonemagma" target="_blank" rel="noreferrer">v1.10.0</a>
+              <a href="https://github.com/lonemagma" target="_blank" rel="noreferrer">v1.10.1</a>
             </span>
 
             <span className="project-credit"><strong>MADE IN INDIA</strong><span>A <a href="https://pacify.site" target="_blank" rel="noreferrer">pacify</a> project</span></span>
@@ -1132,7 +1080,7 @@ export default function Home() {
                   </div>
                 )}
                 {pauseSettings && (
-                  <div className="pause-settings-scroll">
+                  <div className="pause-settings-scroll"><button onClick={openTouchEditor}>MOBILE CONTROLS</button>
                     <SettingsPanel
                       settings={settings}
                       onChange={updateSettings}
@@ -1173,66 +1121,7 @@ export default function Home() {
               </div>
             </section></div>
           )}
-          {touch && snap.phase === 'playing' && (
-            <div className="touch-controls">
-              <div
-                className="touch-look"
-                onPointerDown={(e) => {
-                  e.currentTarget.setPointerCapture(e.pointerId);
-                  lookPointer.current = {
-                    id: e.pointerId,
-                    x: e.clientX,
-                    y: e.clientY,
-                  };
-                }}
-                onPointerMove={(e) => {
-                  const p = lookPointer.current;
-                  if (!p || p.id !== e.pointerId) return;
-                  arena.current?.look(
-                    (e.clientX - p.x) * 1.8,
-                    (e.clientY - p.y) * 1.8,
-                  );
-                  p.x = e.clientX;
-                  p.y = e.clientY;
-                }}
-                onPointerUp={() => {
-                  lookPointer.current = null;
-                }}
-                onPointerCancel={() => {
-                  lookPointer.current = null;
-                }}
-              />
-              <div
-                className="touch-stick"
-                onPointerDown={stickDown}
-                onPointerMove={stickMove}
-                onPointerUp={stickEnd}
-                onPointerCancel={stickEnd}
-              >
-                <i
-                  style={{ transform: `translate(${stick.x}px,${stick.y}px)` }}
-                />
-              </div>
-              <div className="touch-buttons">
-                {(['ads', 'jump', 'crouch', 'slide', 'fire'] as const).map(
-                  (action) => (
-                    <button
-                      key={action}
-                      className={'touch-' + action}
-                      onPointerDown={(e) => {
-                        e.currentTarget.setPointerCapture(e.pointerId);
-                        touchAction(action, true);
-                      }}
-                      onPointerUp={() => touchAction(action, false)}
-                      onPointerCancel={() => touchAction(action, false)}
-                    >
-                      {action === 'ads' ? 'AIM' : action.toUpperCase()}
-                    </button>
-                  ),
-                )}
-              </div>
-            </div>
-          )}
+          {touch && snap.phase === 'playing' && !inGameChat && <TouchControls getArena={getTouchArena} onEdit={openTouchEditor}/> }
         </>
       )}
       {inGame && snap.network?.status==='reconnecting' && <output className="connection-recovery">RECONNECTING · YOUR SLOT IS RESERVED</output>}
@@ -1245,7 +1134,7 @@ export default function Home() {
         </div>
       )}
       <ArenaChat name={playerName} room={chatRoom} visible boxVisible={!inGame||snap.phase==='paused'||inGameChat} team={mode>=2} forceOpen={inGameChat} onForceClose={()=>arena.current?.closeChat()} defaultChannel={chatRoom?(mode>=2?'team':'match'):undefined}/><LobbySection open={modal !== null && modal !== 'online' && modal !== 'practice'} playing={inGame} kind={modal ?? 'settings'} title={modal === 'loadout' ? 'LOADOUT' : (modal ?? '').toUpperCase()} onClose={()=>setModal(null)}>
-          {(modal === 'settings' || modal === 'controls') && <div className="section-tabs"><button aria-pressed={modal==='settings'} onClick={()=>setModal('settings')}>PREFERENCES</button><button aria-pressed={modal==='controls'} onClick={()=>setModal('controls')}>KEY BINDINGS</button></div>}
+          {(modal === 'settings' || modal === 'controls') && <div className="section-tabs"><button aria-pressed={modal==='settings'} onClick={()=>setModal('settings')}>PREFERENCES</button><button aria-pressed={modal==='controls'} onClick={()=>setModal('controls')}>KEY BINDINGS</button><button disabled={!ready} onClick={openTouchEditor}>MOBILE CONTROLS</button></div>}
           {modal === 'settings' && (
             <>
               <SettingsPanel settings={settings} onChange={updateSettings}>

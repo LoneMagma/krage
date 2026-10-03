@@ -1,0 +1,66 @@
+.rotate-phone{display:none}
+.mobile-controls{position:absolute;inset:0;z-index:25;pointer-events:none;touch-action:none;user-select:none;-webkit-user-select:none}
+.mobile-controls button,.mobile-stick,.mobile-look,.mobile-settings{pointer-events:auto;touch-action:none;-webkit-tap-highlight-color:transparent}
+.mobile-look{position:absolute;inset:64px 0 0 35%}
+.mobile-stick{position:absolute;bottom:calc(18px + env(safe-area-inset-bottom));left:calc(var(--touch-inset) + env(safe-area-inset-left));width:calc(110px * var(--touch-size));height:calc(110px * var(--touch-size));border-radius:50%;background:#121c2580;border:2px solid #ffffff50;display:grid;place-items:center}
+.mobile-stick i{width:40%;height:40%;border-radius:50%;background:#e5e1d780;border:1px solid #fff8}
+.mobile-actions{position:absolute;right:calc(var(--touch-inset) + env(safe-area-inset-right));bottom:calc(12px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(4,calc(50px * var(--touch-size)));gap:7px;pointer-events:none}
+.mobile-controls button{min-width:44px;min-height:44px;border-radius:14px;border:1px solid #e8e5dc88;background:#17232bbc;color:#fff;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:6px}
+.mobile-controls button:active{background:#973949d9;border-color:white}
+.mobile-controls small{font:700 8px sans-serif;margin-top:3px;letter-spacing:.04em}
+.mobile-controls svg{width:20px;height:20px}
+.mobile-actions .mobile-fire{grid-column:4;grid-row:1/3;background:#9f3748c9;min-height:100px}
+.mobile-adjust{position:absolute;left:calc(150px + env(safe-area-inset-left));bottom:14px}
+.mobile-settings{position:absolute;bottom:65px;left:155px;background:#17232bf5;border:1px solid #fff6;border-radius:12px;padding:14px;display:grid;gap:10px;width:220px}
+.mobile-settings label{font:700 11px sans-serif;color:white;display:grid;gap:5px}.mobile-settings input{width:100%}
+.touch-device{height:100dvh!important;min-height:0!important;overscroll-behavior:none}
+.touch-device .hud-hints,.touch-device kbd{display:none!important}
+.touch-device .hud-bottom-left{bottom:155px!important;left:calc(16px + env(safe-area-inset-left))!important;transform:scale(.75);transform-origin:left bottom}
+.touch-device .hud-bottom-right{bottom:145px!important;right:calc(12px + env(safe-area-inset-right))!important;transform:scale(.72);transform-origin:right bottom}
+.touch-device .chat-toggle{left:50%!important;bottom:8px!important;transform:translateX(-50%)}
+.touch-device .frag-stack,.touch-device .reload-notice{top:42%!important;left:55%!important;bottom:auto!important}
+@media(pointer:coarse) and (orientation:portrait){.rotate-phone{display:flex;position:fixed;inset:0;z-index:2000;background:#171b20f5;color:#eee;align-items:center;justify-content:center;flex-direction:column;gap:16px;font-size:42px}.rotate-phone strong{font:800 22px sans-serif}.rotate-phone span{font:14px sans-serif}}
+@media(pointer:coarse) and (orientation:landscape){
+ .touch-device .topbar{height:54px!important;padding:5px max(12px,env(safe-area-inset-right))!important;gap:8px!important}
+ .touch-device .topbar nav{position:static!important;transform:none!important;width:auto!important;gap:0!important;flex:1;justify-content:center}
+ .touch-device .nav-button{min-height:42px;padding:6px 9px!important;font-size:10px!important}
+ .touch-device .brand-name{font-size:21px!important}.touch-device .brand-logo{width:32px;height:32px}
+ .touch-device .play-card{width:235px;right:max(12px,env(safe-area-inset-right));top:60px!important;bottom:38px!important;translate:none!important;padding:12px!important;gap:10px!important;overflow:auto}
+ .touch-device .play-card h2{font-size:24px!important}.touch-device .play-online{min-height:48px!important;padding:10px!important}
+ .touch-device .lobby-section{top:60px!important;bottom:36px!important;left:12px!important;right:12px!important;padding:12px!important;overflow:auto!important}
+ .touch-device .lobby-section h2{font-size:22px}.touch-device .lobby-section>header{margin-bottom:8px;padding-bottom:8px}
+ .touch-device .arena-stage{width:calc(100% - 255px)!important}.touch-device .stage-map{max-width:190px}.touch-device .map-diagram{max-height:50px}
+ .touch-device .operator-window{top:105px!important;bottom:90px!important}.touch-device .hero-actions{bottom:48px!important}
+ .touch-device .game-footer{bottom:5px!important;font-size:8px}.touch-device .minimap{max-width:90px;max-height:90px}
+ .touch-device .spawn-panel,.touch-device .end-panel,.touch-device .pause-panel{max-height:90dvh;overflow:auto;width:min(90vw,620px)}
+ .touch-device .match-intro{top:14%;max-width:70vw}.touch-device .scoreboard{max-height:75dvh;overflow:auto}
+ .touch-device .practice-inline{gap:5px}.touch-device .practice-step{min-height:32px}.touch-device .practice-start{min-height:42px}
+}
+@media(pointer:coarse) and (orientation:landscape){
+ .game-shell.touch-device.lobby-shell .topbar{display:flex!important;flex-wrap:nowrap!important;align-items:center!important}
+ .game-shell.touch-device.lobby-shell .topbar nav{position:static!important;order:0!important;flex:1 1 auto!important;flex-basis:auto!important;width:auto!important;top:auto!important;left:auto!important;right:auto!important;padding:2px!important}
+ .game-shell.touch-device.lobby-shell .stage-map{left:16px!important;top:72px!important;width:125px!important;height:auto!important}
+ .game-shell.touch-device.lobby-shell .stage-map .map-diagram{display:block!important;width:70px!important;height:44px!important}
+ .game-shell.touch-device.lobby-shell .arena-tabs{display:none!important}
+ .game-shell.touch-device.lobby-shell[data-section=play] .operator-window{left:145px!important;top:62px!important;bottom:112px!important;width:calc(100% - 405px)!important;min-width:110px}
+ .game-shell.touch-device.lobby-shell[data-section=play] .hero-actions{left:calc((100% - 255px)/2)!important;bottom:42px!important;top:auto!important;width:220px!important}
+ .game-shell.touch-device.lobby-shell .play-card{top:62px!important;bottom:38px!important}
+ .game-shell.touch-device.lobby-shell .brand-name{display:none!important}
+}
+@media(pointer:coarse) and (max-height:500px){
+ .touch-device .hud-bottom-left{transform:scale(.55);bottom:132px!important}.touch-device .hud-bottom-right{transform:scale(.55);bottom:130px!important}
+ .touch-device .match-intro{padding:10px 16px!important;top:16%!important;width:350px!important}.touch-device .match-intro strong,.touch-device .match-start-title{font-size:22px!important}.touch-device .match-intro-details{padding-top:6px!important;margin-top:6px!important}
+ .touch-device .minimap{width:72px!important;height:72px!important}.touch-device .mobile-settings{bottom:62px;max-height:calc(100dvh - 75px);overflow:auto}
+}
+.custom-touch .custom-control{position:absolute!important;bottom:auto!important;right:auto!important;transform:translate(-50%,-50%);width:var(--control-size);height:var(--control-size);min-height:44px;min-width:44px;max-width:none;padding:5px;touch-action:none}
+.custom-touch .mobile-stick{border-radius:50%;display:grid;place-items:center}.custom-touch .mobile-stick i{display:block;width:40%;height:40%;border-radius:50%;background:#d8dcd8aa}
+.custom-touch .mobile-fire{background:#943a4ace;border-color:#fca4ad}
+.touch-editor{position:fixed!important;z-index:2200!important;background:linear-gradient(#15212be8,#15212b88),repeating-linear-gradient(0deg,transparent,transparent 23px,#fff1 24px);pointer-events:auto}
+.touch-editor .custom-control[aria-pressed=true]{outline:3px solid #f5c785;outline-offset:3px}
+.touch-editor-panel{position:absolute;z-index:2;left:8px;right:8px;top:max(8px,env(safe-area-inset-top));padding:10px;background:#141c25ed;border:1px solid #fff4;border-radius:10px;color:#f4eee4;pointer-events:auto}
+.touch-editor-panel header,.touch-editor-fields{display:flex;gap:8px;align-items:center}.touch-editor-panel header strong{margin-right:auto;font-size:13px}.touch-editor-panel button{min-height:32px;min-width:44px;font-size:10px;padding:5px 9px}.touch-editor-fields{flex-wrap:wrap;margin-top:8px}.touch-editor-fields label{display:grid;gap:3px;font:700 9px sans-serif;flex:1;min-width:85px}.touch-editor-fields input{width:100%;min-width:0;max-width:160px}.touch-editor-fields select{background:#263341;color:white;padding:5px;border:1px solid #fff4;border-radius:4px}.touch-editor-panel small{font-size:10px}.touch-editor-panel output{font-size:11px;color:#ffb9b9}
+.player-identicon{width:26px;height:26px;flex:none;vertical-align:middle;margin-right:6px;border-radius:5px;shape-rendering:crispEdges}.chat-toasts .player-identicon,.chat-messages .player-identicon{width:20px;height:20px}.play-callsign>span{display:flex;align-items:center}
+.map-picker-overlay{position:fixed;inset:0;z-index:1600;background:#10171ec9;display:grid;place-items:center;padding:20px}.map-picker-overlay>section{width:min(680px,95vw);max-height:90dvh;overflow:auto;background:#1c242c;border:1px solid #ffffff40;border-radius:16px;padding:18px}.map-picker-overlay header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.map-picker-overlay header button{min-width:44px;min-height:44px;font-size:25px}.map-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;min-width:0}.map-card{display:flex;flex-direction:column;align-items:center;gap:9px;min-height:84px;padding:10px;background:#252c32;border:2px solid transparent;border-radius:10px;color:#f3eee4;cursor:pointer}.map-card .map-diagram{display:block!important;width:100%!important;height:75px!important}.map-card strong{font:800 12px sans-serif}.map-card[aria-pressed=true]{border-color:#e0b67f;background:#4b3d31}.map-card:focus-visible{outline:2px solid white;outline-offset:2px}.map-card-1{background:#243644}.map-card-2{background:#283a32}.map-card-3{background:#303449}
+.game-shell .map-switcher .map-select-trigger{display:flex;flex-direction:column;gap:6px;width:100%!important;height:auto!important;padding:8px!important;border:1px solid #fff5;border-radius:8px;background:#17212bcc;font:700 10px sans-serif}.game-shell .map-select-trigger .map-diagram{display:block!important;max-height:58px}.party-quick-settings:has(.map-cards){grid-template-columns:1fr!important}.party-quick-settings .map-card .map-diagram{height:45px!important}.practice-map{cursor:pointer}
+@media(max-width:700px){.map-cards{gap:6px}.map-card{padding:6px}.map-card .map-diagram{height:55px!important}.touch-editor-panel{padding:7px}.touch-editor-fields{gap:6px}.touch-editor-fields label{min-width:72px}}
+.touch-editor-panel{max-height:46dvh;overflow:auto}.rotate-phone button{font:800 14px sans-serif;padding:15px 22px;border:1px solid #f1b7bc;background:#8d3544;border-radius:8px;color:white}

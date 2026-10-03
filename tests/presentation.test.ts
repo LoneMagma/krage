@@ -798,3 +798,27 @@ await test('ZIP MICA keeps compact arms and independently animated reload parts'
   disposeObject(gun);
  }
 });
+
+await test('touch stick is bounded, has a deadzone and allows diagonal movement',async()=>{
+ const {touchStick}=await import('../lib/game/touch.js');
+ assert.deepEqual(touchStick(2,2,48),{right:0,forward:0});
+ const diagonal=touchStick(200,-200,48);assert.ok(Math.abs(Math.hypot(diagonal.right,diagonal.forward)-1)<1e-8);assert.ok(diagonal.right>0&&diagonal.forward>0);
+ assert.deepEqual(touchStick(0,0,48),{right:0,forward:0});
+});
+await test('mobile resolution degrades under sustained load, ignores stalls and stays bounded',async()=>{
+ const {MobileResolution,touchPreferences}=await import('../lib/game/touch.js');const mobile=new MobileResolution();
+ for(let i=0;i<500;i++)mobile.sample(1/30);assert.equal(mobile.ratio,.55);
+ for(let i=0;i<300;i++)mobile.sample(2);assert.equal(mobile.ratio,.55);
+ for(let i=0;i<2400;i++)mobile.sample(1/60);assert.ok(mobile.ratio<=1&&mobile.ratio>.8);
+ assert.deepEqual(touchPreferences({sensitivity:999,size:NaN,inset:-5}),{sensitivity:2.4,size:1,inset:8});
+});
+
+await test('mobile editor validates each button and mirrors left-hand defaults',async()=>{
+ const {cleanLayout,defaultLayout,CONTROL_IDS}=await import('../lib/game/touch.js');
+ const right=defaultLayout(),left=defaultLayout(true);for(const id of CONTROL_IDS){assert.equal(left[id].x,100-right[id].x);assert.ok(right[id].size>=44);}
+ const layout=cleanLayout({fire:{x:-500,y:500,size:2,opacity:NaN},stick:{size:999}});assert.equal(layout.fire.x,4);assert.equal(layout.fire.y,96);assert.equal(layout.fire.size,44);assert.equal(layout.fire.opacity,.85);assert.equal(layout.stick.size,160);
+ assert.deepEqual(cleanLayout(JSON.parse(JSON.stringify(left))),left);
+});
+await test('name avatars are deterministic, symmetric and update on name changes',async()=>{
+ const {identicon}=await import('../lib/game/identicon.js');const one=identicon('Rook');assert.deepEqual(one,identicon('Rook'));assert.deepEqual(one,identicon(' Rook '));assert.notDeepEqual(one,identicon('Blake'));for(const row of one.cells)assert.deepEqual(row,[...row].reverse());assert.equal(one.cells.length,5);
+});

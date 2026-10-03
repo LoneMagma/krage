@@ -1,0 +1,2 @@
+import {identicon} from '@/lib/game/identicon';
+export function PlayerAvatar({name}:{name:string}){const icon=identicon(name);return <svg className="player-identicon" viewBox="-1 -1 7 7" aria-label={`${name} avatar`}><rect x="-1" y="-1" width="7" height="7" rx="1" fill="#182129"/>{icon.cells.flatMap((row,y)=>row.map((value,x)=>value?<rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" fill={value===2?icon.accent:icon.color}/>:null))}</svg>}

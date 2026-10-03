@@ -1,3 +1,4 @@
+import {MobileResolution} from './touch';
 import { FOOTSTEP_DISTANCE } from './locomotion';
 import { ReloadCues } from './audio-cues';
 import { hitConfirmation } from './weapon-feedback';
@@ -370,6 +371,7 @@ export class Arena {
   input = emptyInput();
   touch = emptyInput();
   touchMode = false;
+  mobileResolution = new MobileResolution();
   adsLerp = 0;
   gunKick = 0;
   recoil = 0;
@@ -578,13 +580,13 @@ export class Arena {
     this.match.difficulty = settings.difficulty;
     this.audio.setVolume(settings.effectsEnabled === false ? 0 : settings.volume);
     this.renderer.setPixelRatio(
-      settings.quality === 'potato'
+      this.touchMode ? Math.min(this.mobileResolution.ratio,settings.quality==='potato'?.7:1) : settings.quality === 'potato'
         ? 0.7
         : settings.quality === 'high'
           ? Math.min(devicePixelRatio, 1.6)
           : 1,
     );
-    this.renderer.shadowMap.enabled = settings.quality === 'high';
+    this.renderer.shadowMap.enabled = !this.touchMode && settings.quality === 'high';
     this.crouchControl.reset();
     this.resize();
   }
@@ -1033,6 +1035,7 @@ export class Arena {
     const realDt = Math.max(0, (now - (this.last || now)) / 1000),
       dt = Math.min(0.1, realDt);
     this.last = now;
+    if(this.touchMode&&this.phase==='playing'&&this.mobileResolution.sample(realDt)){this.renderer.setPixelRatio(Math.min(this.mobileResolution.ratio,this.settings.quality==='potato'?.7:1));this.resize();}
     this.time += dt;
     this.fpsFrames++;
     this.fpsTime += realDt;
@@ -1647,7 +1650,7 @@ export class Arena {
   addSpark(pos: Vec, n: number, color: string) {
     if (this.settings.quality === 'potato') return;
     for (let i = 0; i < n; i++) {
-      if (this.sparks.length >= 60) {
+      if (this.sparks.length >= (this.touchMode ? 24 : 60)) {
         const old = this.sparks.shift()!;
         disposeObject(old.mesh);
       }
@@ -1671,7 +1674,7 @@ export class Arena {
   }
   addDoll(id: number, attacker: Vec, weapon = 1, attack?: string, side=1) {
     if (this.settings.quality === 'potato') return;
-    while (this.dolls.length >= 5) disposeObject(this.dolls.shift()!.group);
+    while (this.dolls.length >= (this.touchMode ? 3 : 5)) disposeObject(this.dolls.shift()!.group);
     const a = this.match.actors[id];
     const model = cloneAvatar(this.models[id]);
     // Body pose is sampled from the death tick; the hidden carried weapon need not be rebuilt.
@@ -1754,7 +1757,7 @@ export class Arena {
   }
   addMark(e: GameEvent) {
     if (!e.normal || !e.end) return;
-    while (this.marks.length >= (this.settings.quality === 'potato' ? 12 : 48))
+    while (this.marks.length >= (this.settings.quality === 'potato' || this.touchMode ? 12 : 48))
       disposeObject(this.marks.shift()!.mesh);
     const mesh = new T.Mesh(
       new T.CircleGeometry(e.weapon === 2 ? 0.037 : 0.052, 9),

@@ -1,3 +1,4 @@
+import {PlayerAvatar} from './player-avatar';
 import { useEffect, useRef, useState } from 'react';
 import { MessageSquare, Send, X, Volume2, VolumeX } from 'lucide-react';
 import { defaultRoomURL, type RoomClient, type ChatMessage } from '@/lib/game/room-client';
@@ -40,9 +41,9 @@ export function ArenaChat({name,room,visible,boxVisible,team,forceOpen,onForceCl
  };
  const recent=muted?[]:lines.filter(m=>now-m.at<6500).slice(-4);
  return <aside className={'arena-chat chat-v2 '+(open?'is-open':'')} aria-label="Chat">
-  {!open&&recent.length>0&&<div className="chat-toasts" aria-live="polite">{recent.map(m=><p key={m.id} className="chat-toast"><span className="chat-channel">{m.channel==='team'?'TEAM':m.channel==='match'?'MATCH':'ALL'}</span><b>{m.name}</b><span>{m.text}</span></p>)}</div>}
+  {!open&&recent.length>0&&<div className="chat-toasts" aria-live="polite">{recent.map(m=><p key={m.id} className="chat-toast"><span className="chat-channel">{m.channel==='team'?'TEAM':m.channel==='match'?'MATCH':'ALL'}</span><b><PlayerAvatar name={m.name}/>{m.name}</b><span>{m.text}</span></p>)}</div>}
   {open&&<div className="chat-box"><nav aria-label="Chat channel">{(['global',...(room?['match']:[]),...(room&&team?['team']:[])] as ChatMessage['channel'][]).map(c=><button key={c} aria-pressed={selected===c} onClick={()=>setChannel(c)}>{c==='global'?'ALL':c.toUpperCase()}</button>)}<button className="chat-icon" aria-label={muted?'Unmute chat':'Mute chat'} onClick={()=>setMuted(!muted)}>{muted?<VolumeX size={15}/>:<Volume2 size={15}/>}</button><button className="chat-icon" aria-label="Close chat" onClick={close}><X size={16}/></button></nav>
-   <div className="chat-messages" ref={feed} role="log">{!muted&&lines.filter(m=>m.channel===selected).map(m=><p key={m.id}><b>{m.name}</b><span>{m.text}</span></p>)}</div>
+   <div className="chat-messages" ref={feed} role="log">{!muted&&lines.filter(m=>m.channel===selected).map(m=><p key={m.id}><b><PlayerAvatar name={m.name}/>{m.name}</b><span>{m.text}</span></p>)}</div>
    <form onSubmit={e=>{e.preventDefault();send();}}><input ref={input} aria-label="Chat message" maxLength={160} value={draft} autoComplete="off" placeholder={`${selected==='global'?'Everyone':selected==='team'?'Your team':'This match'}…`} onChange={e=>setDraft(e.target.value)}/><button type="submit" aria-label="Send message"><Send size={17}/></button></form>
    {status&&<output>{status}</output>}<div className="chat-hints"><span><kbd>ENTER</kbd> SEND</span><span><kbd>ESC</kbd> CLOSE</span></div>
   </div>}
