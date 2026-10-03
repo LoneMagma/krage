@@ -63,7 +63,7 @@ export function KrageLogo({ compact = false }: { compact?: boolean }) {
         className="krage-logo-mark"
         priority
       />
-      {!compact && <span className="brand-name">KRAGE</span>}
+      {!compact && <KrageWordmark/>}
     </span>
   );
 }
@@ -146,3 +146,6 @@ export function QualityPreview({level}:{level:0|1|2}){
 export function CrosshairPreview({color}:{color:string}){
  return <svg className="aim-preview" viewBox="0 0 40 28" aria-hidden="true"><g stroke={color} strokeWidth="2"><path d="M20 4v6m0 8v6M10 14h6m8 0h6"/></g><circle cx="20" cy="14" r="1" fill={color}/></svg>;
 }
+
+/** Bespoke five-letter wordmark, drawn as geometry rather than a system font. */
+export function KrageWordmark(){return <svg className="krage-wordmark" viewBox="0 0 244 40" aria-label="KRAGE"><g fill="currentColor"><path d="M0 0H9V16L28 0H41L19 19L42 40H28L9 23V40H0Z"/><path fillRule="evenodd" d="M49 0H79L88 9V20L81 26L93 40H80L67 25H58V40H49ZM58 8V17H76L79 14V11L76 8Z"/><path fillRule="evenodd" d="M112 0H124L143 40H132L128 31H108L104 40H93ZM118 10L112 23H124Z"/><path d="M153 0H184V9H158L154 13V27L158 31H177V25H166V17H186V40H153L145 32V8Z"/><path d="M196 0H244V9H205V15H235V24H205V31H244V40H196Z"/></g></svg>}

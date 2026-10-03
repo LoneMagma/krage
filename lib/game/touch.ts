@@ -24,7 +24,7 @@ export const CONTROL_IDS=['stick','ads','jump','crouch','slide','fire','reload',
 export type ControlId=typeof CONTROL_IDS[number];
 export type ControlLayout=Record<ControlId,{x:number;y:number;size:number;opacity:number}>;
 export function defaultLayout(leftHanded=false):ControlLayout{
- const positions=[[12,77],[72,70],[81,70],[90,70],[72,87],[95,83],[81,87],[90,87]];
+ const positions=[[12,77],[64,68],[75,68],[85,62],[64,87],[95,78],[75,87],[85,87]];
  return Object.fromEntries(CONTROL_IDS.map((id,i)=>[id,{x:leftHanded?100-positions[i][0]:positions[i][0],y:positions[i][1],size:id==='stick'?104:id==='fire'?62:48,opacity:.85}])) as ControlLayout;
 }
 export function cleanLayout(raw:unknown):ControlLayout{

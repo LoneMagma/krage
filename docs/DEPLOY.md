@@ -1,7 +1,7 @@
 Current verification and rollout checklist: [RELEASE-CHECK.md](RELEASE-CHECK.md).
 
-## v1.10.0: deploy frontend and rooms together
-This build requires **protocol 23**. Reload existing tabs after both deployments. `/health` must report protocol 23. Matches remain in server memory; restarting the room process ends them.
+## v1.10.3: deploy frontend and rooms together
+This build requires **protocol 24**. Reload existing tabs after both deployments. `/health` must report protocol 24. Matches remain in server memory; restarting the room process ends them.
 
 For players in India, test a **Singapore room-server service**. The existing service region has not been verified. Render cannot move an existing service between regions: create a replacement, set `KRAGE_ORIGINS`, then rebuild the frontend with that service's `NEXT_PUBLIC_ROOM_URL`. Keep one room instance until room routing exists. See [Render regions](https://render.com/docs/regions).
 
@@ -42,8 +42,8 @@ Redeploy both the frontend and Node room service for this update; old tabs must 
 ## Controller update (protocol 4)
 Redeploy both services and refresh tabs. Camera sway in Settings controls roll, velocity FOV and landing roll vibration; 0 disables those effects. The small shared landing eye dip remains in the controller to preserve shot alignment.
 
-## Friend lobby update (protocol 23)
-Redeploy both frontend and rooms service together. Verify `/health` reports protocol 23, Play Online enters Quick Play, and two devices can create/join a friend room, change loadouts, ready up and start. Check remembered names after refresh.
+## Friend lobby update (protocol 24)
+Redeploy both frontend and rooms service together. Verify `/health` reports protocol 24, Play Online enters Quick Play, and two devices can create/join a friend room, change loadouts, ready up and start. Check remembered names after refresh.
 
 ## EDGE and lobby update (protocol 6)
 Deploy the frontend and rooms service together, then reload open tabs. `/health` must report protocol 6. Check left-click slash/right-click stab on two clients and verify no duplicate impact sounds. The lobby now uses persistent sections and a WebGL weapon inspector; confirm it on target mobile and desktop devices.

@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://krage.pacify.site'),
   title: 'KRAGE',
   description:
-    'Play with friends in kRAGE, a free browser first person shooter. No download, no install. FFA, 1v1, 2v2, or 3v3 across four maps with bots or friends.',
+    'Play with friends in KRAGE, a free browser first person shooter. No download, no install. FFA, 1v1, 2v2, or 3v3 across four maps with bots or friends.',
   keywords: [
     'kRAGE',
     'browser FPS',
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'KRAGE',
     description:
-      'Play with friends in kRAGE, a free browser first person shooter. FFA, 1v1, 2v2, and 3v3, with bots or friends, across four maps.',
+      'Play with friends in KRAGE, a free browser first person shooter. FFA, 1v1, 2v2, and 3v3, with bots or friends, across four maps.',
     url: 'https://krage.pacify.site',
     siteName: 'KRAGE',
     type: 'website',
@@ -50,16 +50,16 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'KRAGE',
     description:
-      'Play with friends in kRAGE, a free browser first person shooter. FFA, 1v1, 2v2, and 3v3, with bots or friends.',
+      'Play with friends in KRAGE, a free browser first person shooter. FFA, 1v1, 2v2, and 3v3, with bots or friends.',
     images: ['/social-card.png'],
   },
   icons: {
     icon: [
       { url: '/favicon-16.png', sizes: '16x16', type: 'image/png' },
       { url: '/favicon-32.png', sizes: '32x32', type: 'image/png' },
-      { url: '/favicon-bw.png', type: 'image/png' },
+      { url: '/favicon.svg', type: 'image/svg+xml' },
     ],
-    apple: '/favicon-bw.png',
+    apple: '/krage-logo-128.png',
   },
   category: 'games',
 };

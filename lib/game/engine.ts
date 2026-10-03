@@ -371,6 +371,7 @@ export class Arena {
   input = emptyInput();
   touch = emptyInput();
   touchMode = false;
+  reducedMotion = false;
   mobileResolution = new MobileResolution();
   adsLerp = 0;
   gunKick = 0;
@@ -495,6 +496,8 @@ export class Arena {
         localStorage.getItem('krage-last-benchmark') || 'null',
       );
     } catch {}
+    const motionPreference=matchMedia('(prefers-reduced-motion: reduce)');this.reducedMotion=motionPreference.matches;
+    this.listen(motionPreference,'change',()=>{this.reducedMotion=motionPreference.matches;});
     this.listen(window, 'resize', this.resize);
     this.listen(document, 'keydown', this.keyDown as EventListener);
     this.listen(document, 'keyup', this.keyUp as EventListener);
@@ -998,7 +1001,7 @@ export class Arena {
           ? 'ControlLeft'
           : code;
     if (crouchKey === this.settings.crouchKey) this.crouchControl.release();
-    if (code === 'Tab') {
+    if (code === 'Tab' && this.phase !== 'ended') {
       e.preventDefault();
       this.onScoreboard(false);
     }
@@ -1173,9 +1176,11 @@ export class Arena {
       }
     } else if (this.phase === 'menu') {
       this.camera.fov = 49;
-      const orbit = Math.sin(this.time * 0.07) * 0.025;
-      this.camera.position.set(this.match.map.id===0?26:this.match.map.id===1?23:7 + orbit * 2, this.match.map.id<2?7.5:2.7, this.match.map.id===0?24:this.match.map.id===1?27:this.match.map.id===3?10:19);
-      this.camera.lookAt(-3, 2.2, -8);
+      const views=[[26,8.2,24,-3,2.2,-8],[23,9.0,27,-3,3,-6],[9,5.5,18,0,1,0],[-9,5,13,0,1,0]];
+      const [x,y,z,tx,ty,tz]=views[this.match.map.id]??views[0];
+      const motion=this.reducedMotion||this.settings.cameraMotion===0?0:1;
+      this.camera.position.set(x+Math.sin(this.time*.045)*.65*motion,y+Math.sin(this.time*.035)*.12*motion,z+Math.cos(this.time*.045)*.4*motion);
+      this.camera.lookAt(tx,ty,tz);
       this.camera.updateProjectionMatrix();
       const preview = {
         ...this.match.player,
@@ -1195,7 +1200,7 @@ export class Arena {
         reload: 0,
       };
       animateAvatar(this.lobbyAvatar, preview, this.time, dt);
-      poseLobbyAvatar(this.lobbyAvatar,this.time);
+      poseLobbyAvatar(this.lobbyAvatar,this.reducedMotion?0:this.time);
 
     }
 
@@ -1278,7 +1283,7 @@ export class Arena {
     const aim = this.input.ads && weaponView.weapon !== 3 ? 1 : 0;
     this.adsLerp = T.MathUtils.damp(this.adsLerp, aim, 18, dt);
     const speed = Math.hypot(p.vel.x, p.vel.z);
-    const motion = cameraMotion(p, this.adsLerp, this.settings.cameraMotion ?? 0.65, this.time);
+    const motion = cameraMotion(p, this.adsLerp, this.reducedMotion?0:(this.settings.cameraMotion ?? 0.45), this.time);
     this.cameraRoll = T.MathUtils.damp(this.cameraRoll, p.alive ? motion.roll : 0, 12, dt);
     this.camera.rotation.z = this.cameraRoll;
     const fov = this.settings.fov + motion.fov - this.adsLerp * 23;
@@ -1298,7 +1303,7 @@ export class Arena {
     this.gunKick = T.MathUtils.damp(this.gunKick, 0, 18, dt);
     const bob =
       Math.sin(p.stride * 3.5) *
-      Math.min(speed * 0.0015, 0.011) *
+      Math.min(speed * 0.0012, 0.0085) *
       (p.grounded ? 1 : 0) *
       (1 - this.adsLerp * 0.8);
     const pose = weaponPose(weaponView),
@@ -1574,7 +1579,7 @@ export class Arena {
       if (e.type === 'reload' && e.actor === 0 && !predicted)
         this.audio.reload(e.weapon ?? 1);
       if (e.type === 'land' && e.actor === 0) {
-        this.landing = Math.min(0.09, (e.damage ?? 0) * 0.008);
+        this.landing = Math.min(0.065, (e.damage ?? 0) * 0.006);
         this.audio.land(
           e.damage ?? 4,
           this.surfaceAt(this.match.player.pos) === 'metal',

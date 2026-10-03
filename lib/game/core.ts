@@ -29,7 +29,7 @@ export type Settings = {
   slideKey: string;
 };
 export const DEFAULT_SETTINGS: Settings = {
-  cameraMotion: 0.65,
+  cameraMotion: 0.45,
   sensitivity: 1,
   fov: 90,
   volume: 0.5,
@@ -482,7 +482,7 @@ export function moveActor(a: Actor, input: Input, dt: number, map: ArenaMap) {
   a.jumpBuffer =
     input.jump && !a.jumpHeld ? 0.15 : Math.max(0, a.jumpBuffer - dt);
   a.jumpHeld = input.jump;
-  a.coyote = a.grounded ? 0.08 : Math.max(0, a.coyote - dt);
+  a.coyote = a.grounded ? 0.10 : Math.max(0, a.coyote - dt);
   a.slideBuffer=input.slide&&!a.slideHeld ? .18:Math.max(0,(a.slideBuffer??0)-dt);
   if (
     a.slideBuffer > 0 &&
@@ -548,7 +548,7 @@ export function moveActor(a: Actor, input: Input, dt: number, map: ArenaMap) {
       dz = wz * speed - a.vel.z,
       d = Math.hypot(dx, dz);
     const opposing = a.vel.x * wx + a.vel.z * wz < 0,
-      acceleration = magnitude === 0 ? 78 : opposing ? 72 : 54;
+      acceleration = magnitude === 0 ? 86 : opposing ? 80 : 62;
     const change = Math.min(1, (acceleration * dt) / Math.max(d, 0.001));
     a.vel.x += dx * change;
     a.vel.z += dz * change;
@@ -557,7 +557,7 @@ export function moveActor(a: Actor, input: Input, dt: number, map: ArenaMap) {
     // Retain slide-jump momentum without allowing air steering to manufacture speed.
     const cap=Math.max(speed,Math.hypot(a.vel.x,a.vel.z));
     const dx=wx*cap-a.vel.x,dz=wz*cap-a.vel.z;
-    const blend=Math.min(1,22*dt*magnitude/Math.max(.001,Math.hypot(dx,dz)));
+    const blend=Math.min(1,26*dt*magnitude/Math.max(.001,Math.hypot(dx,dz)));
     a.vel.x+=dx*blend;a.vel.z+=dz*blend;
   }
   const horizontal = Math.hypot(a.vel.x, a.vel.z);

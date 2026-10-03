@@ -1265,7 +1265,7 @@ export function animateAvatar(model: Avatar, a: Actor, time: number, frameDt = 1
     points[i].x+=leanX*(i===0?1:0.6);
     points[i].z+=leanZ*(i===0?1:0.6);
   }
-  memory.travel.lerp(a.vel,1-Math.exp(-dt*10));
+  memory.travel.lerp(a.vel,1-Math.exp(-dt*18));
   const travelSpeed=Math.hypot(memory.travel.x,memory.travel.z);
   const lateral=travelSpeed>.1?(Math.cos(a.yaw)*memory.travel.x-Math.sin(a.yaw)*memory.travel.z)/travelSpeed:0;
   const forward=travelSpeed>.1?(Math.sin(a.yaw)*memory.travel.x+Math.cos(a.yaw)*memory.travel.z)/travelSpeed:0;

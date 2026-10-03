@@ -7,8 +7,8 @@ export type MatchReceipt = Counts & {
   eligible: boolean;
 };
 export const CATALOG = [
-  { id:'op-sable',kind:'operator',name:'Sable',note:'Desert scout',cost:0,variant:3,color:'#b66b47' },
-  { id:'op-flint',kind:'operator',name:'Flint',note:'Alpine utility kit',cost:0,variant:4,color:'#deb958' },
+  { id:'op-sable',kind:'operator',name:'Sable',note:'Desert scout',cost:350,variant:3,color:'#b66b47' },
+  { id:'op-flint',kind:'operator',name:'Flint',note:'Alpine utility kit',cost:600,variant:4,color:'#deb958' },
   { id:'skin-echo-signal',kind:'finish',name:'ECHO / Signal',note:'SPECIAL',cost:850,variant:6,color:'#6bcec1',weapon:0 },
   { id:'skin-kilo-ivory',kind:'finish',name:'KILO / Ivory',note:'SPECIAL',cost:1000,variant:6,color:'#ded6be',weapon:1 },
   { id:'skin-mica-tundra',kind:'finish',name:'MICA / Tundra',note:'SPECIAL',cost:1100,variant:6,color:'#a8cbd0',weapon:2 },
@@ -43,7 +43,7 @@ export const CATALOG = [
     kind: 'operator',
     name: 'Blake',
     note: 'Dark reconnaissance kit',
-    cost: 0,
+    cost: 900,
     variant: 2,
     color: '#726ca3',
   },
@@ -110,7 +110,7 @@ export function newProfile(now = Date.now()): Profile {
     version: 1,
     priceAdjustments: [],
     balance: 200,
-    owned: [...OPERATORS.map(o=>o.id), 'finish-factory'],
+    owned: [...OPERATORS.filter(o=>o.cost===0).map(o=>o.id), 'finish-factory'],
     operator: 'op-scout',
     finish: 'finish-factory',
     ...periods(now),
@@ -124,7 +124,7 @@ export function newProfile(now = Date.now()): Profile {
 }
 export function refreshProfile(profile: Profile, now = Date.now()): Profile {
   const { day, week } = periods(now),
-    p = { ...profile, owned: Array.from(new Set([...profile.owned,...OPERATORS.map(o=>o.id)])) };
+    p = { ...profile, owned: Array.from(new Set([...profile.owned,...OPERATORS.filter(o=>o.cost===0).map(o=>o.id)])) };
   if (day > p.day) {
     p.day = day;
     p.daily = ZERO();

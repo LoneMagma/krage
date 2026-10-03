@@ -300,7 +300,7 @@ await test('practice rewards, purchases and claims are idempotent and UTC schedu
   assert.equal(p.balance, 95);
   assert.deepEqual(purchase(p, 'finish-frost'), p);
   assert.equal(equipCosmetic(p, 'finish-frost').finish, 'finish-frost');
-  assert.equal(equipCosmetic(p, 'op-spectre').operator, 'op-spectre');
+  assert.equal(equipCosmetic(p, 'op-spectre').operator, p.operator);
   assert.equal(equipCosmetic(p, 'unknown-operator').operator, 'op-scout');
   p = recordMatch(p, { ...receipt, id: 'match-2' }, now);
   const challenge = challenges(p).find(
@@ -821,4 +821,24 @@ await test('mobile editor validates each button and mirrors left-hand defaults',
 });
 await test('name avatars are deterministic, symmetric and update on name changes',async()=>{
  const {identicon}=await import('../lib/game/identicon.js');const one=identicon('Rook');assert.deepEqual(one,identicon('Rook'));assert.deepEqual(one,identicon(' Rook '));assert.notDeepEqual(one,identicon('Blake'));for(const row of one.cells)assert.deepEqual(row,[...row].reverse());assert.equal(one.cells.length,5);
+});
+await test('default phone controls do not overlap at supported landscape sizes',async()=>{
+ const {defaultLayout,CONTROL_IDS}=await import('../lib/game/touch.js'),layout=defaultLayout();
+ for(const [w,h] of [[667,375],[844,390],[1024,768]])for(let i=0;i<CONTROL_IDS.length;i++)for(let j=i+1;j<CONTROL_IDS.length;j++){
+ const a=layout[CONTROL_IDS[i]],b=layout[CONTROL_IDS[j]],x=(p:typeof a)=>Math.max(p.size/2+4,Math.min(w-p.size/2-4,w*p.x/100)),y=(p:typeof a)=>Math.max(p.size/2+4,Math.min(h-p.size/2-4,h*p.y/100));
+ assert.ok(Math.abs(x(a)-x(b))>=(a.size+b.size)/2||Math.abs(y(a)-y(b))>=(a.size+b.size)/2,`${CONTROL_IDS[i]} overlaps ${CONTROL_IDS[j]} at ${w}x${h}`);
+ }
+});
+
+await test('operator prices gate new unlocks and preserve existing ownership',async()=>{
+ const {newProfile,refreshProfile,purchase,equipCosmetic,OPERATORS}=await import('../lib/game/progression.js');const p=newProfile();
+ assert.deepEqual(OPERATORS.filter(o=>p.owned.includes(o.id)).map(o=>o.name),['Rook','Vera']);
+ const old={...p,owned:[...p.owned,...OPERATORS.map(o=>o.id)]};assert.ok(OPERATORS.every(o=>refreshProfile(old).owned.includes(o.id)));
+ assert.equal(equipCosmetic(p,'op-spectre').operator,p.operator);
+ const bought=purchase({...p,balance:350},'op-sable');assert.equal(bought.balance,0);assert.equal(equipCosmetic(bought,'op-sable').operator,'op-sable');assert.equal(purchase(bought,'op-sable').balance,0);
+});
+await test('remote interpolation restores a buffer smoothly and ignores stale samples',async()=>{
+ const {RemoteBuffer}=await import('../lib/game/remote-buffer.js');const b=new RemoteBuffer(),a=new Match(0,0,1).actors[1];let previous=0;
+ for(let i=1;i<=600;i++){if(i%3===0)b.accept(1,{...a,pos:v(i/60,0,0)},i/60);b.advance(1/60);assert.ok(b.time>=previous);assert.ok(b.time<=b.latest);previous=b.time;}
+ assert.ok(b.latest-b.time>.03&&b.latest-b.time<.12);const count=b.poses.get(1)!.length;b.accept(1,a,1);assert.equal(b.poses.get(1)!.length,count);
 });

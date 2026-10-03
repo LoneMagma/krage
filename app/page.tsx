@@ -48,6 +48,7 @@ import { Challenges } from '@/components/game/challenges';
 import { Locker } from '@/components/game/locker';
 import {
   CATALOG,
+  purchase,
   OPERATORS,
   claimableCount,
   newProfile,
@@ -277,7 +278,7 @@ export default function Home() {
     [inGameChat, setInGameChat] = useState(false),
     [frags, setFrags] = useState<{id:number;message:string}[]>([]),
     [touch, setTouch] = useState(false),
-    [touchEditor,setTouchEditor]=useState(false),[resumeTouch,setResumeTouch]=useState(false),[mapChoosing,setMapChoosing]=useState(false),
+    [operatorShop,setOperatorShop]=useState(false),[touchEditor,setTouchEditor]=useState(false),[resumeTouch,setResumeTouch]=useState(false),[mapChoosing,setMapChoosing]=useState(false),
     [pauseSettings, setPauseSettings] = useState(false);
   const mutationRef=useRef(false);const [accountBusy,setAccountBusy]=useState(false);
   const [profile, setProfile] = useState<Profile>(() => newProfile()),
@@ -309,7 +310,8 @@ export default function Home() {
       arena.current?.audio.reward();setReward({id:Date.now(),title:action.type==='claim'?'REWARD CLAIMED':action.type==='buy'?'UNLOCKED':'EQUIPPED',amount:Math.max(0,amount)});
     }catch(e){setError(e instanceof Error?e.message:'Save failed');}finally{mutationRef.current=false;setAccountBusy(false);}
   };
-  const chooseOperator=(direction:number)=>{const id=OPERATORS[(OPERATORS.findIndex(o=>o.id===profile.operator)+OPERATORS.length+direction)%OPERATORS.length].id;if(account.active)void cloudAction({type:'equip',id});else setProfile(p=>({...p,operator:id}));};
+  const handleOperatorAction=(event:React.MouseEvent<HTMLButtonElement>)=>{const id=event.currentTarget.dataset.operator!;const owned=profile.owned.includes(id);if(account.active)void cloudAction({type:owned?'equip':'buy',id});else setProfile(p=>owned?{...p,operator:id}:purchase(p,id));};
+  const chooseOperator=(direction:number)=>{const owned=OPERATORS.filter(o=>profile.owned.includes(o.id));const id=owned[(owned.findIndex(o=>o.id===profile.operator)+owned.length+direction)%owned.length]?.id;if(!id)return;if(account.active)void cloudAction({type:'equip',id});else setProfile(p=>({...p,operator:id}));};
   const savePlayerName = (name: string) => { setPlayerName(name);account.preferences({name}); try { localStorage.setItem('krage-player-name',name); } catch {} };
   const claimable=claimableCount(profile);
   useEffect(()=>{if(!reward)return;const timer=setTimeout(()=>setReward(null),2300);return()=>clearTimeout(timer);},[reward]);
@@ -575,6 +577,7 @@ export default function Home() {
   return (
     <main data-section={!inGame ? modal==='practice'?'play':modal ?? 'play' : 'game'} className={'game-shell ' + (touch?'touch-device ':'') + (inGame ? 'match-shell' : 'lobby-shell')}>
       <div className="world" ref={mount} />
+      {operatorShop&&<div className="map-picker-overlay"><section aria-label="Operators"><header><strong>OPERATORS</strong><button aria-label="Close operators" onClick={()=>setOperatorShop(false)}>×</button></header><div className="operator-shop">{[...OPERATORS].sort((a,b)=>a.cost-b.cost).map(o=>{const owned=profile.owned.includes(o.id);return <button key={o.id} aria-pressed={profile.operator===o.id} disabled={accountBusy||accountBlocked||(!owned&&profile.balance<o.cost)} data-operator={o.id} onClick={handleOperatorAction} style={{borderColor:o.color}}><strong>{o.name}</strong><span>{profile.operator===o.id?'EQUIPPED':owned?'EQUIP':o.cost+' KR'}</span></button>})}</div></section></div>}
       {touchEditor&&<TouchControls getArena={getTouchArena} editor onClose={closeTouchEditor}/>}
       {mapChoosing&&<div className="map-picker-overlay"><section aria-label="Select arena"><header><strong>CHOOSE MAP</strong><button onClick={()=>setMapChoosing(false)} aria-label="Close map selection">×</button></header><MapPicker value={map} onChange={id=>{selectMap(id);setMapChoosing(false)}}/></section></div>}
       {touch&&<div className="rotate-phone">↻<strong>ROTATE TO PLAY</strong><span>Landscape gives you room to aim.</span><button onClick={enterFullscreen}>ENTER LANDSCAPE</button></div>}
@@ -588,7 +591,7 @@ export default function Home() {
             </Link>
             <nav aria-label="Main navigation">{[['play','PLAY'],['online','LOBBY'],['locker','LOCKER'],['challenges','CHALLENGES'],['settings','SETTINGS']].map(([id,label])=><Button key={id} aria-current={((modal==='controls'?'settings':modal==='loadout'||modal==='practice'?'play':modal??'play')===id)?'page':undefined} className={'nav-button '+((modal==='controls'?'settings':modal==='loadout'||modal==='practice'?'play':modal??'play')===id?'active':'')} onClick={()=>setModal(id==='play'?null:id as 'online'|'locker'|'challenges'|'settings')}>{label}{id==='challenges'&&claimable>0&&<b className="claim-badge">{claimable}</b>}</Button>)}</nav>
             <div className="topbar-actions">
-              <AccountPanel account={account} />
+              <AccountPanel account={account} name={playerName} />
               <button className="nav-wallet" onClick={()=>setModal('challenges')} aria-label="Credits and challenges"><KrCredit/><strong key={profile.balance}>{profile.balance.toLocaleString()}</strong><small>KR</small></button>
             </div>
           </header>
@@ -631,7 +634,7 @@ export default function Home() {
               </section>
               <div className="hero-actions">
                 <div className="character-toggle" aria-label="Character">
-                  <button aria-label="Previous character" disabled={accountBusy||accountBlocked} onClick={()=>chooseOperator(-1)}>‹</button><strong>{OPERATORS.find(o=>o.id===profile.operator)?.name.toUpperCase()}</strong><button aria-label="Next character" disabled={accountBusy||accountBlocked} onClick={()=>chooseOperator(1)}>›</button>
+                  <button aria-label="Previous character" disabled={accountBusy||accountBlocked} onClick={()=>chooseOperator(-1)}>‹</button><button className="operator-shop-trigger" onClick={()=>setOperatorShop(true)} aria-label="Choose or unlock operator">{OPERATORS.find(o=>o.id===profile.operator)?.name.toUpperCase()} ▾</button><button aria-label="Next character" disabled={accountBusy||accountBlocked} onClick={()=>chooseOperator(1)}>›</button>
                 </div>
                 <button className="hero-loadout" aria-haspopup="dialog" onClick={() => setModal('loadout')}>LOADOUT <span>{GUNS[weapon].short}</span></button>
               </div>
@@ -672,7 +675,7 @@ export default function Home() {
           <footer className="lobby-footer">
             <span className="version-link">
               <MousePointer2 size={14} />
-              <a href="https://github.com/lonemagma" target="_blank" rel="noreferrer">v1.10.1</a>
+              <a href="https://github.com/lonemagma" target="_blank" rel="noreferrer">v1.10.3</a>
             </span>
 
             <span className="project-credit"><strong>MADE IN INDIA</strong><span>A <a href="https://pacify.site" target="_blank" rel="noreferrer">pacify</a> project</span></span>

@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { CircleUserRound, RefreshCw, LogOut, X } from 'lucide-react';
+import { RefreshCw, LogOut, X } from 'lucide-react';
+import {PlayerAvatar} from './player-avatar';
 import { authClient } from '@/lib/account/client';
 import type { useAccount } from '@/lib/account/use-account';
 
@@ -15,7 +16,7 @@ function GoogleMark() {
   );
 }
 
-export function AccountPanel({ account }: { account: ReturnType<typeof useAccount> }) {
+export function AccountPanel({ account, name }: { name:string; account: ReturnType<typeof useAccount> }) {
   const [open, setOpen] = useState(false),
     [email, setEmail] = useState(''),
     [code, setCode] = useState(''),
@@ -51,7 +52,7 @@ export function AccountPanel({ account }: { account: ReturnType<typeof useAccoun
         onClick={() => setOpen(true)}
         aria-label={connected ? 'Account' : 'Sign in'}
       >
-        <CircleUserRound size={18} />
+        <PlayerAvatar name={name}/>
         <span>{connected ? label.split('@')[0] : 'SIGN IN'}</span>
       </button>
       <dialog
@@ -74,7 +75,7 @@ export function AccountPanel({ account }: { account: ReturnType<typeof useAccoun
         ) : connected ? (
           <>
             <div className="account-identity">
-              <span className="account-avatar">{label.slice(0, 1).toUpperCase()}</span>
+              <span className="account-avatar"><PlayerAvatar name={name}/></span>
               <div>
                 <strong>{label}</strong>
                 <small>Signed in</small>

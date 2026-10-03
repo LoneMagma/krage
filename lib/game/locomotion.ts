@@ -8,14 +8,14 @@ export function locomotionSample(stride: number, speed: number, lateral: number,
   const stance = cycle < contact;
   const swing = (cycle - contact) / (1 - contact);
   const reach = Math.min(.38, speed * .14) * (1 - crouch * .28);
-  const travel = stance ? 1 - 2 * cycle / contact : -Math.cos(Math.PI * swing);
+  const travel = stance ? 1 - 2 * ((cycle/contact)**2 * (3-2*cycle/contact)) : -Math.cos(Math.PI * swing);
   // Continuous through forward/backward diagonals; no hip flip at pure strafe.
   const facing = Math.atan2(lateral, Math.abs(forward) + .35);
   return {
     x: travel * reach * lateral,
     z: travel * reach * forward,
-    lift: stance ? 0 : Math.sin(Math.PI * swing) ** 2 * Math.min(.09, speed * .018) * (1-crouch*.35),
+    lift: stance ? 0 : Math.sin(Math.PI * swing) ** 2 * Math.min(.075, speed * .016) * (1-crouch*.35),
     planted: stance,
-    hips: Math.max(-.5, Math.min(.5, -facing*.45)),
+    hips: Math.max(-.35, Math.min(.35, -facing*.3)),
   };
 }

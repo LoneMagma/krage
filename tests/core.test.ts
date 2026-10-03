@@ -892,3 +892,11 @@ await test('Snow exterior stairs reach the maintenance door and gallery with a s
  const nav=new Navigation(m.map);assert.ok(nav.path(m.map.spawns[0],v(-21.5,3,-13)).length>0);
  assert.equal(hasLOS(v(-11,1.6,23),v(-11,20,23),m.map.blocks),true,'maintenance yard remains open sky');
 });
+
+await test('ground movement starts, brakes and reverses responsively without instant velocity snaps',()=>{
+ const m=new Match(0,0,0),a=m.player,input=emptyInput();m.map.blocks=[];a.pos=v();a.vel=v();a.yaw=0;a.grounded=true;input.forward=1;
+ moveActor(a,input,1/120,m.map);assert.ok(-a.vel.z>0&&-a.vel.z<1);
+ for(let i=0;i<24;i++)moveActor(a,input,1/120,m.map);assert.ok(-a.vel.z>5);
+ input.forward=-1;for(let i=0;i<24;i++)moveActor(a,input,1/120,m.map);assert.ok(a.vel.z>4);
+ input.forward=0;for(let i=0;i<12;i++)moveActor(a,input,1/120,m.map);assert.ok(Math.hypot(a.vel.x,a.vel.z)<.001);
+});
