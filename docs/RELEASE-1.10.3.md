@@ -11,3 +11,22 @@
 ## Verification and deployment
 Automated gameplay, room and account suites, lint, TypeScript, production build and browser touch smoke checks. Browser emulation does not certify real-device touch feel, Safari rotation or deployed network latency. Check those with real devices before public rollout.
 Deploy both frontend and room server together: protocol 24. Room restarts end active matches. Source archive excludes secrets, account runtime data and dependencies.
+
+## Final release fixes
+- End-of-match scoreboard closes only once, on transition to ended. Tab and the visible Scores/Results button remain stable through subsequent network snapshots. Regression test included in npm test.
+- Touch detection includes secondary touch pointers and maxTouchPoints; landscape CSS supports hybrid tablets. Portrait fallback remains because browser fullscreen/orientation restrictions cannot be bypassed. Compact landscape results panels remain scrollable.
+- Chat uses aligned identity/message columns, with wrapping for long text. Removed MADE IN INDIA footer tag.
+- Updated title and social card to KRAGE | Free Multiplayer Browser FPS. Existing canonical, sitemap and robots routes retained. Verify canonical domain matches production and submit sitemap in Google Search Console after deployment. No ranking guarantees.
+
+## Lobby composition and domain
+Current release targets krage.pacify.site; krage.xyz migration is deferred. Lobby maps have distinct elevated camera compositions, smooth settling, restrained drift, map-specific tint and stronger panel contrast. Reduced-motion settings disable drift. Gameplay map geometry and lighting are unchanged. See DOMAIN-KRAGE-PACIFY.md for hosting/auth environment settings.
+
+## Compact interface pass
+- Added reusable compact selectors: previous/next value, expandable full option list and keyboard arrows. Existing regular choice controls remain available for practice and other screens.
+- Custom room creation now shows one map and mode at a time; rules/bots/loadout/access are collapsible sections. Existing room options and host actions are preserved.
+- Settings use a single category selector and compact graphic/crosshair/key choices. Sliders, sound toggles, defaults and performance diagnostics remain accessible.
+- Locker separates preview controls, finish choices and a compact equip/purchase action. Removed duplicate finish text and adjusted narrow-screen spacing.
+- ECHO SVG reflects the actual skeletal stock, box magazine, receiver and ribbed fore-end.
+- Five lobby carry poses with subtle weight shifts and staggered feet. Hand IK remains tied to actual weapon grips; gameplay animation and hitboxes are unchanged.
+
+Selector revision: removed extra previous/next buttons. Shared single menu triggers use uniform sizing, spacing and equal columns; keyboard arrows still change values. Settings fields use matched containers and locker weapon choices have equal dimensions.

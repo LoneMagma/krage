@@ -1354,9 +1354,16 @@ export function animateAvatar(model: Avatar, a: Actor, time: number, frameDt = 1
 /** Lobby-only carry pose: hands follow actual weapon grip locations. */
 export function poseLobbyAvatar(model:Avatar,time:number){
  const gun=model.weapon,breath=Math.sin(time*1.5)*.006;
- gun.position.set(.16,1.1+breath,-.28);gun.rotation.set(-.04,-.20,-.05);
+ const variant=Math.max(0,Math.min(4,model.group.userData.operator??0));
+ const carries=[[.16,1.10,-.28,-.04,-.20,-.05],[.11,1.17,-.25,-.16,.12,.12],[.20,1.04,-.30,.16,-.28,-.14],[.13,1.14,-.30,-.10,.03,.03],[.18,1.08,-.25,.10,-.12,-.20]];
+ const [x,y,z,pitch,yaw,roll]=carries[variant];
+ gun.position.set(x,y+breath,z);gun.rotation.set(pitch,yaw,roll);
  const points=model.joints;
  for(const i of [0,1,2,3,6,9,10,11,12,13,14])points[i].set(...RIG_POINTS[i] as [number,number,number]);
+ const lean=[0,-.025,.035,-.015,.025][variant];
+ for(const i of [0,1,2,3,6])points[i].x+=lean;
+ const stride=[.02,.07,-.06,.045,-.08][variant];
+ points[11].z+=stride;points[14].z-=stride;points[10].z+=stride*.5;points[13].z-=stride*.5;
  for(const [shoulder,elbow,hand,grip] of [[3,4,5,gun.userData.supportGrip as [number,number,number]],[6,7,8,gun.userData.triggerGrip as [number,number,number]]] as const){
    const target=gun.userData.weapon===3&&hand===5 ? new T.Vector3(-.32,.86,-.03) : new T.Vector3(...grip).multiplyScalar(.65).applyEuler(gun.rotation).add(gun.position);
    const upper=new T.Vector3(...RIG_POINTS[shoulder]).distanceTo(new T.Vector3(...RIG_POINTS[elbow]));

@@ -271,8 +271,8 @@ export class Arena {
     this.processEvents();
     if (this.match.ended) {
       this.completeMatch();
+      if (this.phase !== 'ended') this.onScoreboard(false);
       this.phase = 'ended';
-      this.onScoreboard(false);
       if (document.pointerLockElement) document.exitPointerLock();
     } else if (paused) this.phase = 'paused';
     else if (this.match.pendingSpawn) this.phase = 'spawning';
@@ -1176,10 +1176,13 @@ export class Arena {
       }
     } else if (this.phase === 'menu') {
       this.camera.fov = 49;
-      const views=[[26,8.2,24,-3,2.2,-8],[23,9.0,27,-3,3,-6],[9,5.5,18,0,1,0],[-9,5,13,0,1,0]];
+      const views=[[28,11,25,-8,3,-10],[26,12.5,29,-9,5,-12],[10,7,17,-2,1.8,-4],[-10,6.5,13,2,1.5,-3]];
       const [x,y,z,tx,ty,tz]=views[this.match.map.id]??views[0];
       const motion=this.reducedMotion||this.settings.cameraMotion===0?0:1;
-      this.camera.position.set(x+Math.sin(this.time*.045)*.65*motion,y+Math.sin(this.time*.035)*.12*motion,z+Math.cos(this.time*.045)*.4*motion);
+      const settle=1-Math.exp(-dt*3);
+      this.camera.position.x+=(x+Math.sin(this.time*.045)*.45*motion-this.camera.position.x)*settle;
+      this.camera.position.y+=(y+Math.sin(this.time*.035)*.09*motion-this.camera.position.y)*settle;
+      this.camera.position.z+=(z+Math.cos(this.time*.045)*.3*motion-this.camera.position.z)*settle;
       this.camera.lookAt(tx,ty,tz);
       this.camera.updateProjectionMatrix();
       const preview = {

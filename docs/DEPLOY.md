@@ -1,3 +1,5 @@
+Current domain setup: [DOMAIN-KRAGE-PACIFY.md](DOMAIN-KRAGE-PACIFY.md).
+
 Current verification and rollout checklist: [RELEASE-CHECK.md](RELEASE-CHECK.md).
 
 ## v1.10.3: deploy frontend and rooms together

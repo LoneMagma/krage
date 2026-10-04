@@ -271,7 +271,7 @@ if (process.argv[1]?.endsWith('/server/index.mjs')) {
     host: process.env.KRAGE_HOST || '0.0.0.0',
     port: Number(process.env.PORT || process.env.KRAGE_PORT || 3002),
     origins: (
-      process.env.KRAGE_ORIGINS || 'http://localhost:3001,http://127.0.0.1:3001'
+      process.env.KRAGE_ORIGINS || 'https://krage.pacify.site,http://localhost:3001,http://127.0.0.1:3001'
     ).split(',').map(origin => origin.trim().replace(/\/$/, '')).filter(Boolean),
   });
   const address = await server.listen();

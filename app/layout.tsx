@@ -6,9 +6,9 @@ import './mobile.css';
 export const viewport:Viewport={width:'device-width',initialScale:1,viewportFit:'cover'};
 export const metadata: Metadata = {
   metadataBase: new URL('https://krage.pacify.site'),
-  title: 'KRAGE',
+  title: 'KRAGE | Free Multiplayer Browser FPS Game',
   description:
-    'Play with friends in KRAGE, a free browser first person shooter. No download, no install. FFA, 1v1, 2v2, or 3v3 across four maps with bots or friends.',
+    'Play KRAGE, a free multiplayer browser FPS. Jump into quick play, create a lobby with friends, or practice against bots. No download required.',
   keywords: [
     'kRAGE',
     'browser FPS',
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     follow: true,
   },
   openGraph: {
-    title: 'KRAGE',
+    title: 'KRAGE | Free Multiplayer Browser FPS Game',
     description:
       'Play with friends in KRAGE, a free browser first person shooter. FFA, 1v1, 2v2, and 3v3, with bots or friends, across four maps.',
     url: 'https://krage.pacify.site',
@@ -42,13 +42,13 @@ export const metadata: Metadata = {
         url: '/social-card.png',
         width: 1200,
         height: 630,
-        alt: 'kRAGE browser arena shooter',
+        alt: 'KRAGE: free multiplayer browser FPS',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'KRAGE',
+    title: 'KRAGE | Free Multiplayer Browser FPS Game',
     description:
       'Play with friends in KRAGE, a free browser first person shooter. FFA, 1v1, 2v2, and 3v3, with bots or friends.',
     images: ['/social-card.png'],

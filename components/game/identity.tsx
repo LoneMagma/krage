@@ -93,13 +93,15 @@ export function WeaponGlyph({
       {finish===4&&id<3&&<path d="M92 39H154M97 43H145" stroke={accent} strokeWidth="3"/>}
       <g stroke="#101b24" strokeWidth="1.6" strokeLinejoin="round">
         {id===0 ? <>
-          <path d="M16 32H58V44H29V60H16Z" fill={wood}/>
-          <path d="M53 26H159L171 35V51H120L111 60H78L70 50H53Z" fill={`url(#${key})`}/>
-          <path d="M88 49H109V78H88ZM64 49H78L73 70H60Z" fill="#26353d"/>
-          <path d="M167 33H208V45H167ZM208 31H220V47H208Z" fill={steel}/>
-          <path d="M62 21H143V27H62ZM150 20H156V31H150Z" fill="#26353d"/>
-          <path d="M70 34H108M124 35H149" stroke={finish?accent:'#b6c6ce'} strokeWidth="3"/>
-          <path d="M94 55V72M102 55V72" stroke="#60757e"/>
+          <path d="M14 27H68V34H24V48H68V55H14Z" fill={steel}/>
+          <path d="M12 23H21V59H12Z" fill="#354449"/>
+          <path d="M68 24H148V54H68Z" fill={`url(#${key})`}/>
+          <path d="M146 30H196V52H146ZM196 36H226V46H196Z" fill={steel}/>
+          <path d="M96 53H117V82H96ZM77 54H91L85 74H71Z" fill="#303b3d"/>
+          <path d="M77 19H146V25H77ZM80 8H86V20H80ZM211 21H217V36H211Z" fill="#667779"/>
+          <path d="M88 34H136V43H88Z" fill={finish?wood:'#a6b7ac'}/>
+          <path d="M155 33V49M166 33V49M177 33V49M188 33V49M92 18V23M108 18V23M125 18V23" stroke="#314149" strokeWidth="3"/>
+          <path d="M87 55Q87 64 96 61" fill="none" stroke={steel}/>
         </> : id===1 ? <>
           <path d="M9 39 46 27 60 34 55 55 38 54 9 68Z" fill={wood}/>
           <path d="M56 30H139V52H58ZM63 24H131V31H63Z" fill={`url(#${key})`}/>

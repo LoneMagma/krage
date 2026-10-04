@@ -11,7 +11,7 @@
     "start": "wrangler dev --config dist/server/wrangler.json",
     "lint": "oxlint app lib/game lib/account components/game tests server",
     "format": "oxfmt",
-    "test": "tsc -p tsconfig.test.json && node .test-build/tests/core.test.js && node .test-build/tests/presentation.test.js",
+    "test": "tsc -p tsconfig.test.json && node .test-build/tests/core.test.js && node .test-build/tests/presentation.test.js && node --test tests/end-results.test.mjs",
     "build:server": "tsc -p tsconfig.server.json",
     "server": "npm run build:server && node server/index.mjs",
     "test:server": "npm run build:server && node --test tests/server.test.mjs",

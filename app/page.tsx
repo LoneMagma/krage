@@ -120,13 +120,13 @@ function SettingsPanel({
   const update = <K extends keyof Settings>(key: K, value: Settings[K]) =>
     onChange({ ...settings, [key]: value });
   return (
-    <><div className="section-tabs settings-categories">{['VIEW','SOUND','MOVEMENT',...(children?['PERFORMANCE']:[])].map(label=><button key={label} aria-pressed={category===label} onClick={()=>setCategory(label)}>{label}</button>)}</div>
+    <><div className="settings-category-picker"><GameChoice compact aria-label="Settings category" value={category} onChange={setCategory}>{['VIEW','SOUND','MOVEMENT',...(children?['PERFORMANCE']:[])].map(label=><option key={label} value={label}>{label}</option>)}</GameChoice></div>
     <div className="settings-fields" hidden={category==='PERFORMANCE'}>
       <button hidden={category!=='SOUND'} aria-pressed={settings.musicEnabled !== false} onClick={() => update('musicEnabled', settings.musicEnabled === false)}>MUSIC <b>{settings.musicEnabled === false ? 'OFF' : 'ON'}</b></button>
       <button hidden={category!=='SOUND'} aria-pressed={settings.effectsEnabled !== false} onClick={() => update('effectsEnabled', settings.effectsEnabled === false)}>GAME SOUND <b>{settings.effectsEnabled === false ? 'OFF' : 'ON'}</b></button>
       <label hidden={category!=='MOVEMENT'}>
-        Camera motion <output>{Math.round((settings.cameraMotion ?? 0.65) * 100)}%</output>
-        <input aria-label="Camera motion" type="range" min="0" max="1" step="0.05" value={settings.cameraMotion ?? 0.65} onChange={e => update('cameraMotion', +e.target.value)} />
+        Camera motion <output>{Math.round((settings.cameraMotion ?? 0.45) * 100)}%</output>
+        <input aria-label="Camera motion" type="range" min="0" max="1" step="0.05" value={settings.cameraMotion ?? 0.45} onChange={e => update('cameraMotion', +e.target.value)} />
       </label>
       <label hidden={category!=='MOVEMENT'}>
         Mouse sensitivity <output>{settings.sensitivity.toFixed(2)}</output>
@@ -164,7 +164,7 @@ function SettingsPanel({
           onInput={(e) => onChange({ ...settings, volume: +e.currentTarget.value, effectsEnabled: +e.currentTarget.value > 0 })}
         />
       </label>
-      <fieldset hidden={category!=='MOVEMENT'} className="choice-setting"><legend>Bot difficulty</legend><GameChoice
+      <fieldset hidden={category!=='MOVEMENT'} className="choice-setting"><legend>Bot difficulty</legend><GameChoice compact
           value={settings.difficulty}
           onChange={(value)=>
             update('difficulty', value as Settings['difficulty'])
@@ -176,7 +176,7 @@ function SettingsPanel({
           <option value="hard">Veteran</option>
         </GameChoice>
       </fieldset>
-      <fieldset hidden={category!=='VIEW'} className="choice-setting"><legend>Graphics</legend><GameChoice
+      <fieldset hidden={category!=='VIEW'} className="choice-setting"><legend>Graphics</legend><GameChoice compact
           value={settings.quality}
           className="quality-choice"
           onChange={(value)=>
@@ -189,7 +189,7 @@ function SettingsPanel({
         </GameChoice>
       </fieldset>
 
-      <fieldset hidden={category!=='MOVEMENT'} className="choice-setting"><legend>Hold crouch</legend><GameChoice
+      <fieldset hidden={category!=='MOVEMENT'} className="choice-setting"><legend>Hold crouch</legend><GameChoice compact
           value={settings.crouchKey}
           aria-label="Crouch key"
           onChange={(value)=> {
@@ -211,7 +211,7 @@ function SettingsPanel({
           ))}
         </GameChoice>
       </fieldset>
-      <fieldset hidden={category!=='MOVEMENT'} className="choice-setting"><legend>Slide</legend><GameChoice
+      <fieldset hidden={category!=='MOVEMENT'} className="choice-setting"><legend>Slide</legend><GameChoice compact
           value={settings.slideKey}
           aria-label="Slide key"
           onChange={(value)=> update('slideKey', value)}
@@ -226,7 +226,7 @@ function SettingsPanel({
         </GameChoice>
       </fieldset>
 
-      <fieldset hidden={category!=='VIEW'} className="choice-setting"><legend>Crosshair</legend><GameChoice
+      <fieldset hidden={category!=='VIEW'} className="choice-setting"><legend>Crosshair</legend><GameChoice compact
           value={settings.crosshair}
           className="crosshair-choice"
           onChange={(value)=> update('crosshair', value)}
@@ -384,7 +384,7 @@ export default function Home() {
         };
       }
     } catch {}
-    const coarse = matchMedia('(pointer: coarse)').matches;
+    const coarse = matchMedia('(any-pointer: coarse)').matches || navigator.maxTouchPoints > 0;
     import('@/lib/game/engine')
       .then(({ Arena }) => {
         if (cancelled || !mount.current) return;
@@ -575,7 +575,7 @@ export default function Home() {
   const getTouchArena = useCallback(()=>arena.current!,[]);
   const fullscreen = () => {if(document.fullscreenElement)void document.exitFullscreen().catch(()=>{});else void enterGameDisplay();};
   return (
-    <main data-section={!inGame ? modal==='practice'?'play':modal ?? 'play' : 'game'} className={'game-shell ' + (touch?'touch-device ':'') + (inGame ? 'match-shell' : 'lobby-shell')}>
+    <main data-map={map} data-section={!inGame ? modal==='practice'?'play':modal ?? 'play' : 'game'} className={'game-shell ' + (touch?'touch-device ':'') + (inGame ? 'match-shell' : 'lobby-shell')}>
       <div className="world" ref={mount} />
       {operatorShop&&<div className="map-picker-overlay"><section aria-label="Operators"><header><strong>OPERATORS</strong><button aria-label="Close operators" onClick={()=>setOperatorShop(false)}>×</button></header><div className="operator-shop">{[...OPERATORS].sort((a,b)=>a.cost-b.cost).map(o=>{const owned=profile.owned.includes(o.id);return <button key={o.id} aria-pressed={profile.operator===o.id} disabled={accountBusy||accountBlocked||(!owned&&profile.balance<o.cost)} data-operator={o.id} onClick={handleOperatorAction} style={{borderColor:o.color}}><strong>{o.name}</strong><span>{profile.operator===o.id?'EQUIPPED':owned?'EQUIP':o.cost+' KR'}</span></button>})}</div></section></div>}
       {touchEditor&&<TouchControls getArena={getTouchArena} editor onClose={closeTouchEditor}/>}
@@ -678,7 +678,7 @@ export default function Home() {
               <a href="https://github.com/lonemagma" target="_blank" rel="noreferrer">v1.10.3</a>
             </span>
 
-            <span className="project-credit"><strong>MADE IN INDIA</strong><span>A <a href="https://pacify.site" target="_blank" rel="noreferrer">pacify</a> project</span></span>
+            <span className="project-credit"><span>A <a href="https://pacify.site" target="_blank" rel="noreferrer">pacify</a> project</span></span>
           </footer>
         </>
       )}
@@ -1119,7 +1119,7 @@ export default function Home() {
               {snap.network?.public&&snap.nextRound&&<div className="next-round"><span>NEXT · {maps[snap.nextRound.map]?.name} · {modes[snap.nextRound.mode]}</span><strong>{snap.nextRound.seconds}s</strong></div>}
               <div className="result-actions">
                 {!snap.network?<Button className="deploy-button" onClick={start}>PLAY AGAIN <kbd>ENTER</kbd></Button>:!snap.network.public&&<Button className="deploy-button" disabled={snap.network.status!=='connected'||snap.network.host!==snap.network.you} onClick={()=>arena.current?.playAgain()}>{snap.network.host===snap.network.you?'LOBBY':'WAITING FOR HOST'}</Button>}
-                <Button className="secondary-button" onClick={()=>setBoard(!board)}>SCORES <kbd>TAB</kbd></Button>
+                <Button className="secondary-button" aria-pressed={board} onClick={()=>setBoard(b=>!b)}>{board?'RESULTS':'SCORES'} <kbd>TAB</kbd></Button>
                 <Button className="secondary-button" onClick={()=>arena.current?.lobby()}>EXIT <kbd>ESC</kbd></Button>
               </div>
             </section></div>

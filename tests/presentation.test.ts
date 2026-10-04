@@ -616,7 +616,7 @@ await test('v0.9 block rigs stand upright at rest and weapon meshes stay inexpen
  const {poseLobbyAvatar}=await import('../lib/game/graphics.js');
  for(const variant of [0,1,2,3,4]){const m=new Match(0,0,0),model=avatar('#bbccdd',variant);m.player.vel=v();m.player.grounded=true;
  animateAvatar(model,m.player,0);poseLobbyAvatar(model,0);
- for(const [hip,knee,foot] of [[9,10,11],[12,13,14]]){assert.equal(model.joints[hip].x,model.joints[knee].x);assert.equal(model.joints[knee].x,model.joints[foot].x);assert.equal(model.joints[knee].z,model.joints[foot].z);}
+ for(const [hip,knee,foot] of [[9,10,11],[12,13,14]]){assert.equal(model.joints[hip].x,model.joints[knee].x);assert.equal(model.joints[knee].x,model.joints[foot].x);assert.ok(Math.abs(model.joints[knee].z-(model.joints[hip].z+model.joints[foot].z)/2)<.005);}
  disposeObject(model.group);}
  for(const weapon of [0,1,2,3])for(const finish of [0,1,2,3,4,5,6]){const g=makeWeapon(weapon,true,finish);let triangles=0;g.traverse(o=>{if(o instanceof Mesh)triangles+=(o.geometry.index?.count??o.geometry.getAttribute('position').count)/3;});assert.ok(triangles<2500,`${weapon}/${finish}: ${triangles}`);disposeObject(g);}
 });
