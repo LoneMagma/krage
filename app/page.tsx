@@ -1,7 +1,7 @@
 'use client';
 import {MapPicker} from '@/components/game/map-picker';
 import {PlayerAvatar} from '@/components/game/player-avatar';
-import {enterGameDisplay} from '@/lib/game/mobile-display';
+import {enterGameDisplay, observeVisualViewport} from '@/lib/game/mobile-display';
 
 import { matchReward } from '@/lib/game/progression';
 import { ArenaChat } from '@/components/game/arena-chat';
@@ -16,6 +16,7 @@ import { useCallback, useEffect, useLayoutEffect, useEffectEvent, useRef, useSta
 import {
   ArrowUpRight,
   Crosshair,
+  Lock,
   SlidersHorizontal,
   Volume2,
   VolumeX,
@@ -48,7 +49,6 @@ import { Challenges } from '@/components/game/challenges';
 import { Locker } from '@/components/game/locker';
 import {
   CATALOG,
-  purchase,
   OPERATORS,
   claimableCount,
   newProfile,
@@ -120,8 +120,8 @@ function SettingsPanel({
   const update = <K extends keyof Settings>(key: K, value: Settings[K]) =>
     onChange({ ...settings, [key]: value });
   return (
-    <><div className="settings-category-picker"><GameChoice compact aria-label="Settings category" value={category} onChange={setCategory}>{['VIEW','SOUND','MOVEMENT',...(children?['PERFORMANCE']:[])].map(label=><option key={label} value={label}>{label}</option>)}</GameChoice></div>
-    <div className="settings-fields" hidden={category==='PERFORMANCE'}>
+    <><nav className="settings-visual-tabs" aria-label="Settings category">{[['VIEW',Crosshair],['SOUND',Volume2],['MOVEMENT',MousePointer2],...(children?[['PERFORMANCE',SlidersHorizontal] as const]:[])].map(([label,Icon])=>{const CategoryIcon=Icon as typeof Crosshair;return <button type="button" key={String(label)} aria-pressed={category===label} onClick={()=>setCategory(String(label))}><CategoryIcon size={18}/><span>{String(label)}</span></button>})}</nav>
+    <div className="settings-fields" data-category={category} hidden={category==='PERFORMANCE'}>
       <button hidden={category!=='SOUND'} aria-pressed={settings.musicEnabled !== false} onClick={() => update('musicEnabled', settings.musicEnabled === false)}>MUSIC <b>{settings.musicEnabled === false ? 'OFF' : 'ON'}</b></button>
       <button hidden={category!=='SOUND'} aria-pressed={settings.effectsEnabled !== false} onClick={() => update('effectsEnabled', settings.effectsEnabled === false)}>GAME SOUND <b>{settings.effectsEnabled === false ? 'OFF' : 'ON'}</b></button>
       <label hidden={category!=='MOVEMENT'}>
@@ -164,7 +164,7 @@ function SettingsPanel({
           onInput={(e) => onChange({ ...settings, volume: +e.currentTarget.value, effectsEnabled: +e.currentTarget.value > 0 })}
         />
       </label>
-      <fieldset hidden={category!=='MOVEMENT'} className="choice-setting"><legend>Bot difficulty</legend><GameChoice compact
+      <fieldset hidden={category!=='MOVEMENT'} className="choice-setting"><legend>Bot difficulty</legend><GameChoice
           value={settings.difficulty}
           onChange={(value)=>
             update('difficulty', value as Settings['difficulty'])
@@ -176,7 +176,7 @@ function SettingsPanel({
           <option value="hard">Veteran</option>
         </GameChoice>
       </fieldset>
-      <fieldset hidden={category!=='VIEW'} className="choice-setting"><legend>Graphics</legend><GameChoice compact
+      <fieldset hidden={category!=='VIEW'} className="choice-setting"><legend>Graphics</legend><GameChoice
           value={settings.quality}
           className="quality-choice"
           onChange={(value)=>
@@ -189,7 +189,7 @@ function SettingsPanel({
         </GameChoice>
       </fieldset>
 
-      <fieldset hidden={category!=='MOVEMENT'} className="choice-setting"><legend>Hold crouch</legend><GameChoice compact
+      <fieldset hidden={category!=='MOVEMENT'} className="choice-setting"><legend>Hold crouch</legend><GameChoice
           value={settings.crouchKey}
           aria-label="Crouch key"
           onChange={(value)=> {
@@ -211,7 +211,7 @@ function SettingsPanel({
           ))}
         </GameChoice>
       </fieldset>
-      <fieldset hidden={category!=='MOVEMENT'} className="choice-setting"><legend>Slide</legend><GameChoice compact
+      <fieldset hidden={category!=='MOVEMENT'} className="choice-setting"><legend>Slide</legend><GameChoice
           value={settings.slideKey}
           aria-label="Slide key"
           onChange={(value)=> update('slideKey', value)}
@@ -226,7 +226,7 @@ function SettingsPanel({
         </GameChoice>
       </fieldset>
 
-      <fieldset hidden={category!=='VIEW'} className="choice-setting"><legend>Crosshair</legend><GameChoice compact
+      <fieldset hidden={category!=='VIEW'} className="choice-setting"><legend>Crosshair</legend><GameChoice
           value={settings.crosshair}
           className="crosshair-choice"
           onChange={(value)=> update('crosshair', value)}
@@ -278,7 +278,7 @@ export default function Home() {
     [inGameChat, setInGameChat] = useState(false),
     [frags, setFrags] = useState<{id:number;message:string}[]>([]),
     [touch, setTouch] = useState(false),
-    [operatorShop,setOperatorShop]=useState(false),[touchEditor,setTouchEditor]=useState(false),[resumeTouch,setResumeTouch]=useState(false),[mapChoosing,setMapChoosing]=useState(false),
+    [previewOperator,setPreviewOperator]=useState<string|null>(null),[lockerCharacter,setLockerCharacter]=useState<string|null>(null),[touchEditor,setTouchEditor]=useState(false),[resumeTouch,setResumeTouch]=useState(false),[mapChoosing,setMapChoosing]=useState(false),
     [pauseSettings, setPauseSettings] = useState(false);
   const mutationRef=useRef(false);const [accountBusy,setAccountBusy]=useState(false);
   const [profile, setProfile] = useState<Profile>(() => newProfile()),
@@ -310,8 +310,9 @@ export default function Home() {
       arena.current?.audio.reward();setReward({id:Date.now(),title:action.type==='claim'?'REWARD CLAIMED':action.type==='buy'?'UNLOCKED':'EQUIPPED',amount:Math.max(0,amount)});
     }catch(e){setError(e instanceof Error?e.message:'Save failed');}finally{mutationRef.current=false;setAccountBusy(false);}
   };
-  const handleOperatorAction=(event:React.MouseEvent<HTMLButtonElement>)=>{const id=event.currentTarget.dataset.operator!;const owned=profile.owned.includes(id);if(account.active)void cloudAction({type:owned?'equip':'buy',id});else setProfile(p=>owned?{...p,operator:id}:purchase(p,id));};
-  const chooseOperator=(direction:number)=>{const owned=OPERATORS.filter(o=>profile.owned.includes(o.id));const id=owned[(owned.findIndex(o=>o.id===profile.operator)+owned.length+direction)%owned.length]?.id;if(!id)return;if(account.active)void cloudAction({type:'equip',id});else setProfile(p=>({...p,operator:id}));};
+  const displayedOperator=OPERATORS.find(o=>o.id===(previewOperator??profile.operator))??OPERATORS[0];
+  const openCharacterLocker=()=>{setLockerCharacter(displayedOperator.id);setModal('locker');};
+  const chooseOperator=(direction:number)=>{const index=OPERATORS.findIndex(o=>o.id===displayedOperator.id);setPreviewOperator(OPERATORS[(index+direction+OPERATORS.length)%OPERATORS.length].id);};
   const savePlayerName = (name: string) => { setPlayerName(name);account.preferences({name}); try { localStorage.setItem('krage-player-name',name); } catch {} };
   const claimable=claimableCount(profile);
   useEffect(()=>{if(!reward)return;const timer=setTimeout(()=>setReward(null),2300);return()=>clearTimeout(timer);},[reward]);
@@ -486,6 +487,7 @@ export default function Home() {
         [0, 1, 2, 3].map((id) => weaponFinish(profile, id)),
       );
   }, [profile, ready]);
+  useEffect(()=>{if(ready)arena.current?.setLobbyOperator(OPERATORS.find(o=>o.id===(previewOperator??profile.operator))?.variant??0);},[previewOperator,profile.operator,profile,ready]);
   useEffect(() => {
     if (choicesLoaded) try { localStorage.setItem('krage-lobby', JSON.stringify({mode,map,weapon,duration})); } catch {}
   }, [choicesLoaded,mode,map,weapon,duration]);
@@ -570,17 +572,17 @@ export default function Home() {
     minutes = Math.floor(totalSeconds / 60),
     seconds = totalSeconds % 60;
   const teamGame = activeMode >= 2;
+  useEffect(()=>observeVisualViewport(),[]);
   const openTouchEditor=()=>{setResumeTouch(snap.phase==='playing');if(snap.phase==='playing')arena.current?.pause();setTouchEditor(true);};
   const closeTouchEditor=()=>{setTouchEditor(false);if(resumeTouch)arena.current?.resume();};
   const getTouchArena = useCallback(()=>arena.current!,[]);
   const fullscreen = () => {if(document.fullscreenElement)void document.exitFullscreen().catch(()=>{});else void enterGameDisplay();};
   return (
-    <main data-map={map} data-section={!inGame ? modal==='practice'?'play':modal ?? 'play' : 'game'} className={'game-shell ' + (touch?'touch-device ':'') + (inGame ? 'match-shell' : 'lobby-shell')}>
+    <main data-phase={snap.phase} data-map={map} data-section={!inGame ? modal==='practice'?'play':modal ?? 'play' : 'game'} className={'game-shell ' + (touch?'touch-device ':'') + (inGame ? 'match-shell' : 'lobby-shell')}>
       <div className="world" ref={mount} />
-      {operatorShop&&<div className="map-picker-overlay"><section aria-label="Operators"><header><strong>OPERATORS</strong><button aria-label="Close operators" onClick={()=>setOperatorShop(false)}>×</button></header><div className="operator-shop">{[...OPERATORS].sort((a,b)=>a.cost-b.cost).map(o=>{const owned=profile.owned.includes(o.id);return <button key={o.id} aria-pressed={profile.operator===o.id} disabled={accountBusy||accountBlocked||(!owned&&profile.balance<o.cost)} data-operator={o.id} onClick={handleOperatorAction} style={{borderColor:o.color}}><strong>{o.name}</strong><span>{profile.operator===o.id?'EQUIPPED':owned?'EQUIP':o.cost+' KR'}</span></button>})}</div></section></div>}
       {touchEditor&&<TouchControls getArena={getTouchArena} editor onClose={closeTouchEditor}/>}
       {mapChoosing&&<div className="map-picker-overlay"><section aria-label="Select arena"><header><strong>CHOOSE MAP</strong><button onClick={()=>setMapChoosing(false)} aria-label="Close map selection">×</button></header><MapPicker value={map} onChange={id=>{selectMap(id);setMapChoosing(false)}}/></section></div>}
-      {touch&&<div className="rotate-phone">↻<strong>ROTATE TO PLAY</strong><span>Landscape gives you room to aim.</span><button onClick={enterFullscreen}>ENTER LANDSCAPE</button></div>}
+      {touch&&inGame&&<div className="rotate-phone">↻<strong>ROTATE TO PLAY</strong><span>Landscape gives you room to aim.</span><button onClick={enterFullscreen}>ENTER LANDSCAPE</button></div>}
       {reward&&<output key={reward.id} className="reward-toast"><KrCredit/><div><small>{reward.title}</small>{reward.amount>0?<strong>+{reward.amount} KR</strong>:<strong>READY TO GO</strong>}</div></output>}
       {!inGame && (
         <>
@@ -634,7 +636,7 @@ export default function Home() {
               </section>
               <div className="hero-actions">
                 <div className="character-toggle" aria-label="Character">
-                  <button aria-label="Previous character" disabled={accountBusy||accountBlocked} onClick={()=>chooseOperator(-1)}>‹</button><button className="operator-shop-trigger" onClick={()=>setOperatorShop(true)} aria-label="Choose or unlock operator">{OPERATORS.find(o=>o.id===profile.operator)?.name.toUpperCase()} ▾</button><button aria-label="Next character" disabled={accountBusy||accountBlocked} onClick={()=>chooseOperator(1)}>›</button>
+                  <button aria-label="Previous character" disabled={accountBusy||accountBlocked} onClick={()=>chooseOperator(-1)}>‹</button><button className="operator-shop-trigger" onClick={openCharacterLocker} aria-label={profile.owned.includes(displayedOperator.id)?'Open character locker':'Unlock '+displayedOperator.name}>{displayedOperator.name.toUpperCase()} {profile.owned.includes(displayedOperator.id)?'▾':<><Lock size={12}/><small>{displayedOperator.cost} KR</small></>}</button><button aria-label="Next character" disabled={accountBusy||accountBlocked} onClick={()=>chooseOperator(1)}>›</button>
                 </div>
                 <button className="hero-loadout" aria-haspopup="dialog" onClick={() => setModal('loadout')}>LOADOUT <span>{GUNS[weapon].short}</span></button>
               </div>
@@ -675,7 +677,7 @@ export default function Home() {
           <footer className="lobby-footer">
             <span className="version-link">
               <MousePointer2 size={14} />
-              <a href="https://github.com/lonemagma" target="_blank" rel="noreferrer">v1.10.3</a>
+              <a href="https://github.com/lonemagma" target="_blank" rel="noreferrer">v1.10.5</a>
             </span>
 
             <span className="project-credit"><span>A <a href="https://pacify.site" target="_blank" rel="noreferrer">pacify</a> project</span></span>
@@ -696,16 +698,16 @@ export default function Home() {
               <div className="map-meta">
                 {snap.map}{' '}
                 <span>
-                  {snap.fps} FPS · {snap.frameMs.toFixed(1)} MS
+                  {snap.fps} FPS · {snap.frameMs.toFixed(1)} MS{snap.network?.status==='connected'&&<> · {snap.network.ping} PING</>}
                 </span>
               </div>
 
             </div>
-            {snap.network && (
+            {snap.network && (snap.network.status !== 'connected' || snap.network.state === 'waiting') && (
               <output
                 className={'connection-banner status-' + snap.network.status}
               >
-                <strong>ROOM {snap.network.room}</strong><button className="invite-button" onClick={() => void copyInvite()}>COPY INVITE</button>
+                
                 <span>
                   {snap.network.status !== 'connected'
                     ? snap.network.message || snap.network.status
@@ -925,7 +927,7 @@ export default function Home() {
               </span>
             </div>
           </div>
-          {!!snap.intro&&snap.phase==='playing'&&<section className="match-intro" key={snap.network?.room+snap.map+snap.mode} aria-live="polite"><small>{snap.network?'ROOM '+snap.network.room:'PRACTICE'}</small>{snap.intro>5&&<b className="match-start-title">MATCH START</b>}<strong>{snap.map}</strong><span>{modes[activeMode]}</span><div className="match-intro-details"><span><b>{snap.fragLimit}</b> FRAGS TO WIN</span><span><b>{minutes}:{String(seconds).padStart(2,'0')}</b> REMAINING</span><span><b>{snap.network?.players??1}</b> {snap.network?'ONLINE':'PLAYER'}</span></div></section>}
+          {!!snap.intro&&snap.phase==='playing'&&<section className="match-intro" key={snap.network?.room+snap.map+snap.mode} aria-live="polite"><small>{snap.network?'ONLINE MATCH':'PRACTICE'}</small>{snap.intro>5&&<b className="match-start-title">MATCH START</b>}<strong>{snap.map}</strong><span>{modes[activeMode]}</span><div className="match-intro-details"><span><b>{snap.fragLimit}</b> FRAGS TO WIN</span><span><b>{minutes}:{String(seconds).padStart(2,'0')}</b> REMAINING</span><span><b>{snap.network?.players??1}</b> {snap.network?'ONLINE':'PLAYER'}</span></div></section>}
           {snap.phase === 'spawning' && !snap.benchmark && (
             <div className="spawn-overlay">
               <section className="spawn-panel">
@@ -1090,7 +1092,7 @@ export default function Home() {
                     />
                   </div>
                 )}
-                <div className="pause-actions">
+                <div className="pause-actions">{snap.network&&<Button className="secondary-button" onClick={()=>void copyInvite()}>COPY INVITE</Button>}
                   <Button
                     className="secondary-button"
                     onClick={() => setPauseSettings(!pauseSettings)}
@@ -1184,7 +1186,7 @@ export default function Home() {
           )}
           {modal === 'challenges' && <Challenges profile={profile} onChange={updateProfile} onAction={account.active?cloudAction:undefined} busy={accountBusy||accountBlocked}/>}
           {modal === 'locker' && (
-            <Locker profile={profile} onChange={updateProfile} onAction={account.active?cloudAction:undefined} busy={accountBusy||accountBlocked}/>
+            <Locker key={lockerCharacter??'weapons'} initialCharacter={lockerCharacter} onPreviewCharacter={setPreviewOperator} profile={profile} onChange={updateProfile} onAction={account.active?cloudAction:undefined} busy={accountBusy||accountBlocked}/>
           )}
           {modal === 'loadout' && (
             <div className="loadout-grid">

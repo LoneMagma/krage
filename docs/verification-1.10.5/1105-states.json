@@ -1,0 +1,53 @@
+{
+  "errors": [],
+  "results": [
+    {
+      "width": 568,
+      "respawn": true
+    },
+    {
+      "width": 568,
+      "scoreboardStable": true
+    },
+    {
+      "width": 568,
+      "keyboardViewport": true
+    },
+    {
+      "width": 568,
+      "chat": true
+    },
+    {
+      "width": 740,
+      "respawn": true
+    },
+    {
+      "width": 740,
+      "scoreboardStable": true
+    },
+    {
+      "width": 740,
+      "keyboardViewport": true
+    },
+    {
+      "width": 740,
+      "chat": true
+    },
+    {
+      "width": 390,
+      "respawn": true
+    },
+    {
+      "width": 390,
+      "scoreboardStable": true
+    },
+    {
+      "width": 390,
+      "keyboardViewport": true
+    },
+    {
+      "width": 390,
+      "chat": true
+    }
+  ]
+}

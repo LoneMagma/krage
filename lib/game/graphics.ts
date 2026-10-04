@@ -980,6 +980,7 @@ export function makeWeapon(index: number, firstPerson = true, finish = 0) {
   g.userData.triggerGrip = [.04,-.14,.1];
   g.userData.weapon = index;
   g.userData.finish = finish;
+  if(!firstPerson)g.userData.localBounds=new T.Box3().setFromObject(g);
   return g;
 }
 export const RIG_POINTS = [
@@ -1117,8 +1118,10 @@ export function avatar(color: string, variant = 0, finish = 0): Avatar {
       if(style===1){for(const x of [-.11,.11])box(part,x,-.005,-.176,.042,.016,.009,'#bd7961');box(part,.195,-.045,0,.025,.045,.025,accent);}
       if(style===2)box(part,.12,-.012,-.176,.012,.05,.009,'#d2a48a');
       if(style===3){
-        box(part,0,.235,0,.39,.08,.37,accent);box(part,0,.12,.18,.38,.3,.07,accent);
-        box(part,-.18,-.10,.08,.055,.22,.075,accent);box(part,.11,-.02,-.176,.045,.02,.01,'#d8ac7c');
+        box(part,0,.235,0,.38,.08,.35,hair);box(part,0,.08,.18,.37,.37,.075,hair);
+        box(part,-.175,-.055,.08,.065,.30,.10,hair);box(part,.17,-.04,.10,.065,.27,.10,hair);
+        box(part,-.075,.18,-.17,.19,.12,.055,hair);box(part,.12,.22,-.17,.10,.055,.035,hair);
+        box(part,.19,-.075,.06,.025,.035,.025,accent);box(part,.11,-.02,-.176,.045,.02,.01,'#d8ac7c');
       }
       if(style===4){
         box(part,0,.24,0,.38,.07,.36,accent);box(part,0,.205,-.21,.32,.03,.12,accent);
@@ -1126,10 +1129,10 @@ export function avatar(color: string, variant = 0, finish = 0): Avatar {
         box(part,0,-.075,-.175,.11,.04,.012,hair);
       }
       if(style===0){box(part,0,.24,0,.39,.07,.37,shirt);box(part,0,.205,-.23,.37,.035,.16,shirt);}
-      if(style===1){box(part,0,.03,.17,.37,.31,.09,hair);box(part,-.155,.1,-.14,.09,.22,.06,hair);box(part,.13,.19,-.17,.11,.10,.035,hair);}
+      if(style===1){box(part,0,-.005,.18,.37,.39,.10,hair);box(part,-.16,-.025,-.08,.07,.34,.13,hair);box(part,.16,-.045,.09,.065,.36,.12,hair);box(part,-.12,.16,-.16,.13,.14,.055,hair);box(part,.10,.20,-.17,.15,.08,.04,hair);box(part,.08,-.09,.26,.13,.23,.10,hair);box(part,.08,.015,.26,.14,.035,.11,accent);}
       if(style===2){box(part,0,.07,.17,.41,.39,.07,shirt);for(const x of [-.09,.09])box(part,x,.12,-.188,.12,.07,.015,accent);box(part,.205,.27,0,.03,.17,.04,'#35464c');}
     }else if(i===1){
-      box(part,0,0,0,[.49,.45,.47,.46,.52][style],.54,[.28,.26,.30,.28,.32][style],shirt);box(part,0,-.20,0,.5,.1,.30,pants);
+      box(part,0,0,0,[.49,.45,.47,.43,.52][style],.54,[.28,.26,.30,.28,.32][style],shirt);box(part,0,-.20,0,style===3?.45:.5,.1,.30,pants);
       box(part,0,.14,-.15,.31,.11,.025,color);
       for(const x of [-.15,.15])box(part,x,-.07,-.17,.13,.14,.06,accent);
       box(part,0,.02,.185,[.32,.23,.36,.27,.34][style],[.36,.31,.28,.4,.34][style],[.1,.08,.14,.09,.12][style],pants);
@@ -1140,12 +1143,12 @@ export function avatar(color: string, variant = 0, finish = 0): Avatar {
       if(style===4){box(part,.27,.13,0,.09,.22,.29,accent);box(part,-.27,.13,0,.09,.22,.29,accent);box(part,0,-.21,-.21,.2,.085,.11,pants);}
       if(style===0){box(part,-.21,.09,-.17,.05,.3,.04,pants);box(part,.19,.06,.26,.085,.23,.085,accent);}
       if(style===1){box(part,0,.25,-.02,.5,.065,.33,accent);box(part,-.18,-.18,.21,.10,.17,.12,shirt);}
-      if(style===3){box(part,0,.25,0,.51,.085,.34,accent);box(part,.19,-.16,.18,.11,.19,.10,pants);}
+      if(style===3){box(part,0,.25,0,.45,.07,.30,accent);box(part,.19,-.16,.18,.11,.19,.10,pants);}
       if(style===4){for(const x of [-.19,.19])box(part,x,.03,-.162,.045,.38,.026,accent);box(part,.18,.10,.27,.10,.23,.09,accent);}
       if(style===2)box(part,-.18,.03,-.16,.035,.32,.028,accent);
       if(style===2)box(part,.19,.14,.20,.08,.2,.08,accent);
     }else if(i<6){
-      box(part,0,0,0,.20,length*.98,.22,i===2||i===4?shirt:skin);
+      box(part,0,0,0,style===3?.18:.20,length*.98,style===3?.20:.22,i===2||i===4?shirt:skin);
       if(i===3||i===5)box(part,0,-length*.37,0,.215,.13,.235,pants);
       else {box(part,0,length*.3,0,style===4?.25:.215,style===1?.065:.10,style===2?.27:.235,accent);if(style===0&&i===2)box(part,-.11,0,0,.055,.16,.14,pants);}
     }else{
@@ -1346,6 +1349,7 @@ export function animateAvatar(model: Avatar, a: Actor, time: number, frameDt = 1
     model.group.add(model.weapon);
     model.gunId = a.weapon;
   }
+  model.weapon.scale.setScalar(.65);
   model.weapon.position.set(0.2, 1.1 - stance * 0.65 - compression + breath + aimLift * 0.5, -0.3 + (a.weapon===3?0:a.fired * 0.2));
   model.weapon.rotation.set(a.pitch * 0.7 - reload * 0.4, 0, -reload * 0.3);
   if(a.weapon===3){model.weapon.position.x+=edge.x*.7;model.weapon.position.y+=edge.y*.7;model.weapon.position.z+=edge.z*.7;model.weapon.rotation.x+=edge.pitch;model.weapon.rotation.y+=edge.yaw;model.weapon.rotation.z+=edge.roll;}
@@ -1353,23 +1357,66 @@ export function animateAvatar(model: Avatar, a: Actor, time: number, frameDt = 1
 }
 /** Lobby-only carry pose: hands follow actual weapon grip locations. */
 export function poseLobbyAvatar(model:Avatar,time:number){
- const gun=model.weapon,breath=Math.sin(time*1.5)*.006;
- const variant=Math.max(0,Math.min(4,model.group.userData.operator??0));
- const carries=[[.16,1.10,-.28,-.04,-.20,-.05],[.11,1.17,-.25,-.16,.12,.12],[.20,1.04,-.30,.16,-.28,-.14],[.13,1.14,-.30,-.10,.03,.03],[.18,1.08,-.25,.10,-.12,-.20]];
- const [x,y,z,pitch,yaw,roll]=carries[variant];
- gun.position.set(x,y+breath,z);gun.rotation.set(pitch,yaw,roll);
- const points=model.joints;
- for(const i of [0,1,2,3,6,9,10,11,12,13,14])points[i].set(...RIG_POINTS[i] as [number,number,number]);
- const lean=[0,-.025,.035,-.015,.025][variant];
- for(const i of [0,1,2,3,6])points[i].x+=lean;
- const stride=[.02,.07,-.06,.045,-.08][variant];
- points[11].z+=stride;points[14].z-=stride;points[10].z+=stride*.5;points[13].z-=stride*.5;
+ if(model.group.userData.operator===4){poseFlintV2Avatar(model,time);return;}
+ const gun=model.weapon,variant=Math.max(0,Math.min(4,model.group.userData.operator??0)),breath=Math.sin(time*1.5)*.004,points=model.joints;
+ for(let i=0;i<points.length;i++)points[i].set(...RIG_POINTS[i] as [number,number,number]);
+ gun.scale.setScalar(.65);
+ const trigger=new T.Vector3(...gun.userData.triggerGrip as [number,number,number]);
+ const anchor=(x:number,y:number,z:number)=>gun.position.copy(new T.Vector3(x,y,z).sub(trigger.clone().multiply(gun.scale).applyEuler(gun.rotation)));
+ const isLong=gun.userData.weapon===1||gun.userData.weapon===2,grounded=variant===4&&isLong;
+ const shift=[0,.035,0,-.035,0][variant],turn=[0,-.07,0,.10,-.04][variant];
+ if(variant!==0&&variant!==2){
+  for(const i of [0,1,2,3,6,9,12]){points[i].x+=shift;points[i].z+=grounded?-.06:0;}
+  points[3].z-=turn;points[6].z+=turn;
+  points[0].x-=shift*.4;points[1].y+=breath;points[0].y+=breath;
+ }
+ if(variant===0){gun.position.set(.16,1.1+breath,-.28);gun.rotation.set(-.04,-.20,-.05);}
+ else if(variant===1){gun.rotation.set(1.40,-.10,-.18);anchor(.39,1.21+breath,-.18);}
+ else if(variant===2){gun.rotation.set(-1.28,.12,.08);anchor(.43,.83+breath,-.08);}
+ else if(variant===3){gun.rotation.set(-.55,.82,.08);anchor(.25,.99+breath,-.23);}
+ else if(grounded){
+  const bounds=gun.userData.localBounds as T.Box3;
+  gun.rotation.set(-Math.PI/2,0,0);gun.position.set(.02,.055-bounds.min.z*.65,-.27);
+ }else{gun.rotation.set(-.18,.65,.08);anchor(.25,1.06+breath,-.28);}
+ const stride=[0,.06,-.06,-.055,.055][variant];points[11].z+=stride;points[14].z-=stride;
+ // Plant both soles; solve the knees instead of stretching the shins to a pose.
+ for(const [hip,knee,foot] of [[9,10,11],[12,13,14]]){
+  const solved=solveLimb(points[hip],points[foot],.4,.38,{x:0,y:0,z:-1});points[knee].copy(solved.joint);points[foot].copy(solved.end);
+ }
  for(const [shoulder,elbow,hand,grip] of [[3,4,5,gun.userData.supportGrip as [number,number,number]],[6,7,8,gun.userData.triggerGrip as [number,number,number]]] as const){
-   const target=gun.userData.weapon===3&&hand===5 ? new T.Vector3(-.32,.86,-.03) : new T.Vector3(...grip).multiplyScalar(.65).applyEuler(gun.rotation).add(gun.position);
-   const upper=new T.Vector3(...RIG_POINTS[shoulder]).distanceTo(new T.Vector3(...RIG_POINTS[elbow]));
-   const lower=new T.Vector3(...RIG_POINTS[elbow]).distanceTo(new T.Vector3(...RIG_POINTS[hand]));
-   const solved=solveLimb(points[shoulder],target,upper,lower,{x:shoulder===3?-.35:.35,y:-.25,z:-.1});
-   points[elbow].copy(solved.joint);points[hand].copy(solved.end);
+  const target=new T.Vector3(...grip).multiply(gun.scale).applyEuler(gun.rotation).add(gun.position);
+  if(grounded){const bounds=gun.userData.localBounds as T.Box3;target.set(hand===5?-.045:.045,-.035,bounds.max.z-(hand===5?.025:.075)).multiply(gun.scale).applyEuler(gun.rotation).add(gun.position);}
+  else if(hand===5&&(variant===1||variant===2||gun.userData.weapon===3))target.set(variant===2?-.37:-.34,variant===1?.83:.81,.025);
+  const upper=new T.Vector3(...RIG_POINTS[shoulder]).distanceTo(new T.Vector3(...RIG_POINTS[elbow]));
+  const lower=new T.Vector3(...RIG_POINTS[elbow]).distanceTo(new T.Vector3(...RIG_POINTS[hand]));
+  const solved=solveLimb(points[shoulder],target,upper,lower,{x:shoulder===3?-.3:.3,y:-1,z:.12});points[elbow].copy(solved.joint);points[hand].copy(solved.end);
+ }
+ poseAvatar(model,points);
+ if(variant!==0&&variant!==2){model.parts[1].rotateY(turn);model.parts[0].rotateY(-turn*.6);}
+}
+function poseFlintV2Avatar(model:Avatar,time:number){
+ const gun=model.weapon,variant=Math.max(0,Math.min(4,model.group.userData.operator??0)),breath=Math.sin(time*1.5)*.005,points=model.joints;
+ for(let i=0;i<points.length;i++)points[i].set(...RIG_POINTS[i] as [number,number,number]);
+ gun.scale.setScalar(.65);
+ const trigger=new T.Vector3(...gun.userData.triggerGrip as [number,number,number]);
+ const anchor=(x:number,y:number,z:number)=>gun.position.copy(new T.Vector3(x,y,z).sub(trigger.clone().multiply(gun.scale).applyEuler(gun.rotation)));
+ if(variant===0){gun.position.set(.16,1.1+breath,-.28);gun.rotation.set(-.04,-.20,-.05);}
+ else if(variant===1){gun.rotation.set(1.2,.12,-.12);anchor(.43,1.35+breath,-.12);}
+ else if(variant===2){gun.rotation.set(-.65,-.18,-.08);anchor(.39,.93+breath,-.10);}
+ else if(variant===3){gun.rotation.set(1.05,-.65,-.7);anchor(.35,1.39+breath,.02);}
+ else{
+  gun.rotation.set(Math.PI/2,0,0);const bounds=gun.userData.localBounds as T.Box3|undefined;
+  if(bounds){const scale=.98/Math.max(.1,bounds.max.z-bounds.min.z);gun.scale.setScalar(scale);gun.position.set(0,.055+bounds.max.z*scale,-.34);}
+  else{gun.position.set(0,.65,-.34);}
+ }
+ const stride=[0,.07,-.06,.09,.04][variant];points[11].z+=stride;points[14].z-=stride;points[10].z+=stride*.5;points[13].z-=stride*.5;
+ for(const [shoulder,elbow,hand,grip] of [[3,4,5,gun.userData.supportGrip as [number,number,number]],[6,7,8,gun.userData.triggerGrip as [number,number,number]]] as const){
+  let target=new T.Vector3(...grip).multiply(gun.scale).applyEuler(gun.rotation).add(gun.position);
+  if(variant===4)target=new T.Vector3(hand===5?-.075:.075,hand===5?.94:1.01,-.34);
+  else if(hand===5&&(variant!==0||gun.userData.weapon===3))target=new T.Vector3(-.32,variant===1?.98:.89,variant===3?.04:-.01);
+  const upper=new T.Vector3(...RIG_POINTS[shoulder]).distanceTo(new T.Vector3(...RIG_POINTS[elbow]));
+  const lower=new T.Vector3(...RIG_POINTS[elbow]).distanceTo(new T.Vector3(...RIG_POINTS[hand]));
+  const solved=solveLimb(points[shoulder],target,upper,lower,{x:shoulder===3?-.4:.4,y:-.16,z:.04});points[elbow].copy(solved.joint);points[hand].copy(solved.end);
  }
  poseAvatar(model,points);
 }

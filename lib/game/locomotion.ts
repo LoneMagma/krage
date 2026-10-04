@@ -1,5 +1,5 @@
 /** Shared distance cadence for animated feet and audible footfalls. */
-export const FOOTSTEP_DISTANCE = .9;
+export const FOOTSTEP_DISTANCE = 1.35;
 export const GAIT_FREQUENCY = Math.PI / FOOTSTEP_DISTANCE;
 /** Distance-driven cycle. Torso aim is independent of travel direction. */
 export function locomotionSample(stride: number, speed: number, lateral: number, forward: number, side: number, crouch = 0) {

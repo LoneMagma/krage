@@ -1,0 +1,14 @@
+{
+  "version": "1.10.5",
+  "roomProtocol": 24,
+  "gameplayPresentationResults": 140,
+  "roomTests": 38,
+  "accountTests": 5,
+  "lint": "passed",
+  "typecheck": "passed",
+  "renderBuild": "passed",
+  "viewportChecks": 67,
+  "matchAndChatChecks": 12,
+  "finalTabletCheck": "passed",
+  "realDeviceAndLiveDeployment": "not tested in this session"
+}

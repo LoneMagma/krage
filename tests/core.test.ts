@@ -57,11 +57,12 @@ await test('AK body damage and headshot multiplier are distinct', () => {
   const { m, a, b } = duel();
   a.pitch = -Math.atan2(0.5, 5);
   m.shoot(a);
-  assert.equal(b.hp, 68);
+  assert.equal(b.hp, 67);
+  b.hp = 100;
   a.pitch = 0;
   a.cooldown = 0;
   m.shoot(a);
-  assert.ok(Math.abs(b.hp - 0.8) < 0.001);
+  assert.ok(Math.abs(b.hp - 30.7) < 0.001);
   a.cooldown = 0;
   m.shoot(a);
   assert.equal(a.kills, 1);
@@ -197,7 +198,7 @@ await test('slide gives a bounded impulse and obeys its cooldown', () => {
   input.slide = true;
   step(m, 0.02, input);
   assert.ok(
-    Math.hypot(a.vel.x, a.vel.z) > 8.2 && Math.hypot(a.vel.x, a.vel.z) < 8.8,
+    Math.hypot(a.vel.x, a.vel.z) > 7.9 && Math.hypot(a.vel.x, a.vel.z) < 8.8,
   );
   assert.ok(a.slideCooldown > 1);
   assert.ok(a.slide > 0);
@@ -304,7 +305,7 @@ await test('partial analog input never outruns full input; diagonal movement is 
     return Math.hypot(m.player.vel.x, m.player.vel.z);
   });
   assert.ok(speeds[0] < speeds[1] && speeds[1] < speeds[2]);
-  assert.ok(Math.abs(speeds[2] - 6.08) < 0.01);
+  assert.ok(Math.abs(speeds[2] - 5.78) < 0.01);
   const m = new Match(0, 0, 0),
     input = emptyInput();
   input.forward = 1;
@@ -899,4 +900,10 @@ await test('ground movement starts, brakes and reverses responsively without ins
  for(let i=0;i<24;i++)moveActor(a,input,1/120,m.map);assert.ok(-a.vel.z>5);
  input.forward=-1;for(let i=0;i<24;i++)moveActor(a,input,1/120,m.map);assert.ok(a.vel.z>4);
  input.forward=0;for(let i=0;i<12;i++)moveActor(a,input,1/120,m.map);assert.ok(Math.hypot(a.vel.x,a.vel.z)<.001);
+});
+
+await test('moving accuracy penalties rank KILO, ECHO, MICA and start below walking speed',async()=>{
+ const {shotSpread}=await import('../lib/game/core.js');const a=new Match(0,0,0).player,penalties=[];
+ for(const w of [0,1,2]){a.weapon=w;a.grounded=true;a.crouched=false;a.slide=0;a.vel=v();const still=shotSpread(a,true);a.vel=v(.05,0,0);assert.ok(shotSpread(a,true)>still);a.vel=v(4,0,0);penalties.push(shotSpread(a,true)-still);a.vel=v(-4,0,0);assert.ok(Math.abs(shotSpread(a,true)-still-penalties[w])<1e-8);}
+ assert.ok(penalties[1]>penalties[0]&&penalties[0]>penalties[2]);
 });

@@ -30,7 +30,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .game-shell input::placeholder,.account-panel input::placeholder{color:#929299}
 .game-shell input[type=range]{accent-color:var(--ui-selected)}
 /* A compact launch surface: no match configuration or repeated previews. */
-.play-card{position:absolute;right:4%;top:50%;translate:0 -38%;width:320px;padding:26px;display:flex;flex-direction:column;gap:22px;pointer-events:auto;background:linear-gradient(140deg,#232428f5,#151619f5);border:1px solid #ffffff24;border-radius:10px;box-shadow:0 16px 45px #0003}
+.play-card{position:absolute;right:4%;top:50%;transform:translateY(-38%);width:320px;padding:26px;display:flex;flex-direction:column;gap:22px;pointer-events:auto;background:linear-gradient(140deg,#232428f5,#151619f5);border:1px solid #ffffff24;border-radius:10px;box-shadow:0 16px 45px #0003}
 .play-card>header{display:flex;align-items:center;gap:12px}
 .play-card h2{margin:0;font:900 36px/1 var(--font-display);letter-spacing:.025em}
 .play-card-mark{display:grid;place-items:center;background:#a8324320;color:#df9ba5;border:1px solid #b848594a;width:34px;height:34px;border-radius:5px;font:24px var(--font-ui)}
@@ -113,7 +113,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .chat-toast{background:#17181cb8;border:0;border-radius:4px;color:var(--ui-text)}
 @media(max-height:760px){.lobby-shell .topbar{height:78px;padding-top:12px;padding-bottom:12px}.lobby-section{top:88px!important;bottom:42px!important;padding:16px 22px}.lobby-section>header{margin-bottom:12px;padding-bottom:12px}.play-card{padding:22px;gap:18px}.practice-config{gap:15px}.practice-config .practice-settings{padding-top:12px}.end-panel,.spawn-panel,.pause-panel{padding:18px}.result-hero{padding:12px 0}.result-hero h2{font-size:42px}.match-stats{padding:12px 0}.spawn-panel h2{margin:12px 0}.match-intro{top:17%;padding:14px 20px}}
 @media(max-width:1100px){.lobby-shell .topbar{gap:12px;padding-left:3%;padding-right:3%}.lobby-shell .nav-button{padding:10px 9px!important;font-size:10px}.play-card{right:3%;width:290px}.lobby-shell .brand-name{font-size:24px!important}.lobby-shell .topbar nav{gap:2px}.lobby-section{left:3%!important;right:3%!important}.result-actions>*{flex:1}}
-@media(max-width:750px){.lobby-shell .topbar{height:112px;align-items:flex-start}.lobby-shell .topbar nav{position:absolute;top:62px;left:3%;right:3%;width:auto;transform:none;justify-content:space-between}.lobby-shell .topbar-actions{margin-left:auto}.play-card{width:250px;top:auto;bottom:65px;translate:none;padding:18px;gap:14px}.play-card h2{font-size:28px}.play-card .play-online{min-height:54px;font-size:16px}.lobby-section{top:126px!important}.practice-config .bot-options{gap:12px}.practice-config .mode-button{min-height:40px;font-size:11px}.practice-config .mode-symbol{display:none}.practice-config .game-choice button{padding:6px;font-size:10px}.game-shell .chat-toggle{min-height:38px}}
+@media(max-width:750px){.lobby-shell .topbar{height:112px;align-items:flex-start}.lobby-shell .topbar nav{position:absolute;top:62px;left:3%;right:3%;width:auto;transform:none;justify-content:space-between}.lobby-shell .topbar-actions{margin-left:auto}.play-card{width:250px;top:auto;bottom:65px;transform:none;padding:18px;gap:14px}.play-card h2{font-size:28px}.play-card .play-online{min-height:54px;font-size:16px}.lobby-section{top:126px!important}.practice-config .bot-options{gap:12px}.practice-config .mode-button{min-height:40px;font-size:11px}.practice-config .mode-symbol{display:none}.practice-config .game-choice button{padding:6px;font-size:10px}.game-shell .chat-toggle{min-height:38px}}
 @media(prefers-reduced-motion:reduce){.game-shell *,.account-panel *{scroll-behavior:auto!important;transition:none!important;animation:none!important}.match-intro{opacity:1;translate:none}}
 
 .mission-list article{background:#ffffff03;border:1px solid var(--ui-line);border-radius:7px}
@@ -140,7 +140,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 @media(max-height:760px){.lobby-section{bottom:90px!important}.practice-config{gap:12px}.practice-config .mode-button{min-height:40px}.practice-config .bot-options{gap:15px}.practice-config .practice-settings{padding-top:10px}}
 
 .practice-back{margin-left:auto;background:transparent;color:var(--ui-muted);border:1px solid var(--ui-line);border-radius:4px;width:30px;height:30px;font-size:22px}
-.play-card:has(.practice-inline){gap:16px;translate:0 -43%}
+.play-card:has(.practice-inline){gap:16px;transform:translateY(-43%)}
 .play-card:has(.practice-inline) h2{font-size:27px}
 .practice-inline{display:grid;gap:12px}
 .practice-map{display:flex;gap:14px;align-items:center;border-bottom:1px solid var(--ui-line);padding-bottom:10px;font:800 13px var(--font-display)}
@@ -152,6 +152,6 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .practice-step button:hover{background:#ffffff12}
 .practice-step strong{text-align:center;text-transform:uppercase;font:800 11px var(--font-ui)}
 .practice-start{display:flex;align-items:center;justify-content:space-between;min-height:48px;padding:12px;margin-top:4px}
-@media(max-height:700px){.practice-inline{gap:8px}.play-card:has(.practice-inline){padding:18px;gap:12px;top:51%;translate:0 -40%}.practice-map{padding-bottom:6px}.practice-map svg{height:32px}}
+@media(max-height:700px){.practice-inline{gap:8px}.play-card:has(.practice-inline){padding:18px;gap:12px;top:51%;transform:translateY(-40%)}.practice-map{padding-bottom:6px}.practice-map svg{height:32px}}
 
 .practice-map .map-diagram{width:58px;height:45px;min-height:0;max-height:45px;flex:none;padding:0;background:transparent}

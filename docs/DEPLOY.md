@@ -2,8 +2,8 @@ Current domain setup: [DOMAIN-KRAGE-PACIFY.md](DOMAIN-KRAGE-PACIFY.md).
 
 Current verification and rollout checklist: [RELEASE-CHECK.md](RELEASE-CHECK.md).
 
-## v1.10.3: deploy frontend and rooms together
-This build requires **protocol 24**. Reload existing tabs after both deployments. `/health` must report protocol 24. Matches remain in server memory; restarting the room process ends them.
+## v1.10.5: deploy frontend and rooms together
+This build requires **protocol 25**. Reload existing tabs after both deployments. `/health` must report protocol 25. Matches remain in server memory; restarting the room process ends them.
 
 For players in India, test a **Singapore room-server service**. The existing service region has not been verified. Render cannot move an existing service between regions: create a replacement, set `KRAGE_ORIGINS`, then rebuild the frontend with that service's `NEXT_PUBLIC_ROOM_URL`. Keep one room instance until room routing exists. See [Render regions](https://render.com/docs/regions).
 
@@ -18,7 +18,7 @@ Frontend build environment: `NEXT_PUBLIC_ROOM_URL=wss://krage-rooms.onrender.com
 
 Rooms build: `npm ci && npm run build:server`
 Rooms start: `node server/index.mjs`
-Rooms environment: `KRAGE_ORIGINS=https://krage-frontend-n5rj.onrender.com`
+Rooms environment: `KRAGE_ORIGINS=https://krage.pacify.site,https://krage-frontend-n5rj.onrender.com`
 Rooms health path: `/health`. Both processes honor Render's `PORT`.
 Redeploy both existing services together; do not use the Wrangler development server as the Render start command.
 Play Online joins Quick Play. Lobby contains Create Lobby and Join Lobby.
@@ -36,7 +36,7 @@ Use one room-server instance for this small deployment: rooms live in memory and
 Frontend: https://krage-frontend-n5rj.onrender.com
 Room endpoint observed in its deployed bundle: wss://krage-rooms.onrender.com/play
 
-Set room service `KRAGE_ORIGINS=https://krage-frontend-n5rj.onrender.com`. The server reads Render's `PORT` and listens on `0.0.0.0`. Keep one instance until a room directory is added. Redeploy BOTH services for quick play. Probe `/health`, then test two independent browsers joining Quick Play. Confirm one shared room, BOT labels replaced by player names, and normal FPS before sharing broadly.
+Set room service `KRAGE_ORIGINS=https://krage.pacify.site,https://krage-frontend-n5rj.onrender.com`. The server reads Render's `PORT` and listens on `0.0.0.0`. Keep one instance until a room directory is added. Redeploy BOTH services for quick play. Probe `/health`, then test two independent browsers joining Quick Play. Confirm one shared room, BOT labels replaced by player names, and normal FPS before sharing broadly.
 
 ## Protocol 3 update
 Redeploy both the frontend and Node room service for this update; old tabs must reload. Weapon prediction confirmations require protocol 3. Verify two separate devices share a Quick Play room, replace bots, and agree on kills. Compare frame p95, model rebuild counts, RTT/jitter and server step time in Settings diagnostics before claiming a latency or FPS improvement.
@@ -44,8 +44,8 @@ Redeploy both the frontend and Node room service for this update; old tabs must 
 ## Controller update (protocol 4)
 Redeploy both services and refresh tabs. Camera sway in Settings controls roll, velocity FOV and landing roll vibration; 0 disables those effects. The small shared landing eye dip remains in the controller to preserve shot alignment.
 
-## Friend lobby update (protocol 24)
-Redeploy both frontend and rooms service together. Verify `/health` reports protocol 24, Play Online enters Quick Play, and two devices can create/join a friend room, change loadouts, ready up and start. Check remembered names after refresh.
+## Friend lobby update (protocol 25)
+Redeploy both frontend and rooms service together. Verify `/health` reports protocol 25, Play Online enters Quick Play, and two devices can create/join a friend room, change loadouts, ready up and start. Check remembered names after refresh.
 
 ## EDGE and lobby update (protocol 6)
 Deploy the frontend and rooms service together, then reload open tabs. `/health` must report protocol 6. Check left-click slash/right-click stab on two clients and verify no duplicate impact sounds. The lobby now uses persistent sections and a WebGL weapon inspector; confirm it on target mobile and desktop devices.

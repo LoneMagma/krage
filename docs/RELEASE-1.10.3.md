@@ -30,3 +30,12 @@ Current release targets krage.pacify.site; krage.xyz migration is deferred. Lobb
 - Five lobby carry poses with subtle weight shifts and staggered feet. Hand IK remains tied to actual weapon grips; gameplay animation and hitboxes are unchanged.
 
 Selector revision: removed extra previous/next buttons. Shared single menu triggers use uniform sizing, spacing and equal columns; keyboard arrows still change values. Settings fields use matched containers and locker weapon choices have equal dimensions.
+
+Final visual correction: settings categories are visible icon tabs again; graphics, crosshair, difficulty and key choices use aligned visual buttons. Compact menus remain for lobby configuration, including map preview icons. Connected gameplay no longer shows the central room-code/invite banner; latency appears beside performance stats and Copy Invite is available when paused. Waiting/reconnection warnings remain visible. The match intro uses ONLINE MATCH instead of a room code.
+
+## Character poses and locker
+Rook retains the two-handed carry. Vera raises her weapon beside the shoulder, Blake carries low with one hand, Sable carries diagonally over the shoulder, and Flint rests an upright weapon on the ground. Lobby poses reset before gameplay animation; hand IK and arm-length constraints remain. Flint's presentation scale is adjusted to keep each primary grounded at a reachable height.
+
+Lobby arrows preview all operators without equipping or purchasing. Locked names display a lock and KR price; clicking opens that character in the locker. The Characters tab includes a rotatable live preview, balance, ownership, explicit Buy and Equip buttons and insufficient-funds state. Purchases use existing guest/account transactions; equipped gameplay cosmetics remain independent of previews. Prior ownership is retained.
+
+Pose revision: Rook and Flint unchanged. Vera uses an upright side hold, Blake a lowered side carry, Sable a diagonal waist carry; free hands rest naturally rather than mirroring the previous hip pose. Locker portraits have dedicated closer framing and more vertical room; descriptive character taglines removed. Movement settings use compact rows and a three-column layout on short landscape screens.

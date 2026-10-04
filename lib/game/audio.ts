@@ -279,7 +279,7 @@ export class AudioSystem {
     volume = 1,
   ) {
     const gain = (crouch ? 0.35 : 1) * volume;
-    if(this.effect(`step-${this.effectIndex++%3}`,0.35*gain,pan,surface==='metal'?1.06:1))return;
+    if(this.effect(`step-${this.effectIndex++%3}`,0.35*gain,pan,surface==='metal'?.98:.94))return;
     this.foot = 1 - this.foot;
     this.burst(
       surface === 'metal' ? 0.075 : 0.045,

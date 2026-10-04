@@ -561,7 +561,7 @@ await test('lobby carry poses preserve arm lengths across all models and all pri
  const {poseLobbyAvatar}=await import('../lib/game/graphics.js');
  const {RIG_POINTS}=await import('../lib/game/graphics.js');
  for(const variant of [0,1,2,3,4])for(const weapon of [0,1,2]){
-  const model=avatar('#aabbcc',variant),m=new Match(0,0,weapon);
+  const model=avatar('#aabbcc',variant),m=new Match(0,0,0);m.player.weapon=weapon;m.player.primary=weapon;
   for(const time of [0,1,5]){
    animateAvatar(model,m.player,time,.016);poseLobbyAvatar(model,time);
    for(const [a,b] of [[3,4],[4,5],[6,7],[7,8]]){
@@ -616,7 +616,7 @@ await test('v0.9 block rigs stand upright at rest and weapon meshes stay inexpen
  const {poseLobbyAvatar}=await import('../lib/game/graphics.js');
  for(const variant of [0,1,2,3,4]){const m=new Match(0,0,0),model=avatar('#bbccdd',variant);m.player.vel=v();m.player.grounded=true;
  animateAvatar(model,m.player,0);poseLobbyAvatar(model,0);
- for(const [hip,knee,foot] of [[9,10,11],[12,13,14]]){assert.equal(model.joints[hip].x,model.joints[knee].x);assert.equal(model.joints[knee].x,model.joints[foot].x);assert.ok(Math.abs(model.joints[knee].z-(model.joints[hip].z+model.joints[foot].z)/2)<.005);}
+ for(const [hip,knee,foot] of [[9,10,11],[12,13,14]]){assert.ok(Math.abs(model.joints[foot].y-.08)<.012);assert.ok(model.joints[hip].y>model.joints[knee].y&&model.joints[knee].y>model.joints[foot].y);assert.ok(Math.abs(model.joints[knee].z-(model.joints[hip].z+model.joints[foot].z)/2)<.04);}
  disposeObject(model.group);}
  for(const weapon of [0,1,2,3])for(const finish of [0,1,2,3,4,5,6]){const g=makeWeapon(weapon,true,finish);let triangles=0;g.traverse(o=>{if(o instanceof Mesh)triangles+=(o.geometry.index?.count??o.geometry.getAttribute('position').count)/3;});assert.ok(triangles<2500,`${weapon}/${finish}: ${triangles}`);disposeObject(g);}
 });
@@ -841,4 +841,45 @@ await test('remote interpolation restores a buffer smoothly and ignores stale sa
  const {RemoteBuffer}=await import('../lib/game/remote-buffer.js');const b=new RemoteBuffer(),a=new Match(0,0,1).actors[1];let previous=0;
  for(let i=1;i<=600;i++){if(i%3===0)b.accept(1,{...a,pos:v(i/60,0,0)},i/60);b.advance(1/60);assert.ok(b.time>=previous);assert.ok(b.time<=b.latest);previous=b.time;}
  assert.ok(b.latest-b.time>.03&&b.latest-b.time<.12);const count=b.poses.get(1)!.length;b.accept(1,a,1);assert.equal(b.poses.get(1)!.length,count);
+});
+
+await test('lobby poses have distinct silhouettes and grounded Flint weapons',async()=>{
+ const {poseLobbyAvatar}=await import('../lib/game/graphics.js');
+ const signatures=new Set<string>();
+ for(const variant of [0,1,2,3,4]){const model=avatar('#aabbcc',variant),m=new Match(0,0,1);animateAvatar(model,m.player,0);poseLobbyAvatar(model,0);
+ signatures.add(model.weapon.rotation.toArray().slice(0,3).join(','));
+ if(variant===4){const bounds=model.weapon.userData.localBounds;assert.ok(bounds);const minY=model.weapon.position.y-bounds.max.z*model.weapon.scale.x;assert.ok(Math.abs(minY-.055)<.001); }
+ for(const p of model.joints)assert.ok(Number.isFinite(p.x+p.y+p.z));disposeObject(model.group);}
+ assert.equal(signatures.size,5);
+});
+
+await test('touch layout repairs collisions and respects safe areas on rotation',async()=>{
+ const {fitTouchLayout,viewportLayout,CONTROL_IDS}=await import('../lib/game/touch.js');
+ for(const [w,h] of [[568,320],[667,375],[740,360],[844,390],[915,412],[1024,768],[390,844]]){
+  for(const mirrored of [false,true]){
+   const raw=viewportLayout(844,390,mirrored);raw.jump={...raw.fire};
+   const layout=fitTouchLayout(raw,w,h,{left:24,right:24,top:0,bottom:10});
+   for(const [i,id] of CONTROL_IDS.entries()){
+    const a=layout[id],x=a.x*w/100,y=a.y*h/100;
+    assert.ok(x-a.size/2>=24&&x+a.size/2<=w-24&&y-a.size/2>=Math.min(116,h*.34)-.01&&y+a.size/2<=h-10);
+    for(const other of CONTROL_IDS.slice(i+1)){const b=layout[other];assert.ok(Math.hypot(x-b.x*w/100,y-b.y*h/100)>=(a.size+b.size)/2+5.9,`${id}/${other} at ${w}x${h}`);}
+   }
+  }
+ }
+});
+await test('authored lobby carries keep hands on their grips without resizing weapons',async()=>{
+ const {poseLobbyAvatar}=await import('../lib/game/graphics.js');
+ for(const variant of [1,3])for(const weapon of [0,1,2]){
+  const model=avatar('#abcdef',variant),m=new Match(0,0,0);m.player.weapon=weapon;m.player.primary=weapon;animateAvatar(model,m.player,0);poseLobbyAvatar(model,0);
+  const gun=model.weapon;assert.equal(gun.scale.x,.65);
+  for(const [hand,key] of [[5,'supportGrip'],[8,'triggerGrip']] as const){
+   if(variant===1&&hand===5)continue;
+   const bounds=gun.userData.localBounds;
+   const grip=variant===4&&weapon!==0?new Vector3(hand===5?-.045:.045,-.035,bounds.max.z-(hand===5?.025:.075)):new Vector3(...gun.userData[key] as [number,number,number]);
+   grip.multiply(gun.scale).applyEuler(gun.rotation).add(gun.position);
+   assert.ok(model.joints[hand].distanceTo(grip)<.015,`grip missed: operator ${variant}, weapon ${weapon}, hand ${hand}`);
+  }
+  if(variant===4&&weapon!==0)assert.ok(Math.abs(gun.position.y+gun.userData.localBounds.min.z*.65-.055)<.001);
+  disposeObject(model.group);
+ }
 });

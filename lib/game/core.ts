@@ -68,12 +68,12 @@ export const GUNS = [
     name: 'KILO / ASSAULT',
     short: 'KILO',
     mag: 25,
-    damage: 32,
+    damage: 33,
     head: 2.1,
     interval: 0.126,
     reload: 1.52,
     spread: 0.00015,
-    recoil: 0.024,
+    recoil: 0.038,
     range: 95,
     pellets: 1,
     speed: 1,
@@ -279,7 +279,7 @@ export const emptyInput = (): Input => ({
   weapon: -1,
 });
 export const EDGE_ATTACKS = {
-  slash: { duration: 0.42, contact: 0.16, range: 1.95, alignment: 0.58 },
+  slash: { duration: 0.52, contact: 0.20, range: 1.95, alignment: 0.58 },
   stab: { duration: 0.84, contact: 0.22, range: 2.65, alignment: 0.82 },
 } as const;
 export type EdgeAttack = keyof typeof EDGE_ATTACKS;
@@ -491,7 +491,7 @@ export function moveActor(a: Actor, input: Input, dt: number, map: ArenaMap) {
     Math.hypot(a.vel.x, a.vel.z) > (a.crouched ? 2.5 : 4)
   ) {
     a.slideBuffer=0;
-    a.slide = 0.55;
+    a.slide = 0.70;
     a.slideCooldown = 1.3;
     const speed = Math.hypot(a.vel.x, a.vel.z);
     a.vel.x = (a.vel.x / speed) * Math.min(8.8, Math.max(7.2, speed + 2.6));
@@ -523,13 +523,13 @@ export function moveActor(a: Actor, input: Input, dt: number, map: ArenaMap) {
     wz /= len;
   }
   const speed =
-    (a.crouched ? 2.85 : 6.08) *
+    (a.crouched ? 2.71 : 5.78) *
     GUNS[a.weapon].speed *
     (input.ads && a.weapon !== 3 ? 0.66 : 1) *
     magnitude;
   if (a.slide > 0) {
     const length = Math.hypot(a.vel.x, a.vel.z),
-      next = length * Math.exp(-1.08 * dt);
+      next = length * Math.exp(-1.0 * dt);
     a.vel.x *= next / Math.max(length, 0.001);
     a.vel.z *= next / Math.max(length, 0.001);
     // A small steering arc preserves momentum without allowing instant turns.
@@ -1487,9 +1487,9 @@ export class Match {
 
 export function shotSpread(a: Actor, ads = false) {
   if(a.weapon===3)return 0;
-  const w=a.weapon,moving=clamp((Math.hypot(a.vel.x,a.vel.z)-.1)/4.4,0,1);
-  const travel=[.035,.04,.065][w]*moving;
-  const stance=Math.max(a.slide>0?[.055,.065,.07][w]:0,!a.grounded?[.06,.065,.05][w]:0);
+  const w=a.weapon,moving=Math.pow(clamp(Math.hypot(a.vel.x,a.vel.z)/4.4,0,1),.7);
+  const travel=[.085,.13,.070][w]*moving;
+  const stance=Math.max(a.slide>0?[.075,.11,.08][w]:0,!a.grounded?[.08,.12,.07][w]:0);
   return (GUNS[w].spread+travel+stance)*(ads?.7:1)*(a.crouched&&a.grounded&&a.slide<=0?.6:1);
 }
 

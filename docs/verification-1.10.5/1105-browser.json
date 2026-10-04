@@ -1,0 +1,398 @@
+{
+  "errors": [],
+  "results": [
+    {
+      "label": "568x320:play",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "568x320:SETTINGS",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "568x320:movement",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "568x320:LOCKER",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "568x320:CHALLENGES",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "568x320:LOBBY",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "568x320:map-options",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "667x375:play",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "667x375:SETTINGS",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "667x375:movement",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "667x375:LOCKER",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "667x375:CHALLENGES",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "667x375:LOBBY",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "667x375:map-options",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "740x360:play",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "740x360:SETTINGS",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "740x360:movement",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "740x360:LOCKER",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "740x360:CHALLENGES",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "740x360:LOBBY",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "740x360:map-options",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "844x390:play",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "844x390:SETTINGS",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "844x390:movement",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "844x390:LOCKER",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "844x390:CHALLENGES",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "844x390:LOBBY",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "844x390:map-options",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "915x412:play",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "915x412:SETTINGS",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "915x412:movement",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "915x412:LOCKER",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "915x412:CHALLENGES",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "915x412:LOBBY",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "915x412:map-options",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "1024x768:play",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "1024x768:SETTINGS",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "1024x768:movement",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "1024x768:LOCKER",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "1024x768:CHALLENGES",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "1024x768:LOBBY",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "1024x768:map-options",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "390x844:play",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "390x844:SETTINGS",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "390x844:movement",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "390x844:LOCKER",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "390x844:CHALLENGES",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "390x844:LOBBY",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "390x844:map-options",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "360x800:play",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "360x800:SETTINGS",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "360x800:movement",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "360x800:LOCKER",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "360x800:CHALLENGES",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "360x800:LOBBY",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "360x800:map-options",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "1280x800:play",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "1280x800:SETTINGS",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "1280x800:movement",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "1280x800:LOCKER",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "1280x800:CHALLENGES",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "1280x800:LOBBY",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "1280x800:map-options",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "label": "practice",
+      "bad": [],
+      "overflow": false,
+      "portraitBlocked": false
+    },
+    {
+      "multiTouch": true
+    },
+    {
+      "cancelled": true
+    },
+    {
+      "saved": true
+    }
+  ]
+}

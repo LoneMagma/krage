@@ -1,4 +1,9 @@
-# Release check: 1.10.3
+# Release check: 1.10.5
+
+See [current release notes](V1.10.5.md). Local automated checks cover 140 gameplay/presentation/results tests, 38 room tests and 5 account tests. Production lint, types and build are checked. 67 Chromium viewport checks passed at 568×320, 667×375, 740×360, 844×390, 915×412, 1024×768, 390×844, 360×800 and 1280×800. These inspect internal control reachability, not just page overflow. Twelve additional respawn, scoreboard stability, chat and reduced-keyboard-viewport checks passed at 568×320, 740×360 and 390×844. No browser errors were recorded. Real-device and deployed-service checks below remain required.
+
+## Previous release verification and rollout notes
+
 
 Passed locally: 136 gameplay/presentation tests, 38 room tests, 5 account tests, lint, TypeScript and Render production build. Room coverage includes real WebSocket connections, reconnect/score retention, public room overflow, rotation, passwords, host permissions and countdowns. Account tests verify persisted claims, duplicate reward rejection, concurrent purchases, preferences and reward retry handling. These are automated checks, not a human playtest or live Supabase certification.
 
@@ -6,7 +11,7 @@ Fixed SVG title hydration by rendering one deterministic text child. Corrected f
 
 Before public release: run a 4–6-player deployed match from India including weaker PCs, tab switching, disconnect/rejoin and rematches. Record RTT and frame time. Confirm MICA feel and actual hit registration. Exercise real Google/email verification, fresh-account guest transfer and explicit existing-account protection; then verify claims, purchases and preferences on a second device. No production credentials or deployment access were used here.
 
-Deploy frontend and room server from this same archive; /health must report protocol 24. Mount persistent storage at KRAGE_ACCOUNT_OUTBOX and back up account data through your database provider. Verify restore using a separate database before relying on backups. Monitor health, restart counts, server logs and failed account-outbox receipts; never log auth tokens. Roll back BOTH services together to the same known-good release; room restarts end current matches. Preserve database and outbox data during rollback. Older 1.9 source archive retained locally as fallback, not certified against later database changes.
+Deploy frontend and room server from this same archive; /health must report protocol 25. Mount persistent storage at KRAGE_ACCOUNT_OUTBOX and back up account data through your database provider. Verify restore using a separate database before relying on backups. Monitor health, restart counts, server logs and failed account-outbox receipts; never log auth tokens. Roll back BOTH services together to the same known-good release; room restarts end current matches. Preserve database and outbox data during rollback. Older 1.9 source archive retained locally as fallback, not certified against later database changes.
 
 Cleanup removes generated previews, superseded release ZIPs and disposable caches only. Original models/audio, development history, database scripts and account data remain.
 

@@ -630,6 +630,13 @@ export class Arena {
     this.sun.shadow.camera.bottom = -shadowExtent;
     this.sun.shadow.camera.updateProjectionMatrix();
   }
+  setLobbyOperator(operator:number){
+    if(this.lobbyAvatar.group.userData.operator===operator)return;
+    const primary=this.lobbyAvatar.gunId;disposeObject(this.lobbyAvatar.group);
+    this.lobbyAvatar=avatar(COLORS.action,operator,this.finishVariant);
+    this.lobbyAvatar.ring.visible=this.lobbyAvatar.shadow.visible=false;
+    this.lobbyScene.add(this.lobbyAvatar.group);this.setPrimaryPreview(primary);
+  }
   setCosmetics(operator: number, finish: number, weaponFinishes = [finish, finish, finish, finish]) {
     if (this.operatorVariant === operator && this.finishVariant === finish && this.weaponFinishes.join() === weaponFinishes.join())
       return;
@@ -1398,7 +1405,7 @@ export class Arena {
     }
     if(p.slide<=0||!p.alive||this.phase!=='playing')this.slideSoundPlayed=false;
     else if(!this.slideSoundPlayed){this.slideSoundPlayed=true;this.audio.slide(this.surfaceAt(p.pos));}
-    if (p.grounded && speed > 1.3 && p.alive && p.slide === 0) {
+    if (this.phase === 'playing' && p.grounded && speed > 1.3 && p.alive && p.slide === 0) {
       this.footTime += speed * dt;
       if (this.footTime >= FOOTSTEP_DISTANCE) {
         this.audio.step(this.surfaceAt(p.pos), p.crouched);
@@ -1406,7 +1413,7 @@ export class Arena {
       }
     } else this.footTime = 0;
     for (const actor of this.match.actors) {
-      if (actor.id === p.id || !actor.alive || !actor.grounded || actor.slide > 0)
+      if (this.phase !== 'playing' || actor.id === p.id || !actor.alive || !actor.grounded || actor.slide > 0)
         continue;
       const stride = Math.floor(actor.stride / FOOTSTEP_DISTANCE);
       if (this.botFootsteps.get(actor.id) !== stride) {

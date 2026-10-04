@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { WireActor } from '@/lib/game/network-state';
 export type PartyMember = Pick<WireActor,'id'|'name'|'team'|'operator'|'primary'|'weaponFinishes'|'bot'|'connected'|'ready'>;
 /** Independent portrait cameras, one shared renderer. Live outfits and weapons, never thumbnails. */
-export function PartyPreview({players,capacity=players.length,you,hostId,onInvite,onKick,inviteLabel='INVITE'}:{players:PartyMember[];capacity?:number;you?:number;hostId?:number|null;onInvite?:()=>void;inviteLabel?:string;onKick?:(id:number)=>void}) {
+export function PartyPreview({players,capacity=players.length,you,hostId,onInvite,onKick,inviteLabel='INVITE',portrait=false}:{portrait?:boolean;players:PartyMember[];capacity?:number;you?:number;hostId?:number|null;onInvite?:()=>void;inviteLabel?:string;onKick?:(id:number)=>void}) {
  const host=useRef<HTMLDivElement>(null),cards=useRef(new Map<number,HTMLButtonElement>()),angles=useRef(new Map<number,number>());
  const current=useRef(players),drag=useRef<{id:number;x:number}|null>(null);
  const [failed,setFailed]=useState(false),[page,setPage]=useState(0),[confirm,setConfirm]=useState<number|null>(null);
@@ -16,7 +16,7 @@ export function PartyPreview({players,capacity=players.length,you,hostId,onInvit
    const el=host.current,renderer=new T.WebGLRenderer({alpha:true,antialias:true,powerPreference:'low-power'});
    renderer.setPixelRatio(1);renderer.setClearColor(0x000000,0);renderer.autoClear=false;renderer.domElement.setAttribute('aria-hidden','true');el.appendChild(renderer.domElement);
    const scene=new T.Scene(),camera=new T.PerspectiveCamera(34,1,.1,20);
-   camera.position.set(0,1.2,3.6);camera.lookAt(0,.85,0);
+   camera.position.set(0,1.1,portrait?3.15:3.6);camera.lookAt(0,portrait?.99:.85,0);
    scene.add(new T.HemisphereLight('#eef3ff','#596052',2.8));
    const light=new T.DirectionalLight('#ffe4c5',2);light.position.set(2,4,3);scene.add(light);
    const rim=new T.DirectionalLight('#80d8e0',1.4);rim.position.set(-3,2,-2);scene.add(rim);
@@ -37,7 +37,10 @@ export function PartyPreview({players,capacity=players.length,you,hostId,onInvit
      if(!model){model=G.avatar(p.team===0?'#53d9ef':'#ffae64',p.operator??0);models.set(p.id,model);scene.add(model.group);}
      G.animateAvatar(model,{...base,...p,pos:C.v(),vel:C.v(),alive:true,grounded:true,weapon:p.primary,yaw:Math.PI+(angles.current.get(p.id)??.38),pitch:0},time/1000,1/30);
      G.poseLobbyAvatar(model,time/1000+p.id);model.ring.visible=false;model.shadow.visible=true;
-     camera.aspect=rect.width/rect.height;camera.updateProjectionMatrix();
+     camera.aspect=rect.width/rect.height;
+     const poseHeight=(p.operator??0)===1?2.16:1.88;
+     camera.position.set(0,poseHeight/2,Math.max(portrait?3.15:3.6,poseHeight*.56/Math.tan(17*Math.PI/180),1.15/(2*Math.tan(17*Math.PI/180)*camera.aspect)));
+     camera.lookAt(0,poseHeight/2,0);camera.updateProjectionMatrix();
      const x=rect.left-bounds.left,y=bounds.bottom-rect.bottom;
      renderer.setViewport(x,y,rect.width,rect.height);renderer.setScissor(x,y,rect.width,rect.height);renderer.render(scene,camera);model.group.visible=false;
     }
@@ -47,7 +50,7 @@ export function PartyPreview({players,capacity=players.length,you,hostId,onInvit
    stop=()=>{cancelAnimationFrame(frame);models.forEach(m=>G.disposeObject(m.group));renderer.domElement.removeEventListener('webglcontextlost',lost);renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();};
   }).catch(()=>{if(!disposed)setFailed(true);});
   return()=>{disposed=true;stop();};
- },[]);
+ },[portrait]);
  const slots=Math.min(8,Math.max(1,capacity,players.length)),pages=Math.ceil(slots/4),active=Math.min(page,pages-1);
  return <div className="party-portraits">
   <div className="party-card-grid" style={{'--slots':Math.min(4,slots)} as React.CSSProperties}>

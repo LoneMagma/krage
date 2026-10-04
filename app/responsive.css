@@ -1,0 +1,157 @@
+/* 1.10.5 — viewport layouts. Components retain their visual styles in mobile.css. */
+.game-shell [hidden]{display:none!important}
+.game-shell{--safe-left:max(10px,env(safe-area-inset-left));--safe-right:max(10px,env(safe-area-inset-right));--safe-top:max(8px,env(safe-area-inset-top));--safe-bottom:max(8px,env(safe-area-inset-bottom))}
+.lobby-section-body{overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain;scrollbar-gutter:stable}
+.lobby-section-body>*{flex-shrink:0}
+.spawn-panel,.end-panel,.pause-panel{box-sizing:border-box;max-height:calc(var(--visible-height,100dvh) - 24px);overflow-y:auto;overscroll-behavior:contain}
+.spawn-panel>.deploy-button,.end-panel>.result-actions{position:sticky;bottom:0;z-index:2}
+.rotate-phone{display:none!important}
+/* Short laptops and tablets share the same reachable panel structure. */
+@media(max-width:1100px),(max-height:600px){
+ .game-shell.lobby-shell{--nav-height:56px;height:var(--visible-height,100dvh)!important;min-height:0!important}
+ .game-shell.lobby-shell .topbar{height:var(--nav-height)!important;padding:4px var(--safe-right) 4px var(--safe-left)!important;display:flex!important;flex-wrap:nowrap!important;gap:8px!important;align-items:center!important}
+ .game-shell.lobby-shell .topbar nav{position:static!important;transform:none!important;order:0!important;flex:1 1 auto!important;width:auto!important;min-width:0;display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr));padding:0!important;gap:2px!important}
+ .game-shell.lobby-shell .nav-button{min-width:0!important;min-height:44px!important;padding:5px 3px!important;font-size:11px!important;letter-spacing:0!important}
+ .game-shell .krage-wordmark{width:85px}.game-shell .brand-logo{width:32px;height:32px}.game-shell .topbar-actions{gap:5px}.game-shell .nav-account,.game-shell .nav-wallet{min-height:44px;padding:5px!important}.game-shell .nav-wallet small{display:none}
+ .game-shell .lobby-section,.game-shell .friend-lobby-panel{position:absolute!important;top:calc(var(--nav-height) + 4px)!important;bottom:32px!important;left:var(--safe-left)!important;right:var(--safe-right)!important;width:auto!important;height:auto!important;max-height:none!important;transform:none!important;padding:10px!important;display:flex!important;flex-direction:column!important;overflow:hidden!important}
+ .game-shell .lobby-section>header,.game-shell .friend-lobby-panel>header{flex:0 0 auto;margin:0 0 8px!important;padding:0 0 6px!important;gap:8px!important}
+ .game-shell .lobby-section>header h2,.game-shell .friend-lobby-panel>header h2{font-size:22px!important;margin:0!important}
+ .game-shell .back-to-play{min-height:44px;padding:8px 12px!important}
+ .game-shell .section-tabs{flex-shrink:0!important;gap:4px!important;margin:0 0 8px!important;display:flex;overflow-x:auto;overflow-y:hidden}
+ .game-shell .section-tabs button{flex:1 0 auto;min-height:44px!important;padding:8px!important;font-size:11px!important}
+ .game-shell .settings-visual-tabs{grid-template-columns:repeat(4,minmax(0,1fr));margin:0 0 10px!important;gap:6px}
+ .game-shell .settings-visual-tabs button{min-height:44px!important;font-size:11px!important;flex-direction:row;padding:6px!important}
+ .game-shell .settings-fields,.game-shell .settings-fields[data-category=MOVEMENT]{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;padding:10px!important}
+ .game-shell .settings-fields>.choice-setting,.game-shell .settings-fields>label:not(.check-setting){min-height:88px!important;padding:10px!important;font-size:12px!important;gap:8px!important}
+ .game-shell .settings-fields .game-choice{grid-template-columns:repeat(auto-fit,minmax(48px,1fr))!important;gap:5px!important}
+ .game-shell .settings-fields .game-choice button{min-height:44px!important;font-size:11px!important;padding:6px!important}
+ .game-shell .settings-fields>button,.game-shell .settings-fields>.check-setting{min-height:44px!important;font-size:12px!important}
+ .game-shell input:not([type=range]):not([type=checkbox]){font-size:16px!important;min-height:44px;box-sizing:border-box}
+ .game-shell input[type=range]{min-height:32px;margin:0!important}
+ .game-shell .settings-fields .crosshair-choice button span{display:block!important}
+ .game-shell .lobby-footer{bottom:5px!important;right:var(--safe-right)!important;font-size:9px;pointer-events:auto}
+ .game-shell.lobby-shell .chat-v2{left:var(--safe-left)!important;bottom:4px!important;max-width:calc(100% - 20px)}
+ .game-shell.lobby-shell .chat-toggle{min-height:28px;padding:4px 9px!important;font-size:10px!important}
+ .game-shell .locker-suite,.game-shell .arsenal{height:auto!important;min-height:0!important;display:flex!important;flex-direction:column!important;gap:10px!important}
+ .game-shell .arsenal-inspection,.game-shell .locker-suite .arsenal-inspection{height:190px!important;min-height:190px!important;flex:none;padding-bottom:36px!important}
+ .game-shell .arsenal-finish{grid-template-columns:minmax(0,1fr) auto!important;padding:10px 0!important;gap:12px!important}
+ .game-shell .arsenal-finish .arsenal-equip{grid-column:1/-1!important;min-height:44px!important;justify-self:stretch}
+ .game-shell .character-showcase .party-portraits{height:260px!important;min-height:260px!important}
+ .game-shell .character-choices{grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
+ .game-shell .character-choices button{min-height:44px;font-size:11px;justify-content:center;padding:6px;flex-wrap:wrap}
+ .game-shell .character-choices i{display:none}
+ .game-shell .friend-lobby-panel .room-panel{overflow-y:auto!important;overflow-x:hidden!important;flex:1;min-height:0;gap:10px}
+ .game-shell .room-panel>*{flex-shrink:0!important}
+ .game-shell .party-first>.deploy-button{min-height:48px!important;background:#a93b4b!important}
+ .game-shell .party-portraits{min-height:130px;flex:none}
+ .game-shell .map-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .game-shell .map-picker-overlay>section{max-height:calc(var(--visible-height,100dvh) - 24px)}
+}
+/* Landscape home: three clear areas — map, hero, play. */
+@media(orientation:landscape) and (max-width:1100px),(orientation:landscape) and (max-height:600px){
+ .game-shell.lobby-shell{--play-width:clamp(210px,30vw,285px)}
+ .game-shell.lobby-shell .play-card{position:absolute!important;top:calc(var(--nav-height) + 6px)!important;bottom:36px!important;right:var(--safe-right)!important;width:var(--play-width)!important;translate:none!important;transform:none!important;box-sizing:border-box;padding:12px!important;gap:10px!important;overflow-y:auto!important;display:flex;flex-direction:column}
+ .game-shell .play-card>*{flex-shrink:0}.game-shell .play-card h2{font-size:22px!important}.game-shell .play-card header{gap:8px!important}.game-shell .play-card button{min-height:44px!important}
+ .game-shell .play-card .practice-start{position:sticky;bottom:0;z-index:1}
+ .game-shell .practice-inline{gap:8px!important}.game-shell .practice-step{min-height:44px!important}
+ .game-shell.lobby-shell .arena-stage{width:calc(100% - var(--play-width) - 24px)!important}
+ .game-shell.lobby-shell .stage-map{position:absolute!important;top:calc(var(--nav-height) + 14px)!important;left:var(--safe-left)!important;width:100px!important;height:auto!important}
+ .game-shell.lobby-shell .stage-map h1{font-size:18px!important;text-align:center!important}.game-shell .stage-map h1 span{display:none!important}
+ .game-shell .stage-map .map-diagram{width:64px!important;height:42px!important;display:block!important}
+ .game-shell.lobby-shell .arena-tabs{display:none!important}
+ .game-shell.lobby-shell[data-section=play] .operator-window{top:calc(var(--nav-height) + 6px)!important;bottom:138px!important;left:115px!important;width:calc(100% - var(--play-width) - 145px)!important;min-width:0!important}
+ .game-shell.lobby-shell[data-section=play] .hero-actions{position:absolute!important;top:auto!important;bottom:38px!important;left:calc((100% - var(--play-width) - 20px)/2)!important;transform:translateX(-50%)!important;width:220px!important;gap:6px!important}
+ .game-shell .character-toggle{gap:4px!important;padding:3px!important}.game-shell .character-toggle button,.game-shell .hero-loadout{min-height:44px!important}
+}
+@media(max-width:760px){.game-shell.lobby-shell .krage-wordmark{display:none}.game-shell .topbar-actions .nav-wallet{font-size:11px}.game-shell .topbar-actions .nav-wallet svg{width:19px}.game-shell .settings-fields .crosshair-choice{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+/* Menus work in portrait; only active play recommends landscape. */
+@media(orientation:portrait) and (max-width:1100px){
+ .game-shell.lobby-shell{--nav-height:108px}
+ .game-shell.lobby-shell .topbar{flex-wrap:wrap!important;align-content:start!important;justify-content:space-between}
+ .game-shell.lobby-shell .topbar nav{order:3!important;flex-basis:100%!important;height:46px}
+ .game-shell.lobby-shell .krage-wordmark{display:block;width:90px}
+ .game-shell.lobby-shell .play-card{top:auto!important;bottom:36px!important;left:var(--safe-left)!important;right:var(--safe-right)!important;width:auto!important;max-height:45%;overflow-y:auto!important;padding:12px!important;gap:8px!important;translate:none!important;transform:none!important}
+ .game-shell .play-card h2{font-size:20px!important}.game-shell .play-card button{min-height:44px!important}.game-shell .play-card>*{flex-shrink:0}
+ .game-shell.lobby-shell .stage-map{position:absolute!important;top:116px!important;left:var(--safe-left)!important;width:100px!important}.game-shell .stage-map h1{font-size:18px!important;text-align:center}.game-shell .stage-map h1 span{display:none!important}.game-shell .stage-map .map-diagram{height:38px!important}
+ .game-shell.lobby-shell[data-section=play] .operator-window{top:120px!important;bottom:52%!important;left:115px!important;width:calc(100% - 130px)!important;min-width:0!important}
+ .game-shell.lobby-shell[data-section=play] .hero-actions{top:43%!important;bottom:auto!important;left:50%!important;transform:translateX(-50%)!important;width:220px!important;gap:4px!important}.game-shell .hero-loadout{display:none!important}
+ .game-shell .arena-tabs{display:none!important}
+ .game-shell .settings-fields,.game-shell .settings-fields[data-category=MOVEMENT]{grid-template-columns:1fr!important}
+ .game-shell .settings-visual-tabs button{flex-direction:column!important;font-size:10px!important}
+ .game-shell .character-showcase{grid-template-columns:1fr!important;gap:10px}.game-shell .character-showcase .party-portraits{height:240px!important;min-height:240px!important}.game-shell .character-description h3{font-size:24px}
+ .game-shell .character-choices{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .game-shell .room-panel .party-quick-settings{grid-template-columns:1fr!important}
+ .game-shell .arsenal-weapons button{flex-direction:column}.game-shell .arsenal-weapons button .weapon-glyph{max-width:50px}
+ .game-shell .arsenal-finish{grid-template-columns:1fr!important}.game-shell .mission-list article{flex-wrap:wrap}
+ .touch-device.match-shell[data-phase=playing] .rotate-phone{display:flex!important;position:absolute;inset:var(--safe-top) var(--safe-right) auto var(--safe-left);z-index:70;background:#171b20f5;color:#eee;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;padding:10px;font-size:18px;border-radius:8px;pointer-events:none}
+ .rotate-phone strong{font:700 13px var(--font-ui)}.rotate-phone span{display:none}.rotate-phone button{pointer-events:auto;min-height:44px;font:700 11px var(--font-ui);padding:8px}
+}
+/* Touch HUD owns the upper strip; thumbs own the lower corners. */
+.touch-device.match-shell{height:100dvh!important;min-height:0!important}
+.touch-device .hud-top-left{top:var(--safe-top)!important;left:var(--safe-left)!important}
+.touch-device .minimap{width:62px!important;height:62px!important}
+.touch-device .map-meta,.touch-device .movement-readout,.touch-device .hud-hints,.touch-device .drag-aim-hint{display:none!important}
+.touch-device .hud-bottom-left{top:calc(var(--safe-top) + 66px)!important;bottom:auto!important;left:var(--safe-left)!important;width:96px!important;transform:none!important}
+.touch-device .health-row{gap:4px!important}.touch-device .health-row strong{font-size:24px!important;line-height:1!important}.touch-device .health-plus{font-size:18px!important}.touch-device .health-row>span:last-child{font-size:9px!important}.touch-device .health-track{height:5px!important;margin-top:3px!important}
+.touch-device .match-clock{top:var(--safe-top)!important;left:50%!important;transform:translateX(-50%)!important;max-width:210px!important}
+.touch-device .mode-heading{font-size:9px!important;letter-spacing:.04em!important}.touch-device .clock-score{font-size:24px!important}.touch-device .clock-center{font-size:24px!important}.touch-device .score-labels{font-size:8px!important}
+.touch-device .hud-top-right{top:var(--safe-top)!important;right:var(--safe-right)!important;width:auto!important}
+.touch-device .hud-actions{gap:4px!important}.touch-device .hud-actions button{width:44px!important;height:44px!important;padding:8px!important}
+.touch-device .hud-bottom-right{top:calc(var(--safe-top) + 48px)!important;right:var(--safe-right)!important;bottom:auto!important;width:104px!important;transform:none!important}
+.touch-device .weapon-title{font-size:10px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.touch-device .ammo-row{justify-content:flex-end;gap:5px!important}.touch-device .ammo-row strong{font-size:28px!important;line-height:1!important}.touch-device .ammo-row>span{font-size:12px!important}.touch-device .ammo-row small,.touch-device .weapon-slots{display:none!important}
+.touch-device .kill-feed{position:fixed;top:calc(var(--safe-top) + 58px);right:126px;max-width:min(220px,30vw);gap:3px;pointer-events:none}.touch-device .feed-row{font-size:10px!important;padding:4px!important;gap:4px!important}.touch-device .feed-row:nth-child(n+3){display:none}.touch-device .feed-row span{max-width:75px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.touch-device .feed-row .weapon-glyph{width:30px!important;height:14px!important}
+.touch-device .frag-stack{top:30%!important;bottom:auto!important;left:50%!important;transform:translateX(-50%)!important;width:min(260px,45vw)!important;pointer-events:none}.touch-device .frag-notice{font-size:12px!important;padding:5px!important}.touch-device .frag-notice:nth-child(n+3){display:none}
+.touch-device .reload-notice{top:auto!important;bottom:22%!important;left:50%!important;transform:translateX(-50%)!important;width:120px!important;font-size:10px!important;pointer-events:none}
+.touch-device .spawn-notice{top:110px!important;bottom:auto!important;font-size:9px!important}
+.touch-device .match-intro{position:absolute!important;top:calc(var(--safe-top) + 60px)!important;left:50%!important;transform:translateX(-50%)!important;width:min(300px,50vw)!important;max-width:none!important;padding:8px 12px!important;pointer-events:none!important;box-sizing:border-box;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:4px 9px}
+.touch-device .match-intro>small,.touch-device .match-intro-details{display:none!important}.touch-device .match-start-title{font-size:16px!important;width:100%;text-align:center}.touch-device .match-intro>strong{font-size:16px!important}.touch-device .match-intro>span{font-size:11px!important}
+.touch-device .connection-banner{top:110px!important;max-width:60vw!important;font-size:11px!important;padding:6px!important;pointer-events:none}
+.touch-device .mobile-look{inset:0 0 0 30%}
+.touch-device .custom-control{border-radius:50%!important;border:2px solid #d4d9dc80!important;background:#202830ad!important;box-shadow:inset 0 0 0 3px #ffffff08!important;padding:5px!important}
+.touch-device .custom-control[data-held=true]{background:#994859e0!important;border-color:#f3d8cb!important}
+.touch-device .custom-control small{display:none!important}.touch-device .custom-control svg{width:24px;height:24px}.touch-device .mobile-fire svg{width:30px;height:30px}
+.touch-device .mobile-adjust{left:calc(var(--safe-left) + 110px)!important;bottom:var(--safe-bottom)!important;width:44px;height:44px;border-radius:50%!important;padding:8px}
+.touch-device.match-shell .chat-v2{left:calc(var(--safe-left) + 160px)!important;bottom:var(--safe-bottom)!important;width:auto!important;max-width:none!important}
+.touch-device .chat-toggle{min-height:44px!important;width:44px;overflow:hidden;padding:8px!important;font-size:0!important;gap:0!important;justify-content:center}.touch-device .chat-toggle svg{flex:none;width:22px;height:22px}
+.touch-device .chat-toasts{position:fixed!important;left:var(--safe-left)!important;top:120px!important;bottom:auto!important;width:min(250px,36vw);max-height:60px;overflow:hidden;pointer-events:none}.touch-device .chat-toast{font-size:11px!important;padding:3px!important}.touch-device .chat-toast:nth-child(n+3){display:none}
+.touch-device .chat-box{position:fixed!important;left:var(--safe-left)!important;right:var(--safe-right)!important;top:calc(var(--visible-top,0px) + var(--safe-top))!important;bottom:auto!important;width:auto!important;max-width:520px!important;max-height:calc(var(--visible-height,100dvh) - 20px)!important;box-sizing:border-box;display:flex;flex-direction:column;overflow:auto;padding:10px!important;z-index:150}
+.touch-device .chat-messages{height:clamp(60px,24dvh,180px)!important;max-height:calc(var(--visible-height,100dvh) - 140px)!important;flex:1 1 auto;min-height:30px}.touch-device .chat-box nav button,.touch-device .chat-box form button{min-width:44px;min-height:44px}.touch-device .chat-box input{font-size:16px!important;min-height:44px}.touch-device .chat-hints{display:none!important}
+.touch-device .spawn-overlay,.touch-device .pause-overlay,.touch-device .end-overlay,.touch-device .score-overlay{padding:var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left)!important;box-sizing:border-box}
+.touch-device .spawn-panel,.touch-device .end-panel,.touch-device .pause-panel{width:min(620px,100%)!important;max-height:calc(var(--visible-height,100dvh) - 20px)!important;padding:12px!important;overflow:auto!important}
+.touch-device .spawn-panel .panel-heading{display:none!important}.touch-device .death-recap{padding:0!important;gap:8px!important;margin:0!important;min-height:0!important}.touch-device .death-recap .weapon-glyph{width:70px!important;height:30px!important}.touch-device .death-recap strong{font-size:18px!important}.touch-device .death-recap>div{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.touch-device .spawn-panel h2{font-size:22px!important;margin:8px 0!important}.touch-device .spawn-choices{gap:8px!important}.touch-device .spawn-choice{padding:6px!important;min-height:65px!important}.touch-device .spawn-choice .weapon-glyph{height:32px!important}.touch-device .spawn-choice strong{font-size:12px!important}.touch-device .spawn-panel>.deploy-button{min-height:48px!important;margin-top:10px!important}
+.touch-device .end-panel .scoreboard{position:static!important;transform:none!important;width:100%!important;max-height:none!important;overflow:auto!important}.touch-device .scoreboard{max-height:calc(var(--visible-height,100dvh) - 40px);overflow:auto;padding:10px!important;box-sizing:border-box}.touch-device .scoreboard td{font-size:12px!important;padding:6px!important}.touch-device .scoreboard .rank{margin-right:4px}
+.touch-device .result-actions{flex-wrap:wrap;gap:6px;background:#202126}.touch-device .result-actions button{min-height:44px!important}.touch-device .result-hero h2{font-size:30px!important}
+.touch-device .compact-editor{max-height:calc(100dvh - 32px);width:210px;top:32%!important;padding:10px}.touch-device .compact-editor button{min-height:44px!important}.touch-device .editor-size{margin:6px 0}.touch-device .editor-options{max-height:100px;overflow:auto}.touch-device .touch-editor{z-index:2200}
+@media(max-height:360px) and (orientation:landscape){.game-shell .krage-wordmark{display:none}.game-shell.lobby-shell .play-card{gap:6px!important;padding:8px!important}.game-shell .play-card header{display:none}.game-shell .play-callsign>span{display:none}.game-shell.lobby-shell[data-section=play] .operator-window{bottom:118px!important}.game-shell.lobby-shell .stage-map{width:85px!important}.touch-device .match-intro{top:62px!important}.touch-device .spawn-notice{display:none!important}.touch-device .kill-feed{max-width:140px}.touch-device .feed-row{font-size:9px!important}.touch-device .frag-stack{top:36%!important}}
+@media(prefers-reduced-motion:reduce){.game-shell *{scroll-behavior:auto!important}.match-intro,.frag-notice{animation-duration:.01ms!important}}
+.mobile-controls{box-sizing:border-box;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+.touch-device .clock-row{height:34px!important;margin-top:3px!important}.touch-device .clock{font-size:24px!important;min-width:76px!important}.touch-device .score-blue,.touch-device .score-red{width:38px!important;height:34px!important;line-height:34px!important;font-size:24px!important}
+/* Hidden shells must not become invisible programmatic scroll containers. */
+html,body,.game-shell,.game-shell.lobby-shell{overflow:clip!important}
+.game-shell.lobby-shell .lobby.lobby-v4{display:contents!important}
+.choice-menu:not([open])>.choice-options{display:none!important}
+.game-shell.touch-device .chat-v2 .chat-toggle{position:static!important;transform:none!important;font-size:0!important;width:44px!important;height:44px!important;min-height:44px!important;padding:10px!important;border-radius:50%!important;gap:0!important}
+.touch-device .hud-actions button{background:#202830c9!important;border:1px solid #d4d9dc80!important;color:#fff!important;opacity:1!important}
+@media(orientation:landscape) and (max-height:500px){
+ .game-shell .lobby-section>header,.game-shell .friend-lobby-panel>header{display:none!important}
+ .game-shell .section-tabs{margin-bottom:6px!important}
+ .game-shell .settings-visual-tabs{margin-bottom:6px!important}
+ .game-shell .arsenal-inspection,.game-shell .locker-suite .arsenal-inspection{height:165px!important;min-height:165px!important}
+ .game-shell .room-panel[data-stage=create]>.party-portraits{display:none!important}
+ .game-shell .room-panel .party-topline{gap:10px;align-items:center}
+ .game-shell .party-name{font-size:10px!important}
+ .game-shell .practice-step button{min-width:44px!important}
+ .game-shell .practice-step{grid-template-columns:44px minmax(0,1fr) 44px!important}
+}
+.game-shell .room-panel{scroll-padding-block:12px 64px}
+.game-shell .play-card{scroll-padding-block:12px 60px}
+@media(orientation:portrait) and (max-width:1100px){.game-shell.lobby-shell[data-section=play] .hero-actions{top:41%!important}.game-shell .hero-loadout{display:flex!important;min-height:44px!important}.game-shell .character-toggle button{min-height:44px!important}.game-shell .character-toggle{gap:4px!important;padding:3px!important}}
+.game-shell.touch-device .chat-toggle kbd{display:none!important}
+@media(orientation:landscape) and (min-height:600px) and (max-width:1100px){.game-shell.lobby-shell .play-card{top:50%!important;bottom:auto!important;transform:translateY(-50%)!important;max-height:calc(var(--visible-height,100dvh) - 132px)}}
+/* A clear, compact play surface; disabled actions still retain a readable label. */
+.game-shell.lobby-shell .play-card{isolation:isolate;z-index:10;background:linear-gradient(145deg,#292b32f5,#191c23f5)!important;border-color:#b5bac349!important;gap:16px;padding:20px;color:#f3f0eb}
+.game-shell .play-card h2{font-size:28px;color:#f3f0eb}.game-shell .play-card .play-callsign{color:#c6bec5}.game-shell .play-card input{color:#f3f0eb;background:#12171c;border:1px solid #73778065}
+.game-shell .play-card .play-online{background:#b54456!important;color:#fff4ed!important;border:1px solid #d9778580!important;min-height:54px;font-size:16px}
+.game-shell .play-card .play-online:disabled{opacity:.65!important;cursor:wait}.game-shell .play-card .play-alternatives button{color:#e6e2e6;border-color:#82818a66;background:#ffffff08;min-height:44px}
+.game-shell.lobby-shell:not([data-section=play]) .play-card{display:none!important}
