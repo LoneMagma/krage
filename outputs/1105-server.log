@@ -1,0 +1,50 @@
+npm notice run krage-arena@1.10.5 test:server
+npm notice run npm run build:server && node --test tests/server.test.mjs
+npm notice run krage-arena@1.10.5 build:server
+npm notice run tsc -p tsconfig.server.json
+✔ room owns movement, bounds input and rejects replayed input (152.443235ms)
+✔ only server-authorized deployment restores a dead player (116.948229ms)
+✔ two independent sockets share one authoritative room and reconnect (3354.061696ms)
+✔ persistent economy operations are atomic, replay-safe and cannot mint paid credit (47.547883ms)
+✔ held network jump triggers once until release and stale input stops movement (153.15091ms)
+✔ room results belong to the receiving player rather than local player zero (125.133784ms)
+✔ prediction replays only unapplied ticks, including a half-applied frame (99.417891ms)
+✔ the second client gets its own HUD, team, death, event identity and spawn choice (84.940315ms)
+✔ delayed movement delivery stays bounded and converges after acknowledgements (450.337027ms)
+✔ room settings enforce capacity, duration, loadout and team identities (79.442153ms)
+✔ public rooms fill with server bots and replace them with humans (89.414917ms)
+✔ Quick Play ignores private preferences and pools live players (130.162698ms)
+✔ rewind is bounded to 200ms and never crosses a spawn (32.943261ms)
+✔ authoritative shot events identify input frame and expose tick diagnostics (35.751431ms)
+✔ room hitscan uses historical targets but still respects solid cover (48.098213ms)
+✔ friend staging freezes simulation, publishes loadout, and enforces host/ready rules (79.190649ms)
+✔ friend lobby host transfers and invalid match rules are rejected (32.886362ms)
+✔ online secondary EDGE attack is server timed and reaches beyond slash (127.128177ms)
+✔ private rematch preserves party, clears combat and accepts the next life sequence (70.962243ms)
+✔ delayed input bursts retire stale frames without disconnecting or fast-forwarding (30.358791ms)
+✔ reconnecting after 90 seconds preserves identity, score and equipment; expired slots reject (30.578661ms)
+✔ websocket packet burst remains connected and acknowledges the newest input (174.877487ms)
+✔ manual retry retains session and ignores callbacks from the old socket (8.531887ms)
+✔ four live friends share one match and a returning socket keeps its score (102.579663ms)
+✔ global chat is bounded, identifies senders and rate limits without dropping sockets (11.245362ms)
+✔ third character is selectable online and invalid variants are rejected (63.6019ms)
+✔ match and team chat never leak into other rooms or opposing teams (233.142777ms)
+✔ Dune and Skirmish rooms expose their matching shared arena and protocol (225.839427ms)
+✔ new Snow and CELL II are selectable online with shared geometry (103.464029ms)
+✔ public rotation preserves sessions and loadouts and skips modes too small for seated humans (454.95368ms)
+✔ small public parties rotate through valid modes with all bot skills (699.321632ms)
+✔ public rotation weights maps 35/35/15/15, spreads modes evenly and never seats humans in a mode too small (3699.306812ms)
+✔ full global room spills into another room without splitting existing players (557.053397ms)
+✔ new outfits and bounded cosmetic IDs survive multiplayer snapshots and reconnects (200.074993ms)
+✔ custom room directory only reveals live listed human rooms (229.939852ms)
+✔ password storage is salted, listings reveal no secret, kick is host-only and revokes reconnect (697.586993ms)
+✔ real sockets browse, enforce passwords, reject non-host kicks and notify a kicked player (422.564614ms)
+✔ custom countdown freezes match and rejects input; disconnect cancels and requires readiness again (41.120232ms)
+ℹ tests 38
+ℹ suites 0
+ℹ pass 38
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 13775.631139

@@ -1,4 +1,4 @@
 
-  vinext start  (port 3420)
+  vinext start  (port 3422)
 
-[vinext] Production server running at http://0.0.0.0:3420
+[vinext] Production server running at http://0.0.0.0:3422

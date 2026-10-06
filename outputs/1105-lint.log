@@ -1,0 +1,2 @@
+npm notice run krage-arena@1.10.5 lint
+npm notice run oxlint app lib/game lib/account components/game tests server
